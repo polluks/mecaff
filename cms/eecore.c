@@ -899,6 +899,7 @@ EditorPtr mkEdFil(
     return prevEd;
   }
 
+  fm[1] = fInfo->filemode[1];  /* preserve file mode number of existing file */
   setFilename(ed, fn, ft, fm);
 
   _try {
