@@ -15,17 +15,18 @@
 ** Written by Dr. Hans-Walter Latz, Berlin (Germany), 2011,2012,2013
 ** Released to the public domain.
 */
- 
+
 #include "glblpre.h"
- 
+
 #include <string.h>
 #include <stdio.h>
- 
+#include <cmssys.h>
+
 #include "fsio.h"
 #include "eeutil.h"
- 
+
 #include "glblpost.h"
- 
+
 /* mapping of command line names for screen elements to API identifiers */
 static CmdDef ConsElems[] = {
   { "NORMal"       , (void*)0 },
@@ -34,7 +35,7 @@ static CmdDef ConsElems[] = {
   { "CONSolestate" , (void*)3 },
   { "CMDInput"     , (void*)4 }
 };
- 
+
 /* mapping of command line names for colors to API identifiers */
 static CmdDef ColorNames[] = {
   { "Default"   , (void*)0 },
@@ -46,10 +47,10 @@ static CmdDef ColorNames[] = {
   { "Yellow"    , (void*)6 },
   { "White"     , (void*)7 }
 };
- 
+
 int main(int argc, char *argv[]) {
   char outline[256];
- 
+
   if (argc < 2) {
     sprintf(
         outline,
@@ -81,13 +82,13 @@ int main(int argc, char *argv[]) {
         CMS_NOEDIT);
     return 0;
   }
- 
+
   int elemsCount = sizeof(ConsElems) / sizeof(CmdDef);
   int colorsCount = sizeof(ColorNames) / sizeof(CmdDef);
   int i = 1;
- 
+
   int rc = -1;
- 
+
   if (isAbbrev(argv[i], "ATTR")) {
     ConsoleAttr attrs[5];
     int attrCount = 0;
@@ -99,7 +100,7 @@ int main(int argc, char *argv[]) {
       }
       CmdDef* elem = fndcmd(argv[i++], ConsElems, elemsCount);
       CmdDef* color = fndcmd(argv[i++], ColorNames, colorsCount);
- 
+
       int elemNo = -1;
       int colorNo = -1;
       bool highlight = false;
@@ -119,7 +120,7 @@ int main(int argc, char *argv[]) {
         highlight = true;
         i++;
       }
- 
+
       int curr = 0;
       while (curr < attrCount) {
         if (attrs[curr].element == elemNo) { break; }
@@ -184,7 +185,7 @@ int main(int argc, char *argv[]) {
     CMSconsoleWrite(outline, CMS_NOEDIT);
     return 4;
   }
- 
+
   if (rc != 0) {
     CMSconsoleWrite("Unable to change MECAFF console settings", CMS_NOEDIT);
     return rc + 1000;

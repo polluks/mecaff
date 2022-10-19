@@ -18,98 +18,99 @@
 ** Written by Dr. Hans-Walter Latz, Berlin (Germany), 2012,2013
 ** Released to the public domain.
 */
- 
+
 #include <stdio.h>
+#include <cmssys.h>
 #include <stdlib.h>
 #include <string.h>
- 
+
 #include "ind$file.h"
 #include "fsio.h"
- 
+
 /* global flags for command line options */
 static char recfm = 'V';
 unsigned int lrecl = 80;
 static bool doAppend = false;
 static bool doTest = false;
 static bool doDump = false;
- 
+
 /* EBCDIC 'bracket' charset uppercase translation */
- 
+
 static const char tbl_toupper[] = {
 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
- 
+
 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
- 
+
 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F,
- 
+
 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
 0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F,
- 
+
 0x40, 0x41, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67,
 0x68, 0x69, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F,
- 
+
 0x50, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77,
 0x78, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x5F,
- 
+
 0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67,
 0x68, 0x69, 0x6A, 0x6B, 0x6C, 0x6D, 0x6E, 0x6F,
- 
+
 0x80, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77,
 0x78, 0x79, 0x7A, 0x7B, 0x7C, 0x7D, 0x7E, 0x7F,
- 
+
 0x80, 0xC1, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7,
 0xC8, 0xC9, 0x8A, 0x8B, 0xAC, 0xBA, 0x8E, 0x8F,
- 
+
 0x90, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7,
 0xD8, 0xD9, 0x9A, 0x9B, 0x9E, 0x9D, 0x9E, 0x9F,
- 
+
 0xA0, 0xA1, 0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7,
 0xE8, 0xE9, 0xAA, 0xAB, 0xAC, 0xAD, 0x8E, 0xAF,
- 
+
 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7,
 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF,
- 
+
 0xC0, 0xC1, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7,
 0xC8, 0xC9, 0xCA, 0xEB, 0xEC, 0xED, 0xEE, 0xEF,
- 
+
 0xD0, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7,
 0xD8, 0xD9, 0xDA, 0xFB, 0xFC, 0xFD, 0xFE, 0xDF,
- 
+
 0xE0, 0xE1, 0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7,
 0xE8, 0xE9, 0xEA, 0xEB, 0xEC, 0xED, 0xEE, 0xEF,
- 
+
 0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7,
 0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF
 };
- 
+
 #define toupper(c) tbl_toupper[c]
- 
+
 /* test if 2 strings are case-insensitive equal */
 static bool strequiv(char *s1, char *s2) {
   if (!s1 && !s2) { return true; }
   if (!s1 || !s2) { return false; }
   if (strlen(s1) != strlen(s2)) { return false; }
- 
+
   while(*s1) {
     if (toupper(*s1++) != toupper(*s2++)) { return false; }
   }
- 
+
   return true;
 }
- 
+
 /* record-buffer for file i/o and the current fill length of the record */
 static char io_buffer[512];
 int currLineLen = 0;
 bool segmented = false; /* has some ascii record been wrapped at lrecl ? */
- 
+
 /* write a line to the console (without buffering, see below) */
 static void writeLineImmed(char *line) {
   CMSconsoleWrite(line, CMS_NOEDIT);
 }
- 
+
 /* queueing of console output lines to write out the texts after the transfer */
 typedef struct _logline {
   struct _logline *prev;
@@ -117,10 +118,10 @@ typedef struct _logline {
   char   txt[81];
 } LogBuf, *LogBufPtr;
 static LogBufPtr logAnchor = NULL;
- 
+
 /* buffer for doing sprintf's */
 static char __logbuf[256];
- 
+
 /* add a line to the output queue */
 static void enqLogLine(char *logtext) {
   LogBufPtr newBuf = (LogBufPtr)malloc(sizeof(LogBuf));
@@ -136,7 +137,7 @@ static void enqLogLine(char *logtext) {
     logAnchor = newBuf;
   }
 }
- 
+
 /* dump out the enqueued output lines and free the memory bound in the queue */
 static void writeLog() {
   if (logAnchor == NULL) { return; }
@@ -149,32 +150,32 @@ static void writeLog() {
     free(toDelete);
   }
 }
- 
+
 /* macros for sprintf + enqueue */
 #define logf0(p1) \
   enqLogLine(p1);
- 
+
 #define logf1(p1,p2) \
   { sprintf(__logbuf,p1,p2); enqLogLine(__logbuf); }
- 
+
 #define logf2(p1,p2,p3) \
   { sprintf(__logbuf,p1,p2,p3); enqLogLine(__logbuf); }
- 
+
 #define logf3(p1,p2,p3,p4) \
   { sprintf(__logbuf,p1,p2,p3,p4); enqLogLine(__logbuf); }
- 
+
 static void writeOutStatus(char *status) {
   logf2(">> %s%s", status, (status[strlen(status)-1] == '\n') ? "" : "\n");
 }
- 
+
 /* CUT-mode protocol status */
 static int frameSeq = 0; /* monotone growing couter for CUT-panes sent */
 static bool sentInitialAck = false; /* did we send the initial ACK panel ? */
 static char *blank = " ";
- 
+
 /*
   handle the CUT-mode status, depending on usage and communication state
- 
+
   returnvalue: true => immediate abort!
 */
 static bool sendStatus(char *code, char *message) {
@@ -194,24 +195,24 @@ static bool sendStatus(char *code, char *message) {
   }
   return (rc != 0);
 }
- 
+
 /*
   send a data frame in CUT-mode
- 
+
   returnvalue: true => immediate abort!
 */
 static bool sendData(char *data, int dataLen) {
   int rc = snd_data(frameSeq++, dataLen, data);
   if (rc < 0) { return true; }
   if (rc == 0) { return false; }
- 
+
   sendStatus(CODE_ABORT_XMIT, "TRANS 99 - Protocol error");
   return true;
 }
- 
+
 /*
   receive a data frame in CUT-mode
- 
+
   returnvalue: true => immediate abort!
 */
 static bool receiveData(char **data, int *dataLen) {
@@ -219,11 +220,11 @@ static bool receiveData(char **data, int *dataLen) {
   int rc = rcv_data(frameSeq++, data, &csum, dataLen);
   if (rc < 0) { return true; }
   if (rc == 0) { return false; }
- 
+
   sendStatus(CODE_ABORT_XMIT, "TRANS99 - Protocol error");
   return true;
 }
- 
+
 /*
 ** CMS file-I/O interfacing
 */
@@ -231,7 +232,7 @@ static char filename[128];
 static CMSFILE cmsfile;
 static CMSFILE *f = NULL;
 static int recordNum = 1;
- 
+
 /* build a FID string from the components fn ft fm */
 static void buildFid(char *fid, char *fn, char *ft, char *fm) {
   strcpy(fid, "                  ");
@@ -247,17 +248,17 @@ static void buildFid(char *fid, char *fn, char *ft, char *fm) {
   if (*p) { fid[16] = toupper(*p++); } else { fid[16] = 'A'; }
   if (*p) { fid[17] = toupper(*p); } else if (fid[16] != '*') { fid[17] = '1'; }
 }
- 
+
 /* check if the file 'fn ft fm' exists */
 bool f_exists(char *fn, char *ft, char *fm) {
   char fid[19];
   CMSFILEINFO *fInfo;
- 
+
   buildFid(fid, fn, ft, fm);
   int rc = CMSfileState(fid, &fInfo);
   return (rc == 0);
 }
- 
+
 /* try to open the file and:
    - set global variable 'f' and return true if successfull
    - send an error status and return false if the file cannot be opened
@@ -266,11 +267,11 @@ static bool openFile(
     char *fn, char *ft, char *fm,
     bool openForRead) {
   memset(io_buffer, '\0', sizeof(io_buffer));
- 
+
   memset(filename, '\0', sizeof(filename));
   char *fid = filename;
   buildFid(fid, fn, ft , fm);
- 
+
   char msg[120];
   CMSFILEINFO *fInfo;
   int rc = CMSfileState(fid, &fInfo);
@@ -305,7 +306,7 @@ static bool openFile(
       "TRANS99 - LRECL > 255 unsupported: file transfer canceled");
     return false;
   }
- 
+
   int firstLine = 1;
   if (!openForRead && doAppend) { firstLine = 0; }
   rc = CMSfileOpen(
@@ -337,20 +338,20 @@ static bool openFile(
     sendStatus(CODE_ABORT_XMIT, msg);
     return false;
   }
- 
+
   return true;
 }
- 
+
 /* close the CMS file */
 static void closeFile() {
   if (f) { CMSfileClose(f); }
   f = NULL;
 }
- 
+
 /* the 2 variants of file exnds for ASCII download (host->term) */
 static char CRLF[3] = { (char)0x0d, (char)0x0a, (char)0x00 };
 static char LF[2]   = { (char)0x0a, (char)0x00 };
- 
+
 /* read a record of the file into 'io_buffer',
    set 'eof' to true if no more records are available,
    return the length of the record just read.
@@ -392,13 +393,13 @@ static int readRecord(bool *eof) {
   }
   return len;
 }
- 
+
 /* write a record from 'io_buffer' with the specified record len,
    return true if writing failed
 */
 static bool writeRecord(int len) {
   char fillChar = (doAscii) ? ' ' : '\0';
- 
+
   if (len < 1) { /* avoid a "non-write" for empty records */
     io_buffer[0] = fillChar;
     len = 1;
@@ -410,7 +411,7 @@ static bool writeRecord(int len) {
       len++;
     }
   }
- 
+
   int rc = CMSfileWrite(f, recordNum, len);
   recordNum = 0;
   if (rc == 4 || rc == 5 || rc == 20 || rc == 21) {
@@ -435,7 +436,7 @@ static bool writeRecord(int len) {
   }
   return false;
 }
- 
+
 /* test for symmetric encoding and decoding of data for the given file,
    records with a difference after decoding are dummped with additional
    informations.
@@ -451,33 +452,33 @@ static void do_test(
   char *errRetMsg = NULL;
   int lines = 0;
   int errors = 0;
- 
+
   if (!openFile(fn, ft, fm, true)) {
     return;
   }
- 
+
   bool eof;
   char *inBuffer = io_buffer;
   int len = readRecord(&eof);
   while(!eof && !errMsg && len >= 0) {
     inBuffer[len] = '\0';
     lines++;
- 
+
     int start_q_h2t = curr_q_h2t;
     int start_q_t2h = curr_q_t2h;
- 
+
     int outLen = get_convert(
       inBuffer, len,
       outBuffer, sizeof(outBuffer),
       &errMsg);
- 
+
     memset(retBuffer, '\0', sizeof(retBuffer));
     currLineLen = 0; /* patch put_convert's current position in the out line */
     int retLen = put_convert(
       outBuffer, outLen,
       retBuffer, sizeof(retBuffer) - 1,
       &errRetMsg);
- 
+
     if (doAscii && doCrLf) {
       len -= 2;
       inBuffer[len] = '\0'; /* drop synthetic CRLF */
@@ -506,13 +507,13 @@ static void do_test(
         (curr_q_t2h < 0) ? ' ' : q_identifiers[curr_q_t2h]);
       printf("\n");
     }
- 
+
     len = readRecord(&eof);
   }
   closeFile();
   printf("\nTest completed, lines = %d, errors = %d\n\n", lines, errors);
 }
- 
+
 /* do the GET for the given file */
 static void process_get(
     char *fn,
@@ -521,27 +522,27 @@ static void process_get(
 {
   char outBuffer[4096];
   char *errMsg = NULL;
- 
+
   char *wb = outBuffer;
   int wbRest = sizeof(outBuffer);
   int wbLen = 0;
- 
+
   int recs = 0;
   int fileBytes = 0;
- 
+
   /* open the file and send the status to the terminal */
   if (!openFile(fn, ft, fm, true)) {
     return;
   }
   sendStatus(CODE_HOST_ACK, blank);
- 
+
   /* loop over the records of the file */
   bool eof;
   int len = readRecord(&eof);
   while(!eof && len >= 0 && !errMsg) {
     fileBytes += len;
     recs++;
- 
+
     /* encoded the record content, appending to current encoded data */
     int appended = get_convert(
       io_buffer, len,
@@ -555,7 +556,7 @@ static void process_get(
     wb += appended;
     wbLen += appended;
     wbRest -= appended;
- 
+
     /* if we have enough encoded bytes to send a panel: send it ... */
     if (wbLen > MAX_DATA_SEND_LEN) {
       bool abort = sendData(outBuffer, MAX_DATA_SEND_LEN);
@@ -572,20 +573,20 @@ static void process_get(
       wb = &outBuffer[wbLen];
       wbRest += MAX_DATA_SEND_LEN;
     }
- 
+
     len = readRecord(&eof);
   }
- 
+
   /* close the file and send the remining encoded bytes */
   closeFile();
   if (wbLen > 0) {
     if (sendData(outBuffer, wbLen)) { return; }
   }
- 
+
   /* tell the terminal that the file has ended */
   if (sendData("*z", 2)) { return; }
   sendStatus(CODE_XFER_COMPLETE, "TRANS03 - File transfer complete");
- 
+
   /*
   int transferBytes = sent_cnt();
   logf3("(file-bytes: %d , file-recs: %d, transfer-bytes: %d)\n",
@@ -593,7 +594,7 @@ static void process_get(
   */
   logf0("File transfer host -> terminal complete\n");
 }
- 
+
 /* do the PUT for the given file name */
 static void process_put(
     char *fn,
@@ -605,16 +606,16 @@ static void process_put(
   int  inLen = 0;
   char *outBuf = io_buffer;
   int outBufLen = sizeof(io_buffer);
- 
+
   /* open the output file and send the status to the terminal */
   if (!openFile(fn, ft, fm, false)) {
     return;
   }
   sendStatus(CODE_HOST_ACK, blank);
- 
+
   /* set the writer routine used by the decoder to output the file records */
   writer = writeRecord;
- 
+
   /* receive the file content panels up to the EOF signaling panel
      and convert each panel, which will write the records
   */
@@ -629,7 +630,7 @@ static void process_put(
       closeFile();
       return;
     }
- 
+
     if (receiveData(&inData, &inLen)) {
       closeFile();
       return;
@@ -641,7 +642,7 @@ static void process_put(
       return;
     }
   }
- 
+
   closeFile();
   sendStatus(CODE_XFER_COMPLETE,
     (segmented)
@@ -650,11 +651,11 @@ static void process_put(
   logf1("File transfer terminal -> host complete%s\n",
     (segmented) ? " (with records segmented)" : "");
 }
- 
+
 /*
 ** read routines for IND$MAP files
 */
- 
+
 /* decode a hex character: > 15: not a hex char code, 0..15: decoded nibble */
 static unsigned char getHexNibble(char nibbleChar) {
   if (nibbleChar >= '0' && nibbleChar <= '9') {
@@ -666,7 +667,7 @@ static unsigned char getHexNibble(char nibbleChar) {
   }
   return 255;
 }
- 
+
 /* read the next token of the file, setting 'c' with decoded hex code,
    returns:
     < 0: invalid encoding ('c' not set!)
@@ -676,7 +677,7 @@ static unsigned char getHexNibble(char nibbleChar) {
 static int readCharHex(char *buffer, unsigned char *c) {
   char *b = buffer;
   int consumed = 0;
- 
+
   /* find start of the hex coded character */
   while(*b) {
     if (*b == '*') { return 0; } /* comment line */
@@ -685,24 +686,24 @@ static int readCharHex(char *buffer, unsigned char *c) {
     consumed++;
   }
   if (!*b || *b == '\n') { return 0; } /* empty line */
- 
+
   /* decode first nibble */
   unsigned char code1 = getHexNibble(*b++);
   consumed++;
   if (code1 > 15) { return -1; } /* not a hex char */
- 
+
   /* decode second nibble */
   unsigned char code2 = getHexNibble(*b++);
   consumed++;
   if (code2 > 15) { return -1; } /* not a hex char */
- 
+
   /* assemble the hex code to a char and signal OK */
   *c = (code1 << 4) | code2;
   return consumed;
 }
- 
+
 #define FT_INDMAP "IND$MAP"
- 
+
 /* read in the character remappings in 'fn IND$MAP *' and modify the internal
    remapping table */
 static void loadTranslationDeltas(char *fn, bool reportMissing) {
@@ -710,7 +711,7 @@ static void loadTranslationDeltas(char *fn, bool reportMissing) {
   char fspec[32];
   char line[256];
   int lineNo = 0;
- 
+
   strncpy(line, fn, 8);
   line[8] = '\0';
   if (!f_exists(line, FT_INDMAP, "*")) {
@@ -720,7 +721,7 @@ static void loadTranslationDeltas(char *fn, bool reportMissing) {
     }
     return;
   }
- 
+
   sprintf(fspec, "%s %s * V 255", line, FT_INDMAP);
   FILE *f = fopen(fspec, "r");
   if (!f) { return; }
@@ -728,7 +729,7 @@ static void loadTranslationDeltas(char *fn, bool reportMissing) {
   while(!feof(f)) {
     line[255] = '\0'; /* just to be sure */
     lineNo++;
- 
+
     unsigned char hostChar;
     unsigned char termChar;
     int res = readCharHex(l, &hostChar);
@@ -758,16 +759,16 @@ static void loadTranslationDeltas(char *fn, bool reportMissing) {
         }
       }
     }
- 
+
     l = fgets(line, sizeof(line) - 1, f);
   }
   fclose(f);
 }
- 
+
 /*
 ** main line code
 */
- 
+
 static int usage(char *cmdname, bool isRemote) {
   char msg[81];
   sprintf(msg, "Usage: %s PUT|GET%s fn ft fm [ options ]\n",
@@ -775,15 +776,15 @@ static int usage(char *cmdname, bool isRemote) {
   printf(msg);
   return 4;
 }
- 
+
 int main(int argc, char *argv[]) {
- 
+
   /* if the command name is FS$$FILE, the progam is used locally in test mode */
   bool isRemote = true;
   char *cmd = argv[0];
   if (strlen(cmd) > 8) { cmd[8] = '\0'; }
   if (strequiv(cmd, "FS$$FILE")) { isRemote = false; show3270(); }
- 
+
   if (argc < 4) {
     if (isRemote) {
       sendStatus(
@@ -792,7 +793,7 @@ int main(int argc, char *argv[]) {
     }
     return usage(argv[0], isRemote);
   }
- 
+
   /* get the minimal parameters */
   char *op = argv[1];
   char *fn = argv[2];
@@ -803,7 +804,7 @@ int main(int argc, char *argv[]) {
     fm = "A";
     firstOption = 4;
   }
- 
+
   /* interpret optional parameters */
   bool doSend = false;
   bool doRcv = false;
@@ -811,11 +812,11 @@ int main(int argc, char *argv[]) {
   int i;
   for (i = firstOption; i < argc; i++) {
     char *p = argv[i];
- 
+
     if (strcmp(p, "(") == 0 || strcmp(p, ")") == 0) {
       continue;
     }
- 
+
     if (strequiv(p, "ASCII")) {
       doAscii = true;
     } else if (strequiv(p, "CRLF")) {
@@ -866,7 +867,7 @@ int main(int argc, char *argv[]) {
       return 4;
     }
   }
- 
+
   /* check the minimal MECAFF process version on the other side of the wire */
   int mecaffMajor;
   int mecaffMinor;
@@ -886,7 +887,7 @@ int main(int argc, char *argv[]) {
     printf("... aborting\n");
     return 33;
   }
- 
+
   /* initialize the remapping tables */
   prepareTables();
   loadTranslationDeltas("DEFAULT", false);
@@ -894,7 +895,7 @@ int main(int argc, char *argv[]) {
     loadTranslationDeltas(mapFile, true);
   }
   postpareTables();
- 
+
   /* execute the operation requested */
   if (strequiv(op, "PUT")) {
     process_put(fn, ft, fm);
@@ -916,7 +917,7 @@ int main(int argc, char *argv[]) {
       return usage(argv[0], isRemote);
     }
   }
- 
+
   /* write out the messages collected and finish */
   writeLog();
   return 0;

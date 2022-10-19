@@ -15,17 +15,18 @@
 ** Written by Dr. Hans-Walter Latz, Berlin (Germany), 2011,2012,2013
 ** Released to the public domain.
 */
- 
+
 #include "glblpre.h"
- 
+
 #include <string.h>
 #include <stdio.h>
- 
+#include <cmssys.h>
+
 #include "fsio.h"
 #include "eeutil.h"
- 
+
 #include "glblpost.h"
- 
+
 static char *ConsElems[] = {
   "OutNormal ........ :",
   "OutEchoInput ..... :",
@@ -33,7 +34,7 @@ static char *ConsElems[] = {
   "ConsoleState ..... :",
   "CmdInput ......... :"
 };
- 
+
 static char *ColorNames[] = {
   "Default",
   "Blue",
@@ -44,19 +45,19 @@ static char *ColorNames[] = {
   "Yellow",
   "White"
 };
- 
+
 #define ATTR_COUNT 6
- 
+
 int main(int argc, char *argv[]) {
   char outline[256];
- 
+
   bool doState = false;
   bool doTerm = true;
   bool doColors = false;
   bool doPfKeys = false;
   bool doVersions = false;
   bool doQryType = false;
- 
+
   if (argc > 1) {
     char *p1 = argv[1];
     if (isAbbrev(p1, "ALl")) {
@@ -119,7 +120,7 @@ int main(int argc, char *argv[]) {
       return 0;
     }
   }
- 
+
   char termName[TERM_NAME_LENGTH+1];
   int numAltRows = -1;
   int numAltCols = -1;
@@ -130,7 +131,7 @@ int main(int argc, char *argv[]) {
   int sessionMode = 0;
   ConsoleAttr attrs[ATTR_COUNT];
   bool pfCmdAvail[24];
- 
+
   memset(termName, '\0', TERM_NAME_LENGTH+1);
   memset(attrs, '\0', sizeof(ConsoleAttr) * ATTR_COUNT);
   int rc = __qtrm2(
@@ -145,11 +146,11 @@ int main(int argc, char *argv[]) {
     &sessionMode,
     attrs,
     pfCmdAvail);
- 
+
   if (doState) {
     return rc;
   }
- 
+
   if (doQryType) {
     if (rc == 0) {
       return sessionMode;
@@ -157,7 +158,7 @@ int main(int argc, char *argv[]) {
       return -1;
     }
   }
- 
+
   if (termName[0] == '\0') {
     char tmpName[32];
     int model = 0;
@@ -171,7 +172,7 @@ int main(int argc, char *argv[]) {
       sprintf(termName, "IBM~327%d~%d", (canColors) ? 9 : 8, model);
     }
   }
- 
+
   if (rc == 1) {
     CMSconsoleWrite(
       "** no fullscreen support on terminal (3270?, DIAG58?, MECAFF-console?)"
@@ -188,7 +189,7 @@ int main(int argc, char *argv[]) {
     CMSconsoleWrite(outline, CMS_NOEDIT);
     return rc;
   }
- 
+
   if (doVersions) {
     int mecaffMajor;
     int mecaffMinor;
@@ -208,39 +209,39 @@ int main(int argc, char *argv[]) {
         apiMajor, apiMinor, apiSub);
     CMSconsoleWrite(outline, CMS_NOEDIT);
   }
- 
+
   if (doTerm) {
     CMSconsoleWrite("\n", CMS_NOEDIT);
     CMSconsoleWrite("Characteristics of attached 3270 terminal:\n", CMS_NOEDIT);
     sprintf(outline, "Terminal type .... : '%s'\n", termName);
     CMSconsoleWrite(outline, CMS_NOEDIT);
- 
+
     sprintf(outline, "Alt-Screen ....... : %s\n",
             (canAltScreenSize) ? "yes" : "no");
     CMSconsoleWrite(outline, CMS_NOEDIT);
- 
+
     sprintf(outline, "Colors ........... : %s\n",
             (canColors) ? "yes" : "no");
     CMSconsoleWrite(outline, CMS_NOEDIT);
- 
+
     sprintf(outline, "Extended Highlight : %s\n",
             (canExtHighLight) ? "yes" : "no");
     CMSconsoleWrite(outline, CMS_NOEDIT);
- 
+
     sprintf(outline, "Max. Screensize .. : %d cols x %d rows\n",
             (canAltScreenSize) ? numAltCols : 80,
             (canAltScreenSize) ? numAltRows : 24);
     CMSconsoleWrite(outline, CMS_NOEDIT);
- 
+
     /*
     sprintf(outline, "SessionId ........ : %d\n", sessionId);
     CMSconsoleWrite(outline, CMS_NOEDIT);
     */
- 
+
     sprintf(outline, "SessionMode ...... : %d\n", sessionMode);
     CMSconsoleWrite(outline, CMS_NOEDIT);
   }
- 
+
   if (doColors) {
     if (sessionMode != 3270 && sessionMode != 3215) {
       CMSconsoleWrite("\n** ATTRS unsupported (not a MECAFF-console)\n",
@@ -273,7 +274,7 @@ int main(int argc, char *argv[]) {
       }
     }
   }
- 
+
   if (doPfKeys) {
     if (sessionMode != 3270 && sessionMode != 3215) {
       CMSconsoleWrite("\n** PFKEYS unsupported (not a MECAFF-console)\n",
@@ -299,9 +300,9 @@ int main(int argc, char *argv[]) {
       }
     }
   }
- 
+
   CMSconsoleWrite("\n", CMS_NOEDIT);
- 
+
   return 0;
 }
- 
+

@@ -11,33 +11,34 @@
 ** Written by Dr. Hans-Walter Latz, Berlin (Germany), 2011,2012,2013
 ** Released to the public domain.
 */
- 
+
 /* C includes */
 #include <string.h>
 #include <stdio.h>
+#include <cmssys.h>
 #include <math.h>
- 
+
 /* full screen MECAFF-API */
 #include "fsio.h"
- 
+
 /* forward declarations */
 static void computeWaiting(int count);
 static void sayGoodBye(bool cmsWait);
- 
+
 /* 40 and 20 blanks for page building */
 #define BLANK40 "                                        "
 #define BLANK20 "                    "
- 
+
 /* 3270 channel control words: Write and EraseWrite */
 #define CCW_W  "\xf1"
 #define CCW_EW "\xf5"
- 
+
 /* out buffer sizes */
 #define INPBUF_SIZE 256
 #define OUTBUF_SIZE 4096
- 
+
 int main (int argc, char *argv[]) {
- 
+
   /* screen layout, using minimal plain 3277 terminal characteristics */
   char *template =
     "%s\xc3"
@@ -65,34 +66,34 @@ int main (int argc, char *argv[]) {
     "PF15 : terminate program with message, waiting on CMS side  " BLANK20
     "CLEAR: terminate program without final message screen"
     ;
- 
+
   /* input stream buffer */
   char inbuf[INPBUF_SIZE];
   int inbufl;
   int rc;
- 
+
   /* screen output stream buffer */
   char outbuf[OUTBUF_SIZE];
- 
+
   /* number of roundtrips so far */
   int count = 0;
- 
+
   /* using EraseWrite or Write CCW command ? */
   bool isEW = true;
   char *ccw = CCW_EW;
   char *ccwMode = "EraseWrite";
- 
+
   /* repaint the screen when did not get user's input ? */
   bool isWriteWhenNoData = true;
   char *writeWhenNoDataMode = "Write screen even when no input";
   bool hadFSInput = true;
- 
+
   /* which timeout mode is currently used ? */
   int timeout = FSRDP_FSIN_NOTIMEOUT;
   char *mode = "synchronous";
   bool delayAfterPoll = false;
   bool longRunning = false;
- 
+
   /* handle polling state for DIAG58 variant of MECAFF-API */
   bool inPollMode = false;
 #define EnterPolling() { \
@@ -105,10 +106,10 @@ int main (int argc, char *argv[]) {
     __fscncl(); \
     inPollMode = false; \
   } }
- 
+
   /* round-trip loop */
   while (true) {
- 
+
     /*
     ** write screen content
     */
@@ -127,7 +128,7 @@ int main (int argc, char *argv[]) {
         return rc;
       }
     }
- 
+
     /*
     ** get user's input, either polling or query-only or synchronous
     */
@@ -146,7 +147,7 @@ int main (int argc, char *argv[]) {
       return rc;
     }
     hadFSInput = (rc == 0);
- 
+
     /*
     ** if polling: did we get user's input?
     */
@@ -163,11 +164,11 @@ int main (int argc, char *argv[]) {
       }
       hadFSInput = true;
     }
- 
+
     /*
     ** interpret user's input (PF-keys)
     */
- 
+
     /* terminate if: Clear, PF03 , PF15 */
     char aid = inbuf[0];
     if (aid == (char)0xf3) { /* PF03 */
@@ -182,7 +183,7 @@ int main (int argc, char *argv[]) {
       LeavePolling();
       return 0;
     }
- 
+
     /* PF01 -> toggle CCW command */
     if (aid == (char)0xF1) {
       if (isEW) {
@@ -195,7 +196,7 @@ int main (int argc, char *argv[]) {
         ccwMode = "EraseWrite";
       }
     }
- 
+
     /* PF02 -> toggle writing on each round-trip */
     if (aid == (char)0xF2) {
       if (isWriteWhenNoData) {
@@ -206,21 +207,21 @@ int main (int argc, char *argv[]) {
         writeWhenNoDataMode = "Write screen even when no input";
       }
     }
- 
+
     /* PF05 -> time-out fs-read with 2 secs */
     if (aid == (char)0xF5) {
       EnterPolling();
       mode = "asynch, timeout = 2 secs";
       timeout = 20; /* 20secs */
     }
- 
+
     /* PF06 -> time-out fs-read with 1/2 sec */
     if (aid == (char)0xF6) {
       EnterPolling();
       mode = "asynch, timeout = 0,5 secs";
       timeout = 5; /* 0,5 secs */
     }
- 
+
     /* PF07 -> polling read, no delay / computation between reads */
     if (aid == (char)0xF7) {
       EnterPolling();
@@ -229,7 +230,7 @@ int main (int argc, char *argv[]) {
       longRunning = false;
       timeout = FSRDP_FSIN_QUERYONLY;
     }
- 
+
     /* PF08 -> poll-only read, do a little delaying computation between reads */
     if (aid == (char)0xF8) {
       EnterPolling();
@@ -238,7 +239,7 @@ int main (int argc, char *argv[]) {
       longRunning = false;
       timeout = FSRDP_FSIN_QUERYONLY;
     }
- 
+
     /* PF09 -> poll-only read, do a longer delaying computation between reads */
     if (aid == (char)0xF9) {
       EnterPolling();
@@ -247,7 +248,7 @@ int main (int argc, char *argv[]) {
       longRunning = true;
       timeout = FSRDP_FSIN_QUERYONLY;
     }
- 
+
     /* PF10 -> query available input read, no delay between query reads */
     if (aid == (char)0x7A) {
       EnterPolling();
@@ -256,7 +257,7 @@ int main (int argc, char *argv[]) {
       longRunning = false;
       timeout = FSRDP_FSIN_QUERYDATA;
     }
- 
+
     /* PF12-> synchronous fullscreen reads */
     if (aid == (char)0x7C) {
       mode = "synchronous";
@@ -264,17 +265,17 @@ int main (int argc, char *argv[]) {
       longRunning = false;
       timeout = FSRDP_FSIN_NOTIMEOUT;
     }
- 
+
     /* consume CPU time if in some polling mode */
     if (timeout == FSRDP_FSIN_QUERYONLY || timeout == FSRDP_FSIN_QUERYDATA) {
       computeWaiting((longRunning) ? 300000 : 10000);
     }
   }
- 
+
   LeavePolling();
   return 0;
 }
- 
+
 /* issue a full screen good bye page, automatically closing the full screen
    mode and returning to MECAFF console
  */
@@ -286,21 +287,21 @@ static void sayGoodBye(bool cmsWait) {
     "   That's All Folks !!!";
   char inbuf[INPBUF_SIZE];
   int inbufl;
- 
+
   /* write the screen */
   int rc = __fswr(byePage, strlen(byePage));
   if (rc != 0) { return; } /* no error handling */
- 
+
   /* waiting on the program side? */
   if (cmsWait) {
     /* wait a little, keeing the screen on the terminal */
-    rc = CMScommand("CP SLEEP 4 SEC", CMS_FUNCTION);
+    rc = CMScommand("CP SLEEP 4 SEC", CMS_COMMAND);
   } else {
     /* keep the screen some time on the screen, let MECAFF do the timer */
     rc = __fsrdp(inbuf, INPBUF_SIZE, &inbufl, 20); /* 2 seconds */
   }
 }
- 
+
 /* do some CPU intensive computations to consume time */
 static void computeWaiting(int count) {
   double value = 9346353.23223;
@@ -310,4 +311,4 @@ static void computeWaiting(int count) {
     value *= 3;
   }
 }
- 
+

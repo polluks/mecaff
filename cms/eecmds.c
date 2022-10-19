@@ -16,59 +16,60 @@
 ** Written by Dr. Hans-Walter Latz, Berlin (Germany), 2011,2012,2013
 ** Released to the public domain.
 */
- 
+
 #include "glblpre.h"
- 
+
 #include <stdio.h>
+#include <cmssys.h>
 #include <string.h>
- 
+
 #include "errhndlg.h"
- 
+
 #include "eecore.h"
 #include "eeutil.h"
 #include "eescrn.h"
 #include "eemain.h"
- 
+
 #include "glblpost.h"
- 
+
 /* set the filename for error messages from memory protection in EEUTIL */
 static const char *_FILE_NAME_ = "eecmds.c";
- 
+
 /* forward declarations */
 static bool parseTabs(char *params, int *tabs, int *count);
- 
+
 /*
 ** ****** global screen data
 */
- 
+
 #define CMD_HISTORY_LEN 32
 static EditorPtr commandHistory;   /* eecore-editor with the command history */
- 
+
 static EditorPtr filetypeDefaults; /* eecore-editor with the ft-defaults */
 static EditorPtr filetypeTabs;     /* eecore-editor with the ft-default-tabs */
- 
+
 static char pfCmds[25][CMDLINELENGTH+1]; /* the PF key commands */
- 
+
 static int fileCount = 0; /* number of open files */
- 
+
 static char searchPattern[CMDLINELENGTH + 1]; /* last search pattern */
 static bool searchUp;                         /* was last search upwards ? */
- 
+
 /*
 ** ****** utilities ******
 */
- 
+
 /* function pointer type for all command implementation routines, with
     'scr': the screen on which the command was entered
     'params': the parameter string of the command
     'msg': the message string to which to copy infos/warnings/errors
    returns: terminate processing of the current file ?
- 
+
    Routines implementing this function pointer type are named 'CmdXXXX' with
    XXXX being the EE command implemented.
 */
 typedef bool (*CmdImpl)(ScreenPtr scr, char *params, char *msg);
- 
+
 static void checkNoParams(char *params, char *msg) {
   if (!params) { return; }
   while(*params == ' ' || *params == '\t') { params++; }
@@ -77,27 +78,27 @@ static void checkNoParams(char *params, char *msg) {
     strcat(msg, "Extra parameters ignored!");
   }
 }
- 
+
 static char* parseFnFtFm(
     EditorPtr ed, char *params,
     char *fn, char *ft, char *fm,
     bool *found, char *msg) {
- 
+
   *found = false;
- 
+
   char fnDefault[9];
   char ftDefault[9];
   char fmDefault[3];
- 
+
   int tokLen = getToken(params, ' ');
   if (!params || !*params || tokLen == 0) { return params; }
- 
+
   getFnFtFm(ed, fnDefault, ftDefault, fmDefault);
- 
+
   if (msg) { /* ensure we let append the message, if requested */
     msg = &msg[strlen(msg)];
   }
- 
+
   char *lastCharRead = NULL;
   int consumed = 0;
   int parseRes = parse_fileid(
@@ -105,26 +106,26 @@ static char* parseFnFtFm(
         fn, ft, fm, &consumed,
         fnDefault, ftDefault, fmDefault,
         &lastCharRead, msg);
- 
+
   *found = (parseRes == PARSEFID_OK);
   return lastCharRead;
 }
- 
+
 /*
 ** ****** filetype defaults & tabs ******
 */
- 
+
 static void fillFtPattern(char *trg, char *ft) {
   int len = minInt(strlen(ft), 8);
   strcpy(trg, "#########");
   while(len) { *trg++ = c_upper(*ft++); len--; }
 }
- 
+
 static void addFtDefault(char *ft, int lrecl, char recfm, char caseMode,
                          int workLrecl) {
   char pattern[10];
   char ftDef[18];
- 
+
   fillFtPattern(pattern, ft);
   sprintf(ftDef, "%s %c %c %03d %03d",
     pattern,
@@ -139,7 +140,7 @@ static void addFtDefault(char *ft, int lrecl, char recfm, char caseMode,
   /*
   printf("addFtDefault() -> pattern = '%s'\n", pattern);
   printf("addFtDefault() -> ftDef   = '%s'\n", ftDef);*/
- 
+
   moveToBOF(filetypeDefaults);
   if (findString(filetypeDefaults, pattern, false, NULL)) {
     /* filetype already defined */
@@ -153,21 +154,21 @@ static void addFtDefault(char *ft, int lrecl, char recfm, char caseMode,
     /*printf("addFtDefault() -> new definition inserted\n");*/
   }
 }
- 
+
 static void addFtTabs(char *ft, int *tabs) {
   char pattern[10];
   char tabsLine[81];
- 
+
   fillFtPattern(pattern, ft);
   strcpy(tabsLine, pattern);
   /* first tab text will start at offset 10 in the line */
- 
+
   int i;
   for (i = 0; i < MAX_TAB_COUNT; i++) {
     char *tabsLineEnd = tabsLine + strlen(tabsLine);
     sprintf(tabsLineEnd, " %d", tabs[i]+1);
   }
- 
+
   moveToBOF(filetypeTabs);
   if (findString(filetypeTabs, pattern, false, NULL)) {
     /* filetype already defined */
@@ -179,17 +180,17 @@ static void addFtTabs(char *ft, int *tabs) {
     insertLine(filetypeTabs, tabsLine);
   }
 }
- 
+
 /*
 ** Open / Close a file
 */
- 
+
 static const char* FNFT_ALLOWED
     = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$+-_";
- 
+
 static const char* FM1_ALLOWED = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 static const char* FM2_ALLOWED = "0123456789";
- 
+
 /* return first char of 'cand' not in 'allowed' or NULL if all were found */
 static char* strchk(char *cand, const char *allowed) {
   if (!cand || !allowed) { return NULL; }
@@ -199,12 +200,12 @@ static char* strchk(char *cand, const char *allowed) {
   }
   return NULL;
 }
- 
+
 static void switchToEditor(ScreenPtr scr, EditorPtr newEd) {
   switchPrefixesToFile(scr, newEd);
   scr->ed = newEd;
 }
- 
+
 void openFile(
     ScreenPtr scr,
     char *fn,
@@ -212,21 +213,21 @@ void openFile(
     char *fm,
     int *state, /* 0=OK, 1=FileNotFound, 2=ReadError, 3=OtherError */
     char *msg) {
- 
+
   char pattern[10];
   char recfm;
   char caseMode;
   int defaultLrecl = scr->screenColumns - 7; /* 7 = prefix-zone overhead */
   int lrecl = defaultLrecl;
   int workLrecl = defaultLrecl;
- 
+
   s_upper(fn, fn);
   s_upper(ft, ft);
   s_upper(fm, fm);
- 
+
   fillFtPattern(pattern, ft);
   /*printf("openFile() -> pattern = '%s'\n", pattern);*/
- 
+
   moveToBOF(filetypeDefaults);
   if (findString(filetypeDefaults, pattern, false, NULL)) {
     /* filetype defaults found */
@@ -246,7 +247,7 @@ void openFile(
   /*
   printf("openFile() -> lrecl = %d, recfm=%c, caseMode=%c\n",
     lrecl, recfm, caseMode);*/
- 
+
   /* check if the file is already open */
   EditorPtr guardEd = scr->ed;
   char ofn[9];
@@ -267,7 +268,7 @@ void openFile(
       if (oldEd == guardEd) { break; }
     }
   }
- 
+
   char *firstInv = strchk(fn, FNFT_ALLOWED);
   if (firstInv) {
     *state = 3;
@@ -289,7 +290,7 @@ void openFile(
       fn, ft, fm);
     return;
   }
- 
+
   EditorPtr ed = createEditorForFile(
                        scr->ed,
                        fn, ft, fm,
@@ -325,7 +326,7 @@ void openFile(
     fileCount++;
   }
 }
- 
+
 static bool closeFile(ScreenPtr scr, char *msg) {
   EditorPtr ed = scr->ed;
   if (!ed) { return true; }
@@ -340,12 +341,12 @@ static bool closeFile(ScreenPtr scr, char *msg) {
   switchToEditor(scr, nextEd);
   return false;
 }
- 
+
 static bool closeAllFiles(ScreenPtr scr, bool saveModified, char *msg) {
   EditorPtr ed = scr->ed;
   while(fileCount > 0) {
     EditorPtr nextEd = getNextEd(ed);
- 
+
     if (getModified(ed) && saveModified) {
       char myMsg[120];
       int result = saveFile(ed, myMsg);
@@ -355,7 +356,7 @@ static bool closeAllFiles(ScreenPtr scr, bool saveModified, char *msg) {
         return false;
       }
     }
- 
+
     freeEditor(ed);
     fileCount--;
     ed = nextEd;
@@ -363,15 +364,15 @@ static bool closeAllFiles(ScreenPtr scr, bool saveModified, char *msg) {
   scr->ed = NULL;
   return true;
 }
- 
+
 int _fcount() {
   return fileCount;
 }
- 
+
 /*
 ** ****** commands ******
 */
- 
+
 static bool CmdInput(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   /*checkNoParams(params, msg);*/
@@ -382,28 +383,28 @@ static bool CmdInput(ScreenPtr scr, char *params, char *msg) {
   }
   return false;
 }
- 
+
 static bool CmdProgrammersInput(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   checkNoParams(params, msg);
   processProgrammersInputMode(scr);
   return false;
 }
- 
+
 static bool CmdTop(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   checkNoParams(params, msg);
   moveToBOF(scr->ed);
   return false;
 }
- 
+
 static bool CmdBottom(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   checkNoParams(params, msg);
   moveToLastLine(scr->ed);
   return false;
 }
- 
+
 static bool CmdNext(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   int count = 1;
@@ -418,7 +419,7 @@ static bool CmdNext(ScreenPtr scr, char *params, char *msg) {
   }
   return false;
 }
- 
+
 static bool CmdPrevious(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   int count = 1;
@@ -433,7 +434,7 @@ static bool CmdPrevious(ScreenPtr scr, char *params, char *msg) {
   }
   return false;
 }
- 
+
 static int getLineDistance(ScreenPtr scr, char **params) {
   int number = 100;
   int lines = scr->visibleEdLines - 1;
@@ -449,7 +450,7 @@ static int getLineDistance(ScreenPtr scr, char **params) {
   }
   return lines;
 }
- 
+
 static bool CmdPgUp(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   int distance = getLineDistance(scr, &params);
@@ -469,7 +470,7 @@ static bool CmdPgUp(ScreenPtr scr, char *params, char *msg) {
   checkNoParams(params, msg);
   return false;
 }
- 
+
 static bool CmdPgDown(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   int distance = getLineDistance(scr, &params);
@@ -489,7 +490,7 @@ static bool CmdPgDown(ScreenPtr scr, char *params, char *msg) {
   checkNoParams(params, msg);
   return false;
 }
- 
+
 static bool CmdMoveHere(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   if (scr->cElemType == 2) {
@@ -501,7 +502,7 @@ static bool CmdMoveHere(ScreenPtr scr, char *params, char *msg) {
   checkNoParams(params, msg);
   return false;
 }
- 
+
 static bool CmdSaveInner(
     ScreenPtr scr,
     char *params,
@@ -513,7 +514,7 @@ static bool CmdSaveInner(
   char ft[9];
   char fm[3];
   bool fFound = false;
-  char myMsg[81];
+  char myMsg[81] = "";
   params = parseFnFtFm(scr->ed, params, fn, ft, fm, &fFound, myMsg);
   checkNoParams(params, msg);
   if (!fFound && *myMsg) {
@@ -537,27 +538,27 @@ static bool CmdSaveInner(
   }
   return false;
 }
- 
+
 static bool CmdSave(ScreenPtr scr, char *params, char *msg) {
   CmdSaveInner(scr, params, msg, false, false);
   return false;
 }
- 
+
 static bool CmdSSave(ScreenPtr scr, char *params, char *msg) {
   CmdSaveInner(scr, params, msg, true, false);
   return false;
 }
- 
+
 static bool CmdFile(ScreenPtr scr, char *params, char *msg) {
   CmdSaveInner(scr, params, msg, false, true);
   return false;
 }
- 
+
 static bool CmdFFile(ScreenPtr scr, char *params, char *msg) {
   CmdSaveInner(scr, params, msg, true, true);
   return false;
 }
- 
+
 static bool CmdQuit(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   bool isModified = getModified(scr->ed);
@@ -569,7 +570,7 @@ static bool CmdQuit(ScreenPtr scr, char *params, char *msg) {
   closeFile(scr, msg);
   return false;
 }
- 
+
 static bool CmdQQuit(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   if (isAbbrev(params, "ALL")) {
@@ -581,10 +582,10 @@ static bool CmdQQuit(ScreenPtr scr, char *params, char *msg) {
   closeFile(scr, msg);
   return false;
 }
- 
+
 static bool CmdEditFile(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
- 
+
   char fn[9];
   char ft[9];
   char fm[3];
@@ -600,37 +601,37 @@ static bool CmdEditFile(ScreenPtr scr, char *params, char *msg) {
     strcpy(msg, "No file specified");
     return false;
   }
- 
+
   int state;
   openFile(scr, fn, ft, fm, &state, msg);
   if (state > 1) {
     return false;
   }
- 
+
   checkNoParams(params, msg);
   return false;
 }
- 
+
 static bool CmdRingNext(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   switchToEditor(scr, getNextEd(scr->ed));
   checkNoParams(params, msg);
   return false;
 }
- 
+
 static bool CmdRingPrev(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   switchToEditor(scr, getPrevEd(scr->ed));
   checkNoParams(params, msg);
   return false;
 }
- 
+
 static bool CmdExit(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   checkNoParams(params, msg);
   return closeAllFiles(scr, true, msg);
 }
- 
+
 static bool CmdCase(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   bool paramErr = true;
@@ -658,13 +659,13 @@ static bool CmdCase(ScreenPtr scr, char *params, char *msg) {
   }
   return false;
 }
- 
+
 static bool CmdReset(ScreenPtr scr, char *params, char *msg) {
   checkNoParams(params, msg);
   /* do nothing, as RESET is handled as part of prefix handling */
   return false;
 }
- 
+
 static bool CmdCmdline(ScreenPtr scr, char *params, char *msg) {
   if (isAbbrev(params, "TOP")) {
     scr->cmdLinePos = -1;
@@ -678,7 +679,7 @@ static bool CmdCmdline(ScreenPtr scr, char *params, char *msg) {
   checkNoParams(params, msg);
   return false;
 }
- 
+
 static bool CmdMsglines(ScreenPtr scr, char *params, char *msg) {
   if (isAbbrev(params, "TOP")) {
     scr->msgLinePos = -1;
@@ -692,7 +693,7 @@ static bool CmdMsglines(ScreenPtr scr, char *params, char *msg) {
   checkNoParams(params, msg);
   return false;
 }
- 
+
 static bool CmdPrefix(ScreenPtr scr, char *params, char *msg) {
   bool forFsList = false;
   if (isAbbrev(params, "FSLIST")) {
@@ -719,7 +720,7 @@ static bool CmdPrefix(ScreenPtr scr, char *params, char *msg) {
   checkNoParams(params, msg);
   return false;
 }
- 
+
 static bool CmdNumbers(ScreenPtr scr, char *params, char *msg) {
   if (isAbbrev(params, "ON")) {
     scr->prefixNumbered = true;
@@ -733,7 +734,7 @@ static bool CmdNumbers(ScreenPtr scr, char *params, char *msg) {
   checkNoParams(params, msg);
   return false;
 }
- 
+
 static bool CmdCurrline(ScreenPtr scr, char *params, char *msg) {
   if (isAbbrev(params, "TOp")) {
     scr->currLinePos = 0;
@@ -747,7 +748,7 @@ static bool CmdCurrline(ScreenPtr scr, char *params, char *msg) {
   checkNoParams(params, msg);
   return false;
 }
- 
+
 static bool CmdScale(ScreenPtr scr, char *params, char *msg) {
   if (isAbbrev(params, "OFf")) {
     scr->scaleLinePos = 0;
@@ -765,13 +766,13 @@ static bool CmdScale(ScreenPtr scr, char *params, char *msg) {
   checkNoParams(params, msg);
   return false;
 }
- 
+
 static bool CmdInfolines(ScreenPtr scr, char *params, char *msg) {
   bool forFsList = false;
   bool forFsView = false;
   bool forFsHelp = false;
   bool forEe = true;
- 
+
   if (isAbbrev(params, "FSLIST")) {
     forFsList = true;
     forEe = false;
@@ -787,7 +788,7 @@ static bool CmdInfolines(ScreenPtr scr, char *params, char *msg) {
   } else if (isAbbrev(params, "EE")) {
     /* EE is the default */
   }
- 
+
   if (isAbbrev(params, "OFf")) {
     if (forEe) { scr->infoLinesPos = 0; }
   } else if (isAbbrev(params, "TOp")) {
@@ -829,7 +830,7 @@ static bool CmdInfolines(ScreenPtr scr, char *params, char *msg) {
   checkNoParams(params, msg);
   return false;
 }
- 
+
 static bool CmdNulls(ScreenPtr scr, char *params, char *msg) {
   if (isAbbrev(params, "OFf")) {
     scr->lineEndBlankFill = true;
@@ -840,7 +841,7 @@ static bool CmdNulls(ScreenPtr scr, char *params, char *msg) {
   checkNoParams(params, msg);
   return false;
 }
- 
+
 static char *locNames[] = {
     "INVALID TOKEN",
     "RELATIVE",
@@ -849,21 +850,21 @@ static char *locNames[] = {
     "PATTERN(DOWN)",
     "PATTERN(UP)"
     };
- 
- 
+
+
 static bool CmdLocate(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   EditorPtr ed = scr->ed;
   LinePtr oldCurrentLine = getCurrentLine(ed);
- 
+
   bool tmpSearchUp = false;
   char tmpSearchPattern[CMDLINELENGTH + 1];
   int patternCount = 0;
   int othersCount = 0;
- 
+
   char buffer[2048];
   int val;
- 
+
   int locCount = 1;
   int locType = parseLocation(&params, &val, buffer);
   while(locType != LOC_NONE && !IS_LOC_ERROR(locType)) {
@@ -915,17 +916,17 @@ static bool CmdLocate(ScreenPtr scr, char *params, char *msg) {
       locCount, locNames[LOC_TYPE(locType)], params);
     moveToLine(ed, oldCurrentLine);
   }
- 
+
   if (patternCount == 1 && othersCount == 0) {
     searchUp = tmpSearchUp;
     strcpy(searchPattern, tmpSearchPattern);
   } else {
     searchPattern[0] = '\0';
   }
- 
+
   return false;
 }
- 
+
 static bool CmdSearchNext(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   EditorPtr ed = scr->ed;
@@ -944,18 +945,18 @@ static bool CmdSearchNext(ScreenPtr scr, char *params, char *msg) {
   }
   return false;
 }
- 
+
 static bool CmdReverseSearchNext(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   searchUp = !searchUp;
   return CmdSearchNext(scr, params, msg);
 }
- 
+
 static bool CmdMark(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   bool clear = false;
   bool paramsOk = false;
- 
+
   if (isAbbrev(params, "CLear")) {
     clear = true;
     params = getCmdParam(params);
@@ -973,16 +974,16 @@ static bool CmdMark(ScreenPtr scr, char *params, char *msg) {
     paramsOk = true;
     params = getCmdParam(params);
   }
- 
+
   if (!paramsOk) {
     strcpy(msg, "Invalid parameters for MARK");
     return false;
   }
- 
+
   checkNoParams(params, msg);
   return false;
 }
- 
+
 static bool CmdChange(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   char *fromText;
@@ -990,21 +991,21 @@ static bool CmdChange(ScreenPtr scr, char *params, char *msg) {
   char *toText;
   int toTextLen;
   char separator;
- 
+
   bool argsOk = parseChangePatterns(
         &params,
         &fromText, &fromTextLen,
         &toText, &toTextLen,
         &separator);
- 
+
   if (!argsOk) {
     strcpy(msg, "Parameters for CHANGE could not be parsed");
     return false;
   }
- 
+
   /* skip blanks after change strings */
   while(*params && *params == ' ') { params++; }
- 
+
   /* verify optional 'confirm' parameter */
   char infoTxt[CMDLINELENGTH];
   bool doConfirm = false;
@@ -1012,7 +1013,7 @@ static bool CmdChange(ScreenPtr scr, char *params, char *msg) {
     doConfirm = true;
     params = getCmdParam(params);
   }
- 
+
   /* get first param after change pattern */
   int changesPerLine = 1;
   int linesToChange = 1;
@@ -1032,30 +1033,30 @@ static bool CmdChange(ScreenPtr scr, char *params, char *msg) {
       params =  getCmdParam(params);
     }
   }
- 
+
   fromText[fromTextLen] = '\0';
   toText[toTextLen] = '\0';
- 
+
   if (doConfirm) {
     sprintf(infoTxt, "C%c%s%c%s%c",
       separator, fromText, separator, toText, separator);
   }
- 
+
   bool overallFound = false;
   bool overallTruncated = false;
- 
+
   LinePtr _guard = getLastLine(scr->ed);
   LinePtr _curr = getCurrentLine(scr->ed);
   LinePtr lineOrig = _curr;
   int linesDone = 0;
   int lrecl = getWorkLrecl(scr->ed);
- 
+
   int changesCount = 0;
- 
+
   while(linesDone < linesToChange && _curr != NULL) {
     int changesDone = 0;
     int currOffset = 0;
- 
+
     while(changesDone < changesPerLine && currOffset < lrecl) {
       if (doConfirm) {
         int markFrom = (fromTextLen > 0)
@@ -1074,7 +1075,7 @@ static bool CmdChange(ScreenPtr scr, char *params, char *msg) {
           break;
         }
       }
- 
+
       bool found;
       bool truncated;
       currOffset = changeString(
@@ -1087,26 +1088,26 @@ static bool CmdChange(ScreenPtr scr, char *params, char *msg) {
       changesDone++;
       if (found) { changesCount++; } else { break; }
     } /* end of loop over change in current line */
- 
+
     _curr = getNextLine(scr->ed, _curr);
     linesDone++;
   } /* end of loop over lines */
- 
+
   moveToLine(scr->ed, lineOrig);
- 
+
   if (!overallFound) {
     strcpy(msg, "Source text for CHANGE not found");
     return false;
   }
- 
+
   sprintf(msg,
     " %d occurence(s) changed %s",
     changesCount,
     (overallTruncated) ? "(some lines truncated)" : "");
- 
+
   return false;
 }
- 
+
 static bool CmdSplitjoin(ScreenPtr scr, char *params, char *msg) {
   EditorPtr ed = scr->ed;
   if (!ed) { return false; }
@@ -1114,17 +1115,17 @@ static bool CmdSplitjoin(ScreenPtr scr, char *params, char *msg) {
     strcpy(msg, "Cursor must be placed in file area for SPLTJOIN");
     return false;
   }
- 
+
   bool force = false;
   if (isAbbrev(params, "Force")) {
     force = true;
     params = getCmdParam(params);
   }
- 
+
   LinePtr line = scr->cElem;
   int linePos = scr->cElemOffset;
   int lineLen = lineLength(ed, line);
- 
+
   if (linePos >= lineLen) {
     /* cursor after last char => join with next line */
     if (line == getLastLine(ed)) {
@@ -1153,17 +1154,17 @@ static bool CmdSplitjoin(ScreenPtr scr, char *params, char *msg) {
     scr->cursorOffset = cPos;
     scr->cursorLine = cLine;
   }
- 
+
   return false;
 }
- 
+
 static bool CmdPf(ScreenPtr scr, char *params, char *msg) {
   int pfNo = -1;
   bool clear = false;
   bool forFsList = false;
   bool forFsView = false;
   bool forFsHelp = false;
- 
+
   if (isAbbrev(params, "FSLIST")) {
     forFsList = true;
     params = getCmdParam(params);
@@ -1176,12 +1177,12 @@ static bool CmdPf(ScreenPtr scr, char *params, char *msg) {
   } else if (isAbbrev(params, "EE")) {
     /* EE is the default */
   }
- 
+
   if (isAbbrev(params, "CLEAR")) {
     clear = true;
     params = getCmdParam(params);
   }
- 
+
   if (tryParseInt(params, &pfNo)) {
     params = getCmdParam(params);
   } else {
@@ -1192,7 +1193,7 @@ static bool CmdPf(ScreenPtr scr, char *params, char *msg) {
     strcpy(msg, "PF-Key number must be 1 .. 24");
     return false;
   }
- 
+
   if (clear) {
     if (forFsList) {
       setFSLPFKey(pfNo, NULL);
@@ -1206,13 +1207,13 @@ static bool CmdPf(ScreenPtr scr, char *params, char *msg) {
     checkNoParams(params, msg);
     return false;
   }
- 
+
   if (strlen(params) > CMDLINELENGTH) {
     sprintf(msg, "Command line for PF-Key too long (max. %d chars)",
             CMDLINELENGTH);
     return false;
   }
- 
+
   if (forFsList) {
     setFSLPFKey(pfNo, params);
   } else if (forFsView) {
@@ -1224,7 +1225,7 @@ static bool CmdPf(ScreenPtr scr, char *params, char *msg) {
   }
   return false;
 }
- 
+
 static bool CmdAttr(ScreenPtr scr, char *params, char *msg) {
   char *whatName = params;
   char whatTokenLen = getToken(params, ' ');
@@ -1233,7 +1234,7 @@ static bool CmdAttr(ScreenPtr scr, char *params, char *msg) {
     return false;
   }
   params =  getCmdParam(params);
- 
+
   unsigned char attr = DA_Mono;
   if (isAbbrev(params, "BLUe")) {
     attr = DA_Blue;
@@ -1261,7 +1262,7 @@ static bool CmdAttr(ScreenPtr scr, char *params, char *msg) {
     params =  getCmdParam(params);
   }
   checkNoParams(params, msg);
- 
+
   if (isAbbrev(whatName, "FILe")) {
     scr->attrFile = attr;
   } else if (isAbbrev(whatName, "CURRline")) {
@@ -1289,7 +1290,7 @@ static bool CmdAttr(ScreenPtr scr, char *params, char *msg) {
   }
   return false;
 }
- 
+
 static bool CmdRecfm(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   char recfm;
@@ -1305,11 +1306,11 @@ static bool CmdRecfm(ScreenPtr scr, char *params, char *msg) {
     strcpy(msg, "Recfm must be 'V' or 'F'");
     return false;
   }
- 
+
   setRecfm(scr->ed, recfm);
   return false;
 }
- 
+
 static bool CmdLrecl(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   int lrecl;
@@ -1317,13 +1318,13 @@ static bool CmdLrecl(ScreenPtr scr, char *params, char *msg) {
     params =  getCmdParam(params);
   }
   checkNoParams(params, msg);
- 
+
   bool truncated = setLrecl(scr->ed, lrecl);
   sprintf(msg, "LRECL changed to %d%s",
           lrecl, (truncated) ? ", some line(s) were truncated" : "");
   return false;
 }
- 
+
 static bool CmdWorkLrecl(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   int lrecl;
@@ -1331,12 +1332,12 @@ static bool CmdWorkLrecl(ScreenPtr scr, char *params, char *msg) {
     params =  getCmdParam(params);
   }
   checkNoParams(params, msg);
- 
+
   setWorkLrecl(scr->ed, lrecl);
   sprintf(msg, "Working LRECL changed to %d", getWorkLrecl(scr->ed));
   return false;
 }
- 
+
 static bool CmdUnbinary(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   if (resetIsBinary(scr->ed)) {
@@ -1346,14 +1347,14 @@ static bool CmdUnbinary(ScreenPtr scr, char *params, char *msg) {
   checkNoParams(params, msg);
   return false;
 }
- 
+
 static bool CmdFtDefaults(ScreenPtr scr, char *params, char *msg) {
   char ft[9];
   char recfm;
   char caseMode;
   int lrecl;
   int workLrecl;
- 
+
   int tokLen = getToken(params, ' ');
   if (!params || !*params || tokLen == 0) {
     strcpy(msg, "Missing filetype for FTDEFAULTS");
@@ -1362,7 +1363,7 @@ static bool CmdFtDefaults(ScreenPtr scr, char *params, char *msg) {
   tokLen = minInt(8, tokLen);
   memset(ft, '\0', sizeof(ft));
   strncpy(ft, params, tokLen);
- 
+
   params = getCmdParam(params);
   tokLen = getToken(params, ' ');
   if (!params || !*params || tokLen != 1) {
@@ -1374,7 +1375,7 @@ static bool CmdFtDefaults(ScreenPtr scr, char *params, char *msg) {
     strcpy(msg, "Invalid RECFM for FTDEFAULTS (not V or F)");
     return false;
   }
- 
+
   params = getCmdParam(params);
   if (tryParseInt(params, &lrecl)) {
     if (lrecl < 1 || lrecl > 255) {
@@ -1386,7 +1387,7 @@ static bool CmdFtDefaults(ScreenPtr scr, char *params, char *msg) {
     return false;
   }
   workLrecl = lrecl;
- 
+
   params = getCmdParam(params);
   tokLen = getToken(params, ' ');
   if (!params || !*params || tokLen != 1) {
@@ -1398,7 +1399,7 @@ static bool CmdFtDefaults(ScreenPtr scr, char *params, char *msg) {
     strcpy(msg, "Invalid CASEMODE for FTDEFAULTS (not U or M or R)");
     return false;
   }
- 
+
   params = getCmdParam(params);
   if (params && tryParseInt(params, &workLrecl)) {
     if (workLrecl < 1 || workLrecl > 255) {
@@ -1406,11 +1407,11 @@ static bool CmdFtDefaults(ScreenPtr scr, char *params, char *msg) {
       workLrecl = lrecl;
     }
   }
- 
+
   addFtDefault(ft, lrecl, recfm, caseMode, workLrecl);
   return false;
 }
- 
+
 static bool CmdGapFill(ScreenPtr scr, char *params, char *msg) {
   char fillChar;
   if (isAbbrev(params, "NONE")) {
@@ -1433,21 +1434,21 @@ static bool CmdGapFill(ScreenPtr scr, char *params, char *msg) {
   scr->fileToPrefixFiller = fillChar;
   return false;
 }
- 
+
 static CmdDef allowedCmsCommands[] = {
   {"ACcess", NULL}, {"CLOSE", NULL},    {"DETACH", NULL},  {"ERASE", NULL},
   {"LINK", NULL},   {"Listfile", NULL}, {"PRint", NULL},   {"PUnch", NULL},
   {"Query", NULL},  {"READcard", NULL}, {"RELease", NULL}, {"Rename", NULL},
   {"SET", NULL},    {"STATEw", NULL},   {"TAPE", NULL},    {"Type", NULL}
 };
- 
+
 static bool CmdCms(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   if (!params || !*params) {
     int rc = CMScommand("SUBSET", CMS_CONSOLE);
     return false;
   }
- 
+
   if (!findCommand(
          params,
          allowedCmsCommands,
@@ -1458,17 +1459,17 @@ static bool CmdCms(ScreenPtr scr, char *params, char *msg) {
       "  READcard  RELease  Rename  SET  STATEw  TAPE  Type");
     return false;
   }
- 
+
   int rc = CMScommand(params, CMS_CONSOLE);
   sprintf(msg, "CMS command executed -> RC = %d\n", rc);
   return false;
 }
- 
+
 static bool getEEBufName(char **paramsPtr, char *fn, char *ft, char *fm) {
   char defaultMode[3];
   strcpy(defaultMode, "A1");
   char *defMode = getWritableFilemode(defaultMode);
- 
+
   char *lastCharRead = NULL;
   int consumed = 0;
   int parseRes = parse_fileid(
@@ -1483,17 +1484,17 @@ static bool getEEBufName(char **paramsPtr, char *fn, char *ft, char *fm) {
     strcpy(ft, "EE$BUF");
     strcpy(fm, defMode);
   }
- 
+
   return (strcmp(ft, "EE$BUF") == 0 && strcmp(fm, defMode) == 0);
 }
- 
+
 static bool getLineRange(
     ScreenPtr scr,
     int lineCount,
     LinePtr *from,
     LinePtr *to) {
   EditorPtr ed = scr->ed;
- 
+
   int fileLineCount;
   int currLineNo;
   getLineInfo(ed, &fileLineCount, &currLineNo);
@@ -1507,11 +1508,11 @@ static bool getLineRange(
       lineCount--;
     }
   }
- 
+
   LinePtr fromLine = getCurrentLine(ed);
   LinePtr toLine = fromLine;
   LinePtr tmpLine;
- 
+
   if (lineCount > 0) {
     while(lineCount > 1) {
       tmpLine = getNextLine(ed, toLine);
@@ -1533,17 +1534,17 @@ static bool getLineRange(
       }
     }
   }
- 
+
   if (fromLine == NULL && toLine != NULL) {
     fromLine = getNextLine(ed, NULL);
   }
- 
+
   *from = fromLine;
   *to = toLine;
- 
+
   return (fromLine != NULL && toLine != NULL);
 }
- 
+
 static bool CmdPutInner(
     ScreenPtr scr,
     char *params,
@@ -1551,12 +1552,12 @@ static bool CmdPutInner(
     bool forceOvr,
     bool deleteLines) {
   if (!scr->ed) { return false; }
- 
+
   char fn[9];
   char ft[9];
   char fm[3];
   int lineCount = 1;
- 
+
   int tokLen = getToken(params, ' ');
   if (params && *params && tokLen > 0) {
     if (tryParseInt(params, &lineCount)) {
@@ -1571,7 +1572,7 @@ static bool CmdPutInner(
     return false;
   }
   forceOvr |= getEEBufName(&params, fn, ft, fm);
- 
+
   EditorPtr ed = scr->ed;
   LinePtr fromLine;
   LinePtr toLine;
@@ -1579,38 +1580,38 @@ static bool CmdPutInner(
     strcpy(msg, "PUT of Top of File not possible, no action taken");
     return false;
   }
- 
+
   int outcome = writeFileRange(
         ed,
         fn, ft, fm,
         forceOvr,
         fromLine, toLine,
         msg);
- 
+
   if (outcome == 0 && deleteLines) {
     deleteLineRange(ed, fromLine, toLine);
   }
- 
+
   checkNoParams(params, msg);
   return false;
 }
- 
+
 static bool CmdPut(ScreenPtr scr, char *params, char *msg) {
   return CmdPutInner(scr, params, msg, false, false);
 }
- 
+
 static bool CmdPPut(ScreenPtr scr, char *params, char *msg) {
   return CmdPutInner(scr, params, msg, true, false);
 }
- 
+
 static bool CmdPutD(ScreenPtr scr, char *params, char *msg) {
   return CmdPutInner(scr, params, msg, false, true);
 }
- 
+
 static bool CmdPPutD(ScreenPtr scr, char *params, char *msg) {
   return CmdPutInner(scr, params, msg, true, true);
 }
- 
+
 static bool CmdGetInner(
     ScreenPtr scr,
     char *params,
@@ -1618,21 +1619,21 @@ static bool CmdGetInner(
     bool deleteSource) {
   if (!scr->ed) { return false; }
   EditorPtr ed = scr->ed;
- 
+
   int fileLineCountBefore;
   int currLineNo;
   getLineInfo(ed, &fileLineCountBefore, &currLineNo);
- 
+
   char fn[9];
   char ft[9];
   char fm[3];
- 
+
   deleteSource &= getEEBufName(&params, fn, ft, fm);
   int outcome = readFile(ed, fn, ft, fm, msg);
- 
+
   int fileLineCountAfter;
   getLineInfo(ed, &fileLineCountAfter, &currLineNo);
- 
+
   if (outcome == 0) {
     sprintf(msg, "Inserted %d lines from file %s %s %s",
             fileLineCountAfter - fileLineCountBefore,
@@ -1650,22 +1651,22 @@ static bool CmdGetInner(
       }
     }
   }
- 
+
   checkNoParams(params, msg);
   return false;
 }
- 
+
 static bool CmdGet(ScreenPtr scr, char *params, char *msg) {
   return CmdGetInner(scr, params, msg, false);
 }
- 
+
 static bool CmdGetD(ScreenPtr scr, char *params, char *msg) {
   return CmdGetInner(scr, params, msg, true);
 }
- 
+
 static bool CmdDelete(ScreenPtr scr, char *params, char *msg) {
   int lineCount = 1;
- 
+
   int tokLen = getToken(params, ' ');
   if (params && *params && tokLen > 0) {
     if (tryParseInt(params, &lineCount)) {
@@ -1679,7 +1680,7 @@ static bool CmdDelete(ScreenPtr scr, char *params, char *msg) {
     strcpy(msg, "Linecount = 0 specified, no action taken");
     return false;
   }
- 
+
   LinePtr fromLine;
   LinePtr toLine;
   if (!getLineRange(scr, lineCount, &fromLine, &toLine)) {
@@ -1687,22 +1688,22 @@ static bool CmdDelete(ScreenPtr scr, char *params, char *msg) {
     return false;
   }
   deleteLineRange(scr->ed, fromLine, toLine);
- 
+
   checkNoParams(params, msg);
   return false;
 }
- 
+
 static int shiftBy = 2;
 static int shiftMode = SHIFTMODE_MIN;
- 
+
 int gshby() {
   return shiftBy;
 }
- 
+
 int gshmode() {
   return shiftMode;
 }
- 
+
 static bool /*valid?*/ parseShiftMode(
     char *param,
     int *mode,
@@ -1730,7 +1731,7 @@ static bool /*valid?*/ parseShiftMode(
   }
   return true;
 }
- 
+
 /* SHIFTCONFig mode [shiftBy] */
 static bool CmdShiftConfig(ScreenPtr scr, char *params, char *msg) {
   parseShiftMode(params, &shiftMode, msg, true);
@@ -1747,7 +1748,7 @@ static bool CmdShiftConfig(ScreenPtr scr, char *params, char *msg) {
   checkNoParams(params, msg);
   return false;
 }
- 
+
 /* SHift [<by>] Left|Right [<count>|:<line>|.<mark>] [mode] */
 static bool CmdShift(ScreenPtr scr, char *params, char *msg) {
   EditorPtr ed = scr->ed;
@@ -1757,7 +1758,7 @@ static bool CmdShift(ScreenPtr scr, char *params, char *msg) {
   LinePtr fromLine = getCurrentLine(ed);
   LinePtr toLine = NULL;
   int mode = shiftMode;
- 
+
   int number;
   int tokLen = getToken(params, ' ');
   if (params && *params && tokLen > 0) {
@@ -1813,7 +1814,7 @@ static bool CmdShift(ScreenPtr scr, char *params, char *msg) {
     strcpy(msg, "Shift: missing parameters");
     return false;
   }
- 
+
   int outcome;
   if (toLeft) {
     outcome = shiftLeft(ed, fromLine, toLine, by, mode);
@@ -1826,22 +1827,22 @@ static bool CmdShift(ScreenPtr scr, char *params, char *msg) {
   } else if (outcome == 2) {
     strcpy(msg, "Line(s) truncated");
   }
- 
+
   checkNoParams(params, msg);
   return false;
 }
- 
+
 static bool CmdFSList(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
- 
+
   char fn[9];
   char ft[9];
   char fm[3];
- 
+
   char fnOut[9];
   char ftOut[9];
   char fmOut[3];
- 
+
   getFnFtFm(scr->ed, fnOut, ftOut, fmOut);
   /* printf("getFnFtFm -> %s %s %s\n", fnOut, ftOut, fmOut); */
   int tokLen = getToken(params, ' ');
@@ -1874,7 +1875,7 @@ static bool CmdFSList(ScreenPtr scr, char *params, char *msg) {
   }
   return false;
 }
- 
+
 static bool CmdTabBackward(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   if (scr->cElemType == 2) {
@@ -1882,11 +1883,11 @@ static bool CmdTabBackward(ScreenPtr scr, char *params, char *msg) {
     int tabs[MAX_TAB_COUNT];
     int tabCount = getTabs(scr->ed, tabs);
     int i;
- 
+
     scr->cursorPlacement = 2;
     scr->cursorOffset = oldOffset;
     scr->cursorLine = scr->cElem;
- 
+
     for (i = tabCount - 1; i >= 0; i--) {
       if (tabs[i] < oldOffset) {
         scr->cursorOffset = tabs[i];
@@ -1897,7 +1898,7 @@ static bool CmdTabBackward(ScreenPtr scr, char *params, char *msg) {
   scr->cursorOffset = 0;
   return false;
 }
- 
+
 static bool CmdTabForward(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   if (scr->cElemType == 2) {
@@ -1909,18 +1910,18 @@ static bool CmdTabForward(ScreenPtr scr, char *params, char *msg) {
     sprintf(msg, "Tab -> cElemOffset: %d, [%d] %d %d %d %d",
         scr->cElemOffset, tabCount, tabs[0], tabs[1], tabs[2], tabs[3]);
     */
- 
+
     scr->cursorPlacement = 2;
     scr->cursorOffset = oldOffset;
     scr->cursorLine = scr->cElem;
- 
+
     for (i = 0; i < tabCount; i++) {
       if (tabs[i] > oldOffset) {
         scr->cursorOffset = tabs[i];
         return false;
       }
     }
- 
+
     /*int newOffset = scr->cElemOffset + 6;
     scr->cursorPlacement = 2;
     scr->cursorOffset = newOffset;
@@ -1961,12 +1962,12 @@ static bool CmdTabForward(ScreenPtr scr, char *params, char *msg) {
   }
   return false;
 }
- 
+
 static bool parseTabs(char *params, int *tabs, int *count) {
   bool someIgnored = false;
- 
+
   memset(tabs, '\0', sizeof(int) * MAX_TAB_COUNT);
- 
+
   int number;
   int currTab = 0;
   while (params && *params && currTab < MAX_TAB_COUNT) {
@@ -1977,11 +1978,11 @@ static bool parseTabs(char *params, int *tabs, int *count) {
     }
     params = getCmdParam(params);
   }
- 
+
   *count = currTab;
   return someIgnored;
 }
- 
+
 static bool CmdTabs(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   int tabs[MAX_TAB_COUNT];
@@ -1999,25 +2000,25 @@ static bool CmdTabs(ScreenPtr scr, char *params, char *msg) {
   }
   return false;
 }
- 
+
 static bool CmdFtTabs(ScreenPtr scr, char *params, char *msg) {
   char ft[9];
   char recfm;
   char caseMode;
   int lrecl;
- 
+
   int tokLen = getToken(params, ' ');
   if (!params || !*params || tokLen == 0) {
     strcpy(msg, "Missing filetype for FTDEFAULTS");
     return false;
   }
- 
+
   tokLen = minInt(8, tokLen);
   memset(ft, '\0', sizeof(ft));
   strncpy(ft, params, tokLen);
- 
+
   params = getCmdParam(params);
- 
+
   int tabs[MAX_TAB_COUNT];
   int tabCount;
   bool someIgnored = parseTabs(params, tabs, &tabCount);
@@ -2030,20 +2031,20 @@ static bool CmdFtTabs(ScreenPtr scr, char *params, char *msg) {
   addFtTabs(ft, tabs);
   return false;
 }
- 
+
 static bool CmdHelp(ScreenPtr scr, char *params, char *msg) {
   checkNoParams(params, msg);
   doHelp("$EE", msg);
   return false;
 }
- 
+
 typedef struct _lockblock {
   struct _lockblock *next;
   char dummy[40956];
 } LockBlock, *LockBlockPtr;
- 
+
 static LockBlockPtr lockedMem = NULL;
- 
+
 static bool CmdMemLock(ScreenPtr scr, char *params, char *msg) {
   int count = 0;
   LockBlockPtr block = (LockBlockPtr)allocMem(sizeof(LockBlock));
@@ -2057,7 +2058,7 @@ static bool CmdMemLock(ScreenPtr scr, char *params, char *msg) {
           count, count*sizeof(LockBlock));
   return false;
 }
- 
+
 static bool CmdMemUnLock(ScreenPtr scr, char *params, char *msg) {
   int count = 0;
   while(lockedMem) {
@@ -2070,12 +2071,12 @@ static bool CmdMemUnLock(ScreenPtr scr, char *params, char *msg) {
           count, count*sizeof(LockBlock));
   return false;
 }
- 
+
 typedef struct _mycmddef {
   char *commandName;
   CmdImpl impl;
 } MyCmdDef;
- 
+
 static MyCmdDef eeCmds[] = {
   {"ATTR", &CmdAttr},
   {"BOTtom", &CmdBottom},
@@ -2144,23 +2145,23 @@ static MyCmdDef eeCmds[] = {
   {"UNBINARY", &CmdUnbinary},
   {"WORKLrecl", &CmdWorkLrecl}
 };
- 
+
 void initCmds() {
   memset(pfCmds, '\0', sizeof(pfCmds));
   commandHistory = createEditor(NULL, CMDLINELENGTH + 2, 'V');
   filetypeDefaults = createEditor(NULL, 24, 'F');
   filetypeTabs = createEditor(NULL, 80, 'F');
- 
+
   searchPattern[0] = '\0';
   searchUp = false;
 }
- 
+
 void deinCmds() {
   freeEditor(commandHistory);
   freeEditor(filetypeDefaults);
   freeEditor(filetypeTabs);
 }
- 
+
 void setPF(int pfNo, char *cmdline) {
   if (pfNo < 1 || pfNo > 24) { return; }
   char *pfCmd = pfCmds[pfNo];
@@ -2169,7 +2170,7 @@ void setPF(int pfNo, char *cmdline) {
     strncpy(pfCmd, cmdline, CMDLINELENGTH);
   }
 }
- 
+
 bool execCmd(
     ScreenPtr scr,
     char *cmd,
@@ -2178,7 +2179,7 @@ bool execCmd(
   if (!cmd) { cmd = scr->cmdLine; }
   while(*cmd == ' ') { cmd++; }
   if (!*cmd) { return false; }
- 
+
   if (addToHistory) {
     moveToBOF(commandHistory);
     insertLine(commandHistory, cmd);
@@ -2188,12 +2189,12 @@ bool execCmd(
     }
   }
   moveToBOF(commandHistory);
- 
+
   MyCmdDef *cmdDef = (MyCmdDef*)findCommand(
     cmd,
     (CmdDef*)eeCmds,
     sizeof(eeCmds) / sizeof(MyCmdDef));
- 
+
   int dummyInt;
   if (!cmdDef) {
     if (cmd[0] == '/' && cmd[1] == '\0') {
@@ -2211,7 +2212,7 @@ bool execCmd(
     sprintf(msg, "Unknown command '%s'", cmd);
     return false;
   }
- 
+
   msg = &msg[strlen(msg)];
   CmdImpl impl = cmdDef->impl;
   char *params = cmd;
@@ -2221,7 +2222,7 @@ bool execCmd(
     cmdName++;
   }
   while(*params && *params == ' ') { params++; }
- 
+
   bool result;
   _try {
     result = (*impl)(scr, params, msg);
@@ -2230,13 +2231,13 @@ bool execCmd(
   } _endtry;
   return result;
 }
- 
+
 char* gPfCmd(char aidCode) {
   int idx = aidPfIndex(aidCode);
   if (idx < 1 || idx > 24) { return NULL; }
   return pfCmds[idx];
 }
- 
+
 bool tryExPf(ScreenPtr scr, char aidCode, char *msg) {
   int idx = aidPfIndex(aidCode);
   if (idx < 1 || idx > 24) { return false; }
@@ -2254,48 +2255,48 @@ bool tryExPf(ScreenPtr scr, char aidCode, char *msg) {
   }
   return false;
 }
- 
+
 char* grccmd() {
   LinePtr recalledCommand = getCurrentLine(commandHistory);
   if (!recalledCommand) { return NULL; }
   return recalledCommand->text;
 }
- 
+
 void unrHist() {
   moveToBOF(commandHistory);
 }
- 
+
 static bool handleProfileLine(void *userdata, char *cmdline, char *msg) {
   ScreenPtr scr = (ScreenPtr)userdata;
   return execCmd(scr, cmdline, msg, false);
 }
- 
+
 bool exCmdFil(ScreenPtr scr, char *fn, int *rc) {
   return doCmdFil(&handleProfileLine, scr, fn, rc);
 }
- 
+
 #if 0
 bool exCmdFil(ScreenPtr scr, char *fn, int *rc) {
   char buffer[256];
   char msg[512];
   char fspec[32];
- 
+
   char mergedLines[513];
   int mergedRest = 0;
   char *merged = NULL;
- 
+
   memcpy(buffer, '\0', sizeof(buffer));
- 
+
   memcpy(buffer, '\0', sizeof(buffer));
   strncpy(buffer, fn, 8);
   sprintf(fspec, "%s EE * V 255", buffer);
- 
+
   *rc = 1; /* file not found */
   if (!f_exists(buffer, "EE", "*")) { return false; }
   FILE *cmdfile = fopen(fspec, "r");
   if (!cmdfile) { return false; }
   *rc = 0; /* ok */
- 
+
   bool doneWithFile = false;
   char *line = fgets(buffer, sizeof(buffer), cmdfile);
   while(!feof(cmdfile)) {
@@ -2305,7 +2306,7 @@ bool exCmdFil(ScreenPtr scr, char *fn, int *rc) {
       len--;
     }
     while(*line == ' ' || *line == '\t') { line++; len--; }
- 
+
     if (len > 0 && line[len-1] == '\\') {
       if (!merged) {
         merged = mergedLines;
@@ -2316,11 +2317,11 @@ bool exCmdFil(ScreenPtr scr, char *fn, int *rc) {
       memcpy(merged, line, len);
       merged += len;
       mergedRest -= len;
- 
+
       line = fgets(buffer, sizeof(buffer), cmdfile);
       continue;
     }
- 
+
     if (merged) {
       len = minInt(len, mergedRest);
       if (len > 0) {
@@ -2329,7 +2330,7 @@ bool exCmdFil(ScreenPtr scr, char *fn, int *rc) {
       line = mergedLines;
       len = 1;
     }
- 
+
     if (len > 0 && *line != '*') {
       msg[0] = '\0';
       doneWithFile |= execCmd(scr, line, msg, false);
@@ -2343,31 +2344,31 @@ bool exCmdFil(ScreenPtr scr, char *fn, int *rc) {
     line = fgets(buffer, sizeof(buffer), cmdfile);
   }
   fclose(cmdfile);
- 
+
   return doneWithFile;
 }
 #endif
- 
+
 /*
 ** rescue line mode
 */
- 
+
 static bool RescueRingList(ScreenPtr scr, char *params, char *msg) {
   EditorPtr ed = scr->ed;
- 
+
   if (ed == NULL) {
     printf("No open files in EE, terminating...\n");
     return true;
   }
- 
+
   EditorPtr guardEd = ed;
   char fn[9];
   char ft[9];
   char fm[3];
   char *currMarker = "**";
- 
+
   checkNoParams(params, msg);
- 
+
   printf("Open files in EE ( ** -> current file ) :\n");
   while(true) {
     getFnFtFm(ed, fn, ft, fm);
@@ -2382,7 +2383,7 @@ static bool RescueRingList(ScreenPtr scr, char *params, char *msg) {
   }
   return false;
 }
- 
+
 static MyCmdDef rescueCmds[] = {
   {"EXIt", &CmdExit},
   {"FFILe", &CmdFFile},
@@ -2396,7 +2397,7 @@ static MyCmdDef rescueCmds[] = {
   {"RN", &CmdRingNext},
   {"RP", &CmdRingPrev}
 };
- 
+
 void _rloop(ScreenPtr scr, char *messages) {
   char cmdline[135];
   bool done = false;
@@ -2404,18 +2405,18 @@ void _rloop(ScreenPtr scr, char *messages) {
   while(!done && scr->ed) {
     CMSconsoleWrite("Enter EE Rescue command\n", CMS_NOEDIT);
     CMSconsoleRead(cmdline);
- 
+
     char *cmd = cmdline;
     while(*cmd == ' ' || *cmd == '\t') { cmd++; }
     if (!*cmd) { continue; }
- 
+
     MyCmdDef *cmdDef = (MyCmdDef*)findCommand(
         cmd,
         (CmdDef*)rescueCmds,
         sizeof(rescueCmds) / sizeof(MyCmdDef));
     CmdImpl impl = cmdDef->impl;
     char *params = params =  getCmdParam(cmd);
- 
+
     *messages = '\0';
     _try {
       done = (*impl)(scr, params, messages);

@@ -23,34 +23,35 @@
 ** Written by Dr. Hans-Walter Latz, Berlin (Germany), 2011,2012,2013
 ** Released to the public domain.
 */
- 
+
 #include "glblpre.h"
- 
+
 #include <string.h>
 #include <stdio.h>
+#include <cmssys.h>
 #include <stdlib.h>
 #include <errno.h>
- 
+
 #include "errhndlg.h"
- 
+
 #define _eecore_implementation
 #include "eecore.h"
- 
+
 #include "eeutil.h"
- 
+
 #include "glblpost.h"
- 
+
 /*
 ** Remark: segments #ifdef'ed with _NOCMS are code parts used outside
 **         from CMS (most Win32) for tests. These parts are mostly obsolete.
 */
- 
+
 /* defining '_paranoic' activates additional sanity checks on LinePtr's */
 #define _paranoic
- 
+
 /* name of this module for messages in case of memory corruption detection */
 static const char *_FILE_NAME_ = "eecore.c";
- 
+
 /* new LinePtr instances are not allocated one by one, but in Bufferpage-chunks
    containing LINESperBUFFERPAGE lines (in the hope to improve performance).
    The lines are managed as double-linked list, making up the list of empty
@@ -59,27 +60,27 @@ static const char *_FILE_NAME_ = "eecore.c";
    is allocated and 'formatted' (creating LINESperBUFFERPAGE empty lines).
    Bufferpages are themselves organized as double-linked lists.
 */
- 
+
 #define LINESperBUFFERPAGE 128
- 
+
 typedef struct _bufferpage *BufferpagePtr;
- 
+
 typedef struct _line {
   LinePtr prev;
   LinePtr next;
   unsigned long lineinfo; /* encodes line-length and the EditorPtr */
   char text[0];           /* will have LRECL characters when formatted */
 } Line;
- 
+
 typedef struct _bufferpage {
   BufferpagePtr prev;
   BufferpagePtr next;
- 
+
   EditorPtr editor;
- 
+
   char data[0]; /* this is where the lines will be contained */
 } Bufferpage;
- 
+
 typedef struct _editor {
     /*
     ** public data as defined in eecore.h
@@ -88,7 +89,7 @@ typedef struct _editor {
   void *clientdata2;
   void *clientdata3;
   void *clientdata4;
- 
+
     /*
     ** internal ee-core data
     */
@@ -96,54 +97,54 @@ typedef struct _editor {
   int fileLrecl;     /* the LRECL of the file */
   int workLrecl;     /* the LRECL of the editor when manipulating lines */
   char recfm;        /* record format for writing the file back to disk */
- 
+
   bool caseU;        /* convert all updates to upper case ? */
   bool caseRespect;  /* respect case of search strings to find lines? */
- 
+
   bool isBinary;     /* are there any binary chars => forbid saving? */
   bool isModified;   /* where there changes since opening or last write? */
- 
+
     /* memory chunks for lines allocated to the editor */
   BufferpagePtr bufferFirst;
   BufferpagePtr bufferLast;
- 
+
   LinePtr lineBOF; /* internal guard line before the content lines */
     /*
     ** the lines in the editor are chained between 'lineBOF' and 'lineEOF'
     */
   LinePtr lineEOF; /* internal guard line behind the content lines */
- 
+
     /* the current line of the editor */
   LinePtr lineCurrent;
   unsigned int lineCurrentNo; /* 1-based => BOF == 0 */
- 
+
     /* the list of the currently empty lines (allocated or deletes lines) */
   LinePtr lineFirstFree;
- 
+
     /* the file associated with the editor (possibly as empty strings) */
   char fn[9];
   char ft[9];
   char fm[3];
- 
+
     /* lines associated to marks */
   LinePtr lineMarks[26]; /* mark letter A..Z => index 0..25 */
- 
+
     /* tab positions defined */
   int tabs[MAX_TAB_COUNT];
   int tabCount;
- 
+
     /* the ring that this editor belongs to */
   EditorPtr prevEd;
   EditorPtr nextEd;
 } Editor;
- 
- 
+
+
 /*
 ** emergency message handling
 */
- 
+
 static char *emergencyMessage = NULL;
- 
+
 static void emitEmergencyMessage(char *msg) {
   emergencyMessage = msg;
   printf("\n********\n");
@@ -152,34 +153,34 @@ static void emitEmergencyMessage(char *msg) {
   printf("**\n");
   printf("********\n");
 }
- 
+
 char* glstemsg() {
   char *msg = emergencyMessage;
   emergencyMessage = NULL;
   return msg;
 }
- 
+
 /*
 ** memory management for the lines
 */
- 
+
 static void allocBufferpage(EditorPtr ed) {
   int lineBufferLength = sizeof(Line) + ed->fileLrecl;
   int lineBytes = lineBufferLength * LINESperBUFFERPAGE;
- 
+
   /* allocate bufferpage and store it in the editor */
   BufferpagePtr buffer = allocMem(sizeof(Bufferpage) + lineBytes);
- 
+
   /* check if we got a new memory page */
   if (!buffer) { /* OUT OF MEMORY */
     emitEmergencyMessage("unable to allocate buffer page (OUT OF MEMORY)");
     _throw(__ERR_OUT_OF_MEMORY);
   }
- 
+
   buffer->next = ed->bufferFirst;
   ed->bufferFirst = buffer;
   if (ed->bufferLast == NULL) { ed->bufferLast = buffer; }
- 
+
   /* "format" the data part of the bufferpage */
   int i;
   int offset = 0;
@@ -190,17 +191,17 @@ static void allocBufferpage(EditorPtr ed) {
     offset += lineBufferLength;
   }
 }
- 
+
 #define lineNotOfThisEditor(ed, cand) \
   _lineNotOfThisEditor(ed, cand, __LINE__)
- 
+
 static bool _lineNotOfThisEditor(EditorPtr ed, LinePtr cand, int srcline) {
   unsigned long ref1 = (unsigned long)ed << 8;
   unsigned long ref2 = cand->lineinfo & 0xFFFFFF00;
   if (ref1 != ref2) {
     printf("+++ detected line 0x%08x not of editor 0x%08x\n", cand, ed);
     printf("    at line %d (eecore.c)\n", srcline);
- 
+
     char fn[9];
     char ft[9];
     char fm[3];
@@ -216,11 +217,11 @@ static bool _lineNotOfThisEditor(EditorPtr ed, LinePtr cand, int srcline) {
     } else {
       printf("      line is NULL or has NULL lineinfo\n");
     }
- 
+
     return true;
   }
   return false;
- 
+
 #if 0
   /* ... old slower code, the editor is now in lineInfo */
   if (cand == NULL) { return true; }
@@ -234,7 +235,7 @@ static bool _lineNotOfThisEditor(EditorPtr ed, LinePtr cand, int srcline) {
   return true;
 #endif
 }
- 
+
 static LinePtr getFreeLine(EditorPtr ed) {
   if (ed->lineFirstFree == NULL) {
     allocBufferpage(ed);
@@ -244,7 +245,7 @@ static LinePtr getFreeLine(EditorPtr ed) {
   ed->lineFirstFree = line->next;
   return line;
 }
- 
+
 static void returnFreeLine(EditorPtr ed, LinePtr line) {
 #ifdef _paranoic
   if (lineNotOfThisEditor(ed, line)) {
@@ -255,7 +256,7 @@ static void returnFreeLine(EditorPtr ed, LinePtr line) {
     return;
   }
 #endif
- 
+
   int i;
   for(i = 0; i < 26; i++) {
     if (ed->lineMarks[i] == line) { ed->lineMarks[i] = NULL; }
@@ -264,17 +265,17 @@ static void returnFreeLine(EditorPtr ed, LinePtr line) {
   line->next = ed->lineFirstFree;
   ed->lineFirstFree = line;
 }
- 
+
 /*
 ** common internal file i/o routines
 */
- 
+
 static int fileLineLength(EditorPtr ed, LinePtr line) {
   return minInt(line->lineinfo & 0x000000FF, ed->fileLrecl);
 }
- 
+
 #ifndef _NOCMS
- 
+
 static int stateFile(char *fn, char *ft, char *fm,
                      char *fid, CMSFILEINFO **fInfo) {
              /*123456789012345678*/
@@ -290,11 +291,11 @@ static int stateFile(char *fn, char *ft, char *fm,
   p = fm;
   if (*p) { fid[16] = c_upper(*p++); } else { fid[16] = 'A'; }
   if (*p) { fid[17] = c_upper(*p); } else { fid[17] = '1'; }
- 
+
   int rc = CMSfileState(fid, fInfo);
   return rc;
 }
- 
+
 static int insertFile(
     EditorPtr ed,
     char *fid, CMSFILEINFO *fInfo,
@@ -333,7 +334,7 @@ static int insertFile(
   }
   return state;
 }
- 
+
 static int dropFile(char *fn, char *ft, char *fm,
                     char *fid, char *msg, char *prefixMsg) {
   CMSFILEINFO *fInfoDummy;
@@ -356,7 +357,7 @@ static int dropFile(char *fn, char *ft, char *fm,
   }
   return 0;
 }
- 
+
 static int writeToFile(
     EditorPtr ed,
     char *fn,
@@ -367,21 +368,21 @@ static int writeToFile(
     LinePtr lastLine,
     char *msg) {
   int state = 0;
- 
+
   *msg = '\0';
- 
+
   if (ed->recfm != 'V' && ed->recfm != 'F') {
     sprintf(msg, "Unsupported record format '%c', file not written/modified",
             ed->recfm);
     return 99;
   }
- 
+
   if (ed->isBinary) {
     sprintf(msg,
             "Writing binary files unsupported, file not written/modified");
     return 98;
   }
- 
+
   if (firstLine != NULL) {
 #ifdef _paranoic
     if (lineNotOfThisEditor(ed, firstLine)) {
@@ -402,7 +403,7 @@ static int writeToFile(
   } else {
     lastLine = ed->lineEOF;
   }
- 
+
   /* check if range is OK and swap ends if not */
   LinePtr _curr = firstLine;
   LinePtr _to = lastLine;
@@ -413,35 +414,35 @@ static int writeToFile(
     lastLine = firstLine;
     firstLine = _curr;
   }
- 
+
   /* write the lines to the file */
- 
+
   char fid[19];
   CMSFILEINFO *fInfo;
   bool oldFileExists = false;
- 
+
   char fid_eetmp_old[19];
   char fid_eetmp_new[19];
- 
+
   int rc_eetmp_old = dropFile(
                        fn, "EE$OLD", fm,
                        fid_eetmp_old,
                        msg, "File NOT saved ! ");
   if (rc_eetmp_old != 0) { return rc_eetmp_old; }
- 
+
   int rc_eetmp_new = dropFile(
                        fn, "EE$TMP", fm,
                        fid_eetmp_new,
                        msg, "File NOT saved ! ");
   if (rc_eetmp_new != 0) { return rc_eetmp_new; }
- 
+
   /*printf("-- writeToFile(%s,%s,%s,...)\n", fn, ft, fm);*/
- 
+
   int rc = stateFile(fn, ft, fm, fid, &fInfo);
- 
+
   /*printf("   stateFile() -> rc = %d\n", rc);*/
   /*printf("   -> fid = '%s'\n", fid);*/
- 
+
   if (rc == 0) {
     if (!forceOverwrite) {
       state = 1;
@@ -459,7 +460,7 @@ static int writeToFile(
     sprintf(msg, "Error accessing file %s %s %s : rc = %d", fn, ft, fm, rc);
     return state;
   }
- 
+
   char buffer[MAX_LRECL + 1];
   int buflen = minInt(ed->fileLrecl, MAX_LRECL);
   CMSFILE cmsfile;
@@ -472,9 +473,9 @@ static int writeToFile(
     LinePtr _guard2 = lastLine->next;
     int recordNum = 1;
     rc = 0;
- 
+
     bool fixedLen = (ed->recfm == 'F');
- 
+
     /* normal case: file is not empty -> write those lines */
     while(_curr != _guard && _curr != _guard2 && rc == 0) {
       int reclen = fileLineLength(ed, _curr);
@@ -495,7 +496,7 @@ static int writeToFile(
       _curr = _curr->next;
       recordNum = 0;
     }
- 
+
     /* special case: line is empty -> write a single "empty" line */
     if (ed->lineBOF->next == ed->lineEOF) {
       if (fixedLen) {
@@ -506,7 +507,7 @@ static int writeToFile(
         rc = CMSfileWrite(f, recordNum, 1);
       }
     }
- 
+
     if (rc != 0) {
       state = 5;
       sprintf(msg, "Error on writing: %s %s %s : rc = %d", fn, ft, fm, rc);
@@ -518,12 +519,12 @@ static int writeToFile(
   CMSfileClose(f);
   /*printf("   CMSfileClose()\n");*/
   /*printf("-- writeToFile() -> state = %d\n", state);*/
- 
+
   if (state != 0) {
     CMSfileErase(fid_eetmp_new);
     return state;
   }
- 
+
   int rc_ren1 = (oldFileExists) ? CMSfileRename(fid, fid_eetmp_old) : 0;
   if (rc_ren1 != 0) {
     sprintf(
@@ -542,33 +543,33 @@ static int writeToFile(
     return 2;
   }
   CMSfileErase(fid_eetmp_old);
- 
+
   return state;
 }
- 
+
 #endif
- 
+
 static void setFilename(EditorPtr ed, char *fn, char *ft, char *fm) {
   char temp[9];
- 
+
   memset(temp, '\0', sizeof(temp));
   strncpy(temp, fn, 8);
   s_upper(temp, ed->fn);
- 
+
   memset(temp, '\0', sizeof(temp));
   strncpy(temp, ft, 8);
   s_upper(temp, ed->ft);
- 
+
   memset(temp, '\0', sizeof(temp));
   strncpy(temp, fm, 2);
   if (!temp[1]) { temp[1] = '1'; }
   s_upper(temp, ed->fm);
 }
- 
+
 /*
 ** internal editor support functionality
 */
- 
+
 static void recomputeCurrentLineNo(EditorPtr ed) {
   if (ed->lineCurrent == NULL || ed->lineCurrent == ed->lineBOF) {
     ed->lineCurrentNo = 0;
@@ -584,7 +585,7 @@ static void recomputeCurrentLineNo(EditorPtr ed) {
   }
   ed->lineCurrentNo = currNo;
 }
- 
+
 /* prereqs: must be from same editor and ordered: from -> ... -> to */
 static int countRangeLines(LinePtr from, LinePtr to) {
   LinePtr guard = to->next;
@@ -595,7 +596,7 @@ static int countRangeLines(LinePtr from, LinePtr to) {
   }
   return count;
 }
- 
+
 /* prereqs: must be from same editor and ordered: from -> ... -> to */
 static void cutRange(LinePtr from, LinePtr to) {
   LinePtr head = from->prev;
@@ -605,19 +606,19 @@ static void cutRange(LinePtr from, LinePtr to) {
   from->prev = NULL;
   to->next = NULL;
 }
- 
+
 /* prereqs: must be from same editor and ordered: from -> ... -> to */
 /* returns: (bool) truncated? */
 static bool copyRange(
   EditorPtr srcEd, LinePtr from, LinePtr to,
   EditorPtr trgEd, LinePtr *start, LinePtr *end) {
   char truncated = false;
- 
+
   *start = NULL;
   *end = NULL;
- 
+
   char checkCopy = (trgEd->workLrecl < srcEd->workLrecl);
- 
+
   LinePtr _guard = to->next;
   LinePtr _curr = from;
   LinePtr _first = NULL;
@@ -633,31 +634,31 @@ static bool copyRange(
       newLine->prev = _last;
       _last = newLine;
     }
- 
+
     /* copy content to new line */
     updateLine(trgEd, newLine, _curr->text, lineLength(srcEd, _curr));
     truncated |= (checkCopy && _curr->text[trgEd->workLrecl]);
- 
+
     /* move to next line */
     _curr = _curr->next;
   }
- 
+
   /* clear ends */
   _first->prev = NULL;
   _last->next = NULL;
- 
+
   /* done */
   *start = _first;
   *end = _last;
   return truncated;
 }
- 
+
 /*
 ** *********************** public functions
 */
- 
+
 /* mkEd :
- 
+
    createEditor(lrecl, recfm)
 */
 EditorPtr mkEd(EditorPtr prevEd, int lrecl, char recfm) {
@@ -676,7 +677,7 @@ EditorPtr mkEd(EditorPtr prevEd, int lrecl, char recfm) {
     emitEmergencyMessage("unable to initialize new editor");
     return NULL;
   } _endtry;
- 
+
   if (prevEd != NULL) {
     if (prevEd->nextEd != NULL) {
       /* prevEd is already in a ring, so insert this one after 'prevEd' */
@@ -692,42 +693,42 @@ EditorPtr mkEd(EditorPtr prevEd, int lrecl, char recfm) {
       prevEd->nextEd = ed;
     }
   }
- 
+
   int fcount = 0;
   LinePtr fptr = ed->lineFirstFree;
   while(fptr) { fcount++; fptr = fptr->next; }
- 
+
   ed->lineBOF = getFreeLine(ed);
   ed->lineBOF->prev = NULL;
   ed->lineEOF = getFreeLine(ed);
   ed->lineEOF->next = NULL;
   ed->lineBOF->next = ed->lineEOF;
   ed->lineEOF->prev = ed->lineBOF;
- 
+
   fcount = 0;
   fptr = ed->lineFirstFree;
   while(fptr) { fcount++; fptr = fptr->next; }
- 
+
   ed->lineCurrent = ed->lineBOF;
   ed->lineCount = 0;
   ed->lineCurrentNo = 0;
- 
+
   return ed;
 }
- 
+
 /* frEd :
- 
+
    freeEditor(ed)
 */
 void frEd(EditorPtr ed) {
   if (ed == NULL) { return; }
- 
+
   while(ed->bufferFirst) {
     BufferpagePtr bf = ed->bufferFirst;
     ed->bufferFirst = bf->next;
     freeMem(bf);
   }
- 
+
   if (ed->nextEd != NULL) {
     EditorPtr zePrevEd = ed->prevEd;
     if (ed->nextEd == ed->prevEd) {
@@ -740,29 +741,29 @@ void frEd(EditorPtr ed) {
       ed->nextEd->prevEd = zePrevEd;
     }
   }
- 
+
   memset(ed, '\0', sizeof(Editor));
   freeMem(ed);
 }
- 
+
 EditorPtr _prevEd(EditorPtr ed) {
   return (ed->prevEd) ? ed->prevEd : ed;
 }
- 
+
 EditorPtr _nextEd(EditorPtr ed) {
   return (ed->nextEd) ? ed->nextEd : ed;
 }
- 
+
 void giftm(EditorPtr ed, char *fn, char *ft, char *fm) {
   if (fn) { strcpy(fn, ed->fn); }
   if (ft) { strcpy(ft, ed->ft); }
   if (fm) { strcpy(fm, ed->fm); }
 }
- 
+
 int gilrecl(EditorPtr ed, bool fileLrecl) {
   return (fileLrecl) ? ed->fileLrecl : ed->workLrecl;
 }
- 
+
 void siwrecl(EditorPtr ed, int workLrecl) {
   if (workLrecl > ed->fileLrecl) {
     ed->workLrecl = ed->fileLrecl;
@@ -772,37 +773,37 @@ void siwrecl(EditorPtr ed, int workLrecl) {
     ed->workLrecl = workLrecl;
   }
 }
- 
+
 char girecfm(EditorPtr ed) {
   return ed->recfm;
 }
- 
+
 void sirecfm(EditorPtr ed, char recfm) {
   if (recfm == 'F' || recfm == 'V') {
     ed->recfm = recfm;
   }
 }
- 
+
 int gilcnt(EditorPtr ed) {
   return ed->lineCount;
 }
- 
+
 bool gmdfd(EditorPtr ed) {
   return ed->isModified;
 }
- 
+
 void smdfd(EditorPtr ed, bool modified) {
   ed->isModified = modified;
 }
- 
+
 int edll(EditorPtr ed, LinePtr line) {
   return minInt(line->lineinfo & 0x000000FF, ed->workLrecl);
 }
- 
+
 bool gibin(EditorPtr ed) {
   return ed->isBinary;
 }
- 
+
 bool ribin(EditorPtr ed) {
   if (ed->isBinary) {
     ed->isBinary = false;
@@ -811,9 +812,9 @@ bool ribin(EditorPtr ed) {
   }
   return false;
 }
- 
+
 /* mkEdFil :
- 
+
    createEditorForFile(fn, ft, fm, defaultLrecl, defaultRecfm, state, msg)
 */
 EditorPtr mkEdFil(
@@ -827,12 +828,12 @@ EditorPtr mkEdFil(
     char *msg) {
   char buffer[MAX_LRECL + 1];
   EditorPtr ed = NULL;
- 
+
   *msg = '\0';
   *state = 99;
- 
+
 #ifdef _NOCMS
- 
+
   ed = createEditor(prevEd, defaultLrecl, defaultRecfm);
   strcpy(buffer, fn);
   strcat(buffer, ".");
@@ -845,7 +846,7 @@ EditorPtr mkEdFil(
     *state = 1;
     return ed;
   }
- 
+
   *state = 0;
   int lineNo = 1;
   while(!feof(f)) {
@@ -857,16 +858,16 @@ EditorPtr mkEdFil(
   }
   fclose(f);
   moveToBOF(ed);
- 
+
 #else
- 
+
   /*printf("--- fn = '%s' , ft = '%s' , fm = '%s'\n", fn, ft, fm);*/
- 
+
   char fid[19];
   CMSFILEINFO *fInfo;
- 
+
   int rc = stateFile(fn, ft, fm, fid, &fInfo);
- 
+
   if (rc == 28) {
     *state = 1;
     sprintf(msg, "New file %s %s %s", fn, ft, fm);
@@ -878,28 +879,28 @@ EditorPtr mkEdFil(
     sprintf(msg, "Error accessing file %s %s %s : rc = %d", fn, ft, fm, rc);
     return prevEd;
   }
- 
+
   if (fInfo->lrecl > MAX_LRECL) {
     sprintf(msg, "LRECL %d of file %s %s %s exceeds supported maximum (%d)",
             fInfo->lrecl, fn, ft, fm, MAX_LRECL);
     *state = 3;
     return prevEd;
   }
- 
+
   /*printf("--- mkEdFil: CMS file should exist, lrecl = %d, recfm = %c\n",
     fInfo->lrecl, fInfo->format); fflush(stdout);*/
   int lrecl = fInfo->lrecl;
   if (fInfo->format == 'V') { lrecl = maxInt(fInfo->lrecl, defaultLrecl); }
- 
+
   ed = createEditor(prevEd, lrecl, fInfo->format);
   if (!ed) {
     *state = 3;
     strcpy(msg, "unable to create new editor");
     return prevEd;
   }
- 
+
   setFilename(ed, fn, ft, fm);
- 
+
   _try {
     *state = insertFile(ed, fid, fInfo, buffer, sizeof(buffer), 0, msg);
   } _catchall() {
@@ -907,15 +908,15 @@ EditorPtr mkEdFil(
     *state = 3; /* other error */
     return prevEd;
   } _endtry;
- 
+
 #endif
- 
+
   ed->isModified = false; /* reading in the lines sets this flag to true ... */
   return ed;
 }
- 
+
 /* edRdFil :
- 
+
    (state) <- readFile(ed, fn, ft, fm, msg)
 */
 int edRdFil(
@@ -926,16 +927,16 @@ int edRdFil(
     char *msg) {
   char buffer[MAX_LRECL + 1];
   int state = 99;
- 
+
   *msg = '\0';
- 
+
 #ifndef _NOCMS
- 
+
   char fid[19];
   CMSFILEINFO *fInfo;
- 
+
   int rc = stateFile(fn, ft, fm, fid, &fInfo);
- 
+
   if (rc == 28) {
     state = 1;
     sprintf(msg, "File not found: %s %s %s", fn, ft, fm);
@@ -945,21 +946,21 @@ int edRdFil(
     sprintf(msg, "Error accessing file %s %s %s : rc = %d", fn, ft, fm, rc);
     return state;
   }
- 
+
   if (fInfo->lrecl > MAX_LRECL) {
     sprintf(msg, "LRECL %d of file %s %s %s exceeds supported maximum (%d)",
             fInfo->lrecl, fn, ft, fm, MAX_LRECL);
     state = 3;
     return state;
   }
- 
+
   state = insertFile(ed, fid, fInfo, buffer, sizeof(buffer), 0, msg);
- 
+
 #endif
   ed->isModified = true;
   return state;
 }
- 
+
 /*  setTabs
     (tabpos == 0 means "no tab", as the first column is implicit for backtab)
 */
@@ -988,14 +989,14 @@ void _stabs(EditorPtr ed, int *tabs) {
   }
   ed->tabCount = lastTab;
 }
- 
+
 int _gtabs(EditorPtr ed, int *tabs) {
   memcpy(tabs, ed->tabs, sizeof(int) * MAX_TAB_COUNT);
   return ed->tabCount;
 }
- 
+
 /* edSave :
- 
+
    (state) <- saveFile(ed, msg)
 */
 int edSave(EditorPtr ed, char *msg) {
@@ -1008,13 +1009,13 @@ int edSave(EditorPtr ed, char *msg) {
   if (state == 0) {
     ed->isModified = false;
   }
- 
+
   return state;
 }
- 
+
 /* edWrFil :
    (write file and set new filename if successfull)
- 
+
    (state) <- writeFile(ed, fn, ft, fm, force, msg)
 */
 int edWrFil(
@@ -1036,9 +1037,9 @@ int edWrFil(
   }
   return state;
 }
- 
+
 /* edWrRng :
- 
+
    (state) <- writeFileRange(ed, fn, ft, fm, force, firstLine, lastLine, msg)
 */
 int edWrRng(
@@ -1059,33 +1060,33 @@ int edWrRng(
 #endif
   return state;
 }
- 
+
 /* updline :
- 
+
    updateLine(ed, line, txt, txtLen)
 */
 void updline(EditorPtr ed, LinePtr line, char *txt, unsigned int txtLen) {
   /* clear current line content */
   memset(line->text, '\0', ed->fileLrecl);
   line->lineinfo &= 0xFFFFFF00;
- 
+
   /* this already is a modification ... */
   ed->isModified = true;
- 
+
   /* done if empty string */
   if (txtLen == 0) { return; }
- 
+
   /* find non-whitespace length */
   char *end = txt + txtLen - 1;
   while ((*end == ' ' || *end == '\t') && end >= txt) {
     txtLen--;
     end--;
   }
- 
+
   /* ensure the internal structures are not destroyed (-> truncate silently) */
   txtLen = minInt(ed->workLrecl, txtLen);
   line->lineinfo |= txtLen;
- 
+
   /* copy the line content */
   if (txtLen > 0) {
     if (ed->caseU) {
@@ -1095,58 +1096,58 @@ void updline(EditorPtr ed, LinePtr line, char *txt, unsigned int txtLen) {
     }
   }
 }
- 
+
 void edScase(EditorPtr ed, bool uppercase) {
   ed->caseU = uppercase;
 }
- 
+
 bool edGcase(EditorPtr ed) {
   return ed->caseU;
 }
- 
+
 void edScasR(EditorPtr ed, bool respect) {
   ed->caseRespect = respect;
 }
- 
+
 bool edGcasR(EditorPtr ed) {
   return ed->caseRespect;
 }
- 
+
 /* inslina :
- 
+
    insertLineAfter(ed, edLine, lineText)
 */
 LinePtr inslina(EditorPtr ed, LinePtr edLine, char *lineText) {
   /* get a line entry */
   LinePtr linep = getFreeLine(ed);
- 
+
   /* copy the line content */
   if (lineText == NULL) { lineText = ""; }
   updateLine(ed, linep, lineText, strlen(lineText));
- 
+
   /* enlink the new line in the double-linked list after 'edLine' */
   if (edLine == NULL) { edLine = ed->lineBOF; }
   linep->next = edLine->next;
   linep->next->prev = linep;
   linep->prev = edLine;
   edLine->next = linep;
- 
+
   /* update other editor data */
   ed->lineCount++;
- 
+
   /* if currline comes after new one: move lineCurrentNo one towards end */
   LinePtr guard = ed->lineEOF;
   LinePtr tmp = linep;
   LinePtr curr = ed->lineCurrent;
   while (tmp !=curr && tmp != guard && tmp) { tmp = tmp->next; }
   if (tmp == curr) { ed->lineCurrentNo++; }
- 
+
   /* return the new line */
   return linep;
 }
- 
+
 /* inslinb :
- 
+
    insertLineBefore(ed, lineText)
 */
 LinePtr inslinb(EditorPtr ed, LinePtr edLine, char *lineText) {
@@ -1156,31 +1157,31 @@ LinePtr inslinb(EditorPtr ed, LinePtr edLine, char *lineText) {
     : edLine->prev;
   return insertLineAfter(ed, afterEdLine, lineText);
 }
- 
+
 /* insline :
- 
+
    insertLine(ed, lineText)
 */
 LinePtr insline(EditorPtr ed, char *lineText) {
   /* insert text after current line */
   LinePtr linep = insertLineAfter(ed, ed->lineCurrent, lineText);
- 
+
   /* set new line as current line */
   ed->lineCurrent = linep;
- 
+
   /* return the new line */
   return linep;
 }
- 
+
 /* delline :
- 
+
    deleteLine(ed, line)
 */
 void delline(EditorPtr ed, LinePtr edLine) {
   if (edLine == NULL) { return; } /* can't delete BOF */
   if (edLine == ed->lineBOF) { return; } /* can't delete BOF */
   if (edLine == ed->lineEOF) { return; } /* can't delete EOF */
- 
+
   /* update editor data */
   ed->lineCount--;
   ed->isModified = true;
@@ -1198,15 +1199,15 @@ void delline(EditorPtr ed, LinePtr edLine) {
       curr = curr->next;
     }
   }
- 
+
   /* delink the line and return the deleted line to free pool */
   edLine->next->prev = edLine->prev;
   edLine->prev->next = edLine->next;
   returnFreeLine(ed, edLine);
 }
- 
+
 /* m2bof :
- 
+
    moveToBOF(ed)
 */
 LinePtr m2bof(EditorPtr ed) {
@@ -1214,9 +1215,9 @@ LinePtr m2bof(EditorPtr ed) {
   ed->lineCurrentNo = 0;
   return NULL;
 }
- 
+
 /* m2lstl :
- 
+
    moveToLastLine(ed)
 */
 LinePtr m2lstl(EditorPtr ed) {
@@ -1224,22 +1225,22 @@ LinePtr m2lstl(EditorPtr ed) {
   ed->lineCurrentNo = ed->lineCount;
   return ed->lineCurrent;
 }
- 
+
 /* gcno :
- 
+
    getCurrLineNo(ed)
 */
 int gcno(EditorPtr ed) {
   return ed->lineCurrentNo;
 }
- 
+
 /* glno :
- 
+
    getLineAbsNo(ed, lineNo)
 */
 LinePtr glno(EditorPtr ed, int lineNo) {
   if (lineNo < 1) { return NULL; }
- 
+
   int currNo = 1;
   LinePtr curr = ed->lineBOF->next;
   LinePtr guard = ed->lineEOF;
@@ -1250,16 +1251,16 @@ LinePtr glno(EditorPtr ed, int lineNo) {
   }
   return NULL;
 }
- 
+
 /* m2lno :
- 
+
    moveToLineNo(ed, lineNo)
 */
 LinePtr m2lno(EditorPtr ed, int lineNo) {
   if (ed->lineCount < 1) { return moveToBOF(ed); }
   if (lineNo < 1) { return moveToBOF(ed); }
   if (lineNo >= ed->lineCount) { return moveToLastLine(ed); }
- 
+
   int currNo = 0;
   LinePtr curr = ed->lineBOF;
   LinePtr guard = ed->lineEOF;
@@ -1271,15 +1272,15 @@ LinePtr m2lno(EditorPtr ed, int lineNo) {
   ed->lineCurrentNo = currNo;
   return curr;
 }
- 
+
 /* m2line :
- 
+
    moveToLine(ed, line)
 */
 LinePtr m2line(EditorPtr ed, LinePtr line) {
   if (line == ed->lineBOF || line == NULL) { moveToBOF(ed); return; }
   if (line == ed->lineEOF) { moveToLastLine(ed); return; }
- 
+
   LinePtr curr = ed->lineBOF;
   int currNo = 0;
   LinePtr guard = ed->lineEOF;
@@ -1294,7 +1295,7 @@ LinePtr m2line(EditorPtr ed, LinePtr line) {
   ed->lineCurrentNo = currNo;
   return curr;
 }
- 
+
 LinePtr moveUp(EditorPtr ed, unsigned int by) {
   LinePtr curr = ed->lineCurrent;
   int currNo = ed->lineCurrentNo;
@@ -1307,7 +1308,7 @@ LinePtr moveUp(EditorPtr ed, unsigned int by) {
   ed->lineCurrentNo = currNo;
   return curr;
 }
- 
+
 LinePtr moveDown(EditorPtr ed, unsigned int by) {
   LinePtr curr = ed->lineCurrent;
   int currNo = ed->lineCurrentNo;
@@ -1320,9 +1321,9 @@ LinePtr moveDown(EditorPtr ed, unsigned int by) {
   ed->lineCurrentNo = currNo;
   return curr;
 }
- 
+
 /* glframe :
- 
+
    getLineFrame(ed, ulreq, uls, ulscnt, cl, , clno, dlreq, dls, dlscnt)
 */
 void glframe(
@@ -1338,7 +1339,7 @@ void glframe(
   int cnt = 0;
   LinePtr curr = ed->lineCurrent;
   LinePtr guard = ed->lineBOF;
- 
+
   /* get uplines */
   while(cnt < upLinesReq && curr != guard && curr->prev != guard) {
     curr = curr->prev;
@@ -1350,7 +1351,7 @@ void glframe(
     curr = curr->next;
     cnt--;
   }
- 
+
   /* get downlines */
   cnt = 0;
   curr = ed->lineCurrent->next;
@@ -1361,7 +1362,7 @@ void glframe(
     cnt++;
   }
   *downLinesCount = cnt;
- 
+
   /* get current line */
   curr = ed->lineCurrent;
   if (curr != ed->lineBOF && curr != ed->lineEOF) {
@@ -1369,12 +1370,12 @@ void glframe(
   } else {
     *currLine = NULL;
   }
- 
+
   *currLineNo = ed->lineCurrentNo;
 }
- 
+
 /* glfirst :
- 
+
    getFirstLine(ed)
 */
 LinePtr glfirst(EditorPtr ed) {
@@ -1384,9 +1385,9 @@ LinePtr glfirst(EditorPtr ed) {
     return ed->lineBOF->next;
   }
 }
- 
+
 /* gllast :
- 
+
    getLastLine(ed)
 */
 LinePtr gllast(EditorPtr ed) {
@@ -1396,9 +1397,9 @@ LinePtr gllast(EditorPtr ed) {
     return ed->lineEOF->prev;
   }
 }
- 
+
 /* glcurr :
- 
+
    getCurrentLine(ed)
 */
 LinePtr glcurr(EditorPtr ed) {
@@ -1408,9 +1409,9 @@ LinePtr glcurr(EditorPtr ed) {
     return ed->lineCurrent;
   }
 }
- 
+
 /* glnext :
- 
+
    getNextLine(ed, from)
 */
 LinePtr glnext(EditorPtr ed, LinePtr from) {
@@ -1436,9 +1437,9 @@ LinePtr glnext(EditorPtr ed, LinePtr from) {
     return from->next;
   }
 }
- 
+
 /* glprev :
- 
+
    getPrevLine(ed, from)
 */
 LinePtr glprev(EditorPtr ed, LinePtr from) {
@@ -1453,18 +1454,18 @@ LinePtr glprev(EditorPtr ed, LinePtr from) {
     return from->prev;
   }
 }
- 
+
 /* glinfo :
- 
+
    getLineInfo(ed, lineCount, currLineNo)
 */
 void glinfo(EditorPtr ed, unsigned int *lineCount, unsigned int *currLineNo) {
   *lineCount = ed->lineCount;
   *currLineNo = ed->lineCurrentNo;
 }
- 
+
 /* ordrlns :
- 
+
    ok? <- orderLines(ed, firstLine, lastLine)
 */
 bool ordrlns(EditorPtr ed, LinePtr *first, LinePtr *last) {
@@ -1475,7 +1476,7 @@ bool ordrlns(EditorPtr ed, LinePtr *first, LinePtr *last) {
   if (lineNotOfThisEditor(ed, *first)) { return false; }
   if (lineNotOfThisEditor(ed, *last)) { return false; }
 #endif
- 
+
   /* see if *last is one of *first's next ones */
   LinePtr _curr = *first;
   LinePtr _last = *last;
@@ -1484,15 +1485,15 @@ bool ordrlns(EditorPtr ed, LinePtr *first, LinePtr *last) {
     if (_curr == _last) { return true; }
     _curr = _curr->next;
   }
- 
+
   /* no, so swap them */
   *last = *first;
   *first = _last;
   return true;
 }
- 
+
 /* isInLineRange :
- 
+
    bool <- isInLineRange(ed, checkLine, rangeFirst, rangeLast)
 */
 bool isinrng(
@@ -1517,7 +1518,7 @@ bool isinrng(
     return false;
   }
 #endif
- 
+
   /* check if range order is OK and swap ends if not */
   LinePtr _curr = rangeFirst;
   LinePtr _to = rangeLast;
@@ -1528,7 +1529,7 @@ bool isinrng(
     rangeLast = rangeFirst;
     rangeFirst = _curr;
   }
- 
+
   /* verify that 'checkLine' is somewhere in between */
   _curr = rangeFirst;
   while(_curr != _guard) {
@@ -1538,23 +1539,23 @@ bool isinrng(
   }
   return false;
 }
- 
+
 /* delrng :
- 
+
    ok? <- deleteLineRange(ed, fromLine, toLine)
 */
 bool delrng(EditorPtr ed, LinePtr fromLine, LinePtr toLine) {
   if (!orderLines(ed, &fromLine, &toLine)) { return false; }
- 
+
   if (isInLineRange(ed, ed->lineCurrent, fromLine, toLine)) {
     ed->lineCurrent = fromLine->prev;
   }
- 
+
   int rangeLineCount = countRangeLines(fromLine, toLine);
   cutRange(fromLine, toLine);
   ed->isModified = true;
   ed->lineCount -= rangeLineCount;
- 
+
   LinePtr _curr = fromLine;
   LinePtr _next;
   while(_curr) {
@@ -1562,13 +1563,13 @@ bool delrng(EditorPtr ed, LinePtr fromLine, LinePtr toLine) {
     returnFreeLine(ed, _curr);
     _curr = _next;
   }
- 
+
   recomputeCurrentLineNo(ed);
   return true;
 }
- 
+
 /* cprng :
- 
+
    ok? <- copyLineRange(srcEd, srcFromLine, srcToLine, trgEd, ...)
 */
 bool cprng(
@@ -1582,14 +1583,14 @@ bool cprng(
 #ifdef _paranoic
   if (lineNotOfThisEditor(trgEd, trgLine)) { return false; }
 #endif
- 
+
   LinePtr copyStart;
   LinePtr copyEnd;
   int rangeLineCount = countRangeLines(srcFromLine, srcToLine);
   bool truncated = copyRange(
                     srcEd, srcFromLine, srcToLine,
                     trgEd, &copyStart, &copyEnd);
- 
+
   if (insertBefore) { trgLine = trgLine->prev; }
   trgLine->next->prev = copyEnd;
   copyEnd->next = trgLine->next;
@@ -1597,13 +1598,13 @@ bool cprng(
   copyStart->prev = trgLine;
   trgEd->isModified = true;
   trgEd->lineCount += rangeLineCount;
- 
+
   recomputeCurrentLineNo(trgEd);
   return true;
 }
- 
+
 /* mvrng :
- 
+
    ok? <- moveLineRange(srcEd, srcFromLine, srcToLine, trgEd, ...)
 */
 bool mvrng(
@@ -1617,12 +1618,12 @@ bool mvrng(
 #ifdef _paranoic
   if (lineNotOfThisEditor(trgEd, trgLine)) { return false; }
 #endif
- 
+
   char ok = true;
- 
+
   if (srcEd == trgEd) {
     cutRange(srcFromLine, srcToLine);
- 
+
     if (insertBefore) { trgLine = trgLine->prev; }
     trgLine->next->prev = srcToLine;
     srcToLine->next = trgLine->next;
@@ -1638,11 +1639,11 @@ bool mvrng(
   }
   srcEd->isModified = true;
   trgEd->isModified = true;
- 
+
   recomputeCurrentLineNo(trgEd);
   return ok;
 }
- 
+
 #define __A ((unsigned char)'A')
 #define __I ((unsigned char)'I')
 #define __J ((unsigned char)'J')
@@ -1655,7 +1656,7 @@ static int getMarkIndex(unsigned char markChar) {
   if (markChar >= __S && markChar <= __Z) { return markChar - __S + 18; }
   return -1;
 }
- 
+
 bool edSMark(EditorPtr ed, LinePtr line, char *mark, char *msg) {
 #ifdef _paranoic
   if (line != NULL && lineNotOfThisEditor(ed, line)) {
@@ -1664,14 +1665,14 @@ bool edSMark(EditorPtr ed, LinePtr line, char *mark, char *msg) {
   }
 #endif
   *msg = '\0';
- 
+
   int markNameLen = (mark) ? strlen(mark) : 0;
   if (markNameLen == 0 || markNameLen > 1) {
     strcpy(msg, "Invalid line mark name (must be 1 letter)");
     return false;
   }
   unsigned char markChar = (unsigned char) c_upper(*mark);
- 
+
   if (markChar == '*' && line == NULL) {
     int i;
     for (i = 0; i < 26; i++) {
@@ -1680,7 +1681,7 @@ bool edSMark(EditorPtr ed, LinePtr line, char *mark, char *msg) {
     strcpy(msg, "All marks cleared");
     return true;
   }
- 
+
   int idx = getMarkIndex(markChar);
   if (idx < 0) {
     strcpy(msg, "Invalid line mark name (must be letter A..Z)");
@@ -1697,10 +1698,10 @@ bool edSMark(EditorPtr ed, LinePtr line, char *mark, char *msg) {
   ed->lineMarks[idx] = line;
   return true;
 }
- 
+
 LinePtr edGMark(EditorPtr ed, char *mark, char *msg) {
   *msg = '\0';
- 
+
   int markNameLen = (mark) ? strlen(mark) : 0;
   if (markNameLen == 0 || (markNameLen > 1 && mark[1] != ' ')) {
     strcpy(msg, "Invalid line mark name (must be 1 letter)");
@@ -1716,14 +1717,14 @@ LinePtr edGMark(EditorPtr ed, char *mark, char *msg) {
     strcpy(msg, "Internal error (mark-index > 25)");
     return NULL;
   }
- 
+
   LinePtr line = ed->lineMarks[idx];
   if (!line){
     sprintf(msg, "Mark '%c' not defined", markChar);
   }
   return line;
 }
- 
+
 bool m2Mark(EditorPtr ed, char *mark, char *msg) {
   LinePtr newCurr = getLineMark(ed, mark, msg);
   if (newCurr) {
@@ -1732,21 +1733,21 @@ bool m2Mark(EditorPtr ed, char *mark, char *msg) {
   }
   return false;
 }
- 
+
 /***
 **** find & replace
 ***/
- 
+
 typedef bool (*CharEqTest)(char left, char right);
- 
+
 static bool EqCase(char left, char right) {
   return (left == right);
 }
- 
+
 static bool EqNCase(char left, char right) {
   return (c_upper(left) == c_upper(right));
 }
- 
+
 int edFsil(
     EditorPtr ed,
     char *what,
@@ -1754,12 +1755,12 @@ int edFsil(
     int offset) {
   offset = maxInt(0, offset);
   if (offset >= ed->workLrecl) { return -1; }
- 
+
   int whatLen = strlen(what);
   int lineLen = lineLength(ed, line);
   int remaining = lineLen - offset - whatLen;
   if (remaining < 0) { return -1; }
- 
+
   CharEqTest isEqual = (ed->caseRespect) ? &EqCase : &EqNCase;
   char *l = &line->text[offset];
   while(*l && remaining >= 0) {
@@ -1778,21 +1779,21 @@ int edFsil(
   }
   return -1;
 }
- 
+
 bool edFind(EditorPtr ed, char *what, bool upwards, LinePtr toLine) {
   /*no search string => no match */
   if (!what || !*what) { return false; }
- 
+
   /* search to file start but already at start => no match */
   if (upwards
       && (ed->lineCurrent == ed->lineBOF
           || ed->lineCurrent == ed->lineBOF->next)) {
     return false;
   }
- 
+
   /* search to file end but already at end => no match */
   if (!upwards && ed->lineCurrent == ed->lineEOF->prev) { return false; }
- 
+
   /* set last line to scan if not passed */
   if (!toLine) {
     if (upwards) {
@@ -1817,7 +1818,7 @@ bool edFind(EditorPtr ed, char *what, bool upwards, LinePtr toLine) {
       return false;
     }
   }
- 
+
   /* scan the lines in search direction */
   LinePtr newCurr = (upwards) ? ed->lineCurrent->prev : ed->lineCurrent->next;
   int newCurrNo = (upwards) ? ed->lineCurrentNo - 1 : ed->lineCurrentNo + 1;
@@ -1838,11 +1839,11 @@ bool edFind(EditorPtr ed, char *what, bool upwards, LinePtr toLine) {
       newCurrNo++;
     }
   }
- 
+
   /* 'what' not found in search direction */
   return false;
 }
- 
+
 int edRepl(
     EditorPtr ed,
     char *from,
@@ -1851,23 +1852,23 @@ int edRepl(
     int startOffset,
     bool *found,
     bool *truncated) {
- 
+
   startOffset = maxInt(0, startOffset);
- 
+
 #ifdef _paranoic
   if (lineNotOfThisEditor(ed, line)) { return startOffset; }
 #endif
- 
+
   *truncated = false;
- 
+
   int fromLen = strlen(from);
   int toLen = strlen(to);
- 
+
   if (fromLen == 0 && toLen == 0) {
     *found = false;
     return startOffset;
   }
- 
+
   int fromOffset = (fromLen > 0)
                  ? findStringInLine(ed, from, line, startOffset)
                  : startOffset;
@@ -1876,28 +1877,28 @@ int edRepl(
     return startOffset;
   }
   *found = true;
- 
+
   int oldLen = lineLength(ed, line);
   int oldFree = ed->workLrecl - oldLen;
   int srcRemaining = oldLen;
- 
+
   char buffer[MAX_LRECL + 1];
   memset(buffer, '\0', sizeof(buffer));
   char *src = line->text;
   char *trg = buffer;
   int newFree = ed->workLrecl;
- 
+
   if (fromOffset > 0) {
     memcpy(trg, src, fromOffset);
     src += fromOffset;
     trg += fromOffset;
     newFree -= fromOffset;
   }
- 
+
   int posAfterChange = fromOffset;
   src += fromLen;
   srcRemaining -= fromOffset + fromLen;
- 
+
   if (toLen > 0) {
     int maxToLen = minInt(toLen, newFree);
     memcpy(trg, to, maxToLen);
@@ -1905,24 +1906,24 @@ int edRepl(
     posAfterChange += maxToLen;
     newFree -= maxToLen;
   }
- 
+
   if (newFree > 0 && srcRemaining > 0) {
     int maxSrcLen = minInt(srcRemaining, newFree);
     memcpy(trg, src, maxSrcLen);
     newFree -= maxSrcLen;
   }
- 
+
   int newLen = minInt(strlen(buffer), ed->workLrecl);
   updateLine(ed, line, buffer, newLen);
- 
+
   *truncated = ((oldLen - fromLen + toLen) > ed->workLrecl);
   return posAfterChange;
 }
- 
+
 /**
 *** Split / join
 **/
- 
+
 /* 0 = not joined, 1 = joined, 2 = joined but truncated */
 int edJoin(EditorPtr ed, LinePtr line, unsigned int atPos, bool force) {
 #ifdef _paranoic
@@ -1930,17 +1931,17 @@ int edJoin(EditorPtr ed, LinePtr line, unsigned int atPos, bool force) {
 #endif
   LinePtr nextLine = line->next;
   if (nextLine == ed->lineEOF) { return 0; }
- 
+
   int lineLen = lineLength(ed, line);
   int remaining = ed->workLrecl - lineLen;
   int nextLineLen = lineLength(ed, nextLine);
   char *nextLineText = nextLine->text;
- 
+
   while(*nextLineText == ' ' && nextLineLen > 0) {
     nextLineText++;
     nextLineLen--;
   }
- 
+
   if (atPos >= lineLen && atPos < ed->workLrecl) {
     if ((ed->workLrecl - atPos) < nextLineLen && !force) { return 0; }
     memset(&line->text[lineLen], ' ', atPos - lineLen);
@@ -1948,34 +1949,34 @@ int edJoin(EditorPtr ed, LinePtr line, unsigned int atPos, bool force) {
     remaining = ed->workLrecl - lineLen;
   }
   if (remaining < nextLineLen && !force) { return 0; }
- 
+
   memcpy(
     &line->text[lineLen],
     nextLineText,
     minInt(remaining, nextLineLen));
   deleteLine(ed, nextLine);
- 
+
   int newLen = minInt(ed->workLrecl, lineLen + nextLineLen);
   line->lineinfo &= 0xFFFFFF00;
   line->lineinfo |= newLen;
- 
+
   return (remaining < nextLineLen) ? 2 : 1;
 }
- 
+
 /* char at 'atPos' will be the first one next line, the new line is returned */
 LinePtr edSplit(EditorPtr ed, LinePtr line, unsigned int atPos) {
   if (atPos < 1) {
     return insertLineBefore(ed, line, "");
   }
- 
+
   int lineLen = lineLength(ed, line);
- 
+
   if (atPos >= lineLen) {
     return insertLineAfter(ed, line, "");
   }
- 
+
   char lineText[MAX_LRECL + 1];
- 
+
   int indent = 0;
   char *s = line->text;
   while (*s == ' ' && indent < atPos) { s++; indent++; }
@@ -1990,37 +1991,37 @@ LinePtr edSplit(EditorPtr ed, LinePtr line, unsigned int atPos) {
       while (*s == ' ' && indent < atPos) { s++; indent++; }
     }
   }
- 
+
   memset(lineText, '\0', sizeof(lineText));
   if (indent > 0) { memset(lineText, ' ', indent); }
   memcpy(&lineText[indent], &line->text[atPos], lineLen - atPos);
   LinePtr newLine = insertLineAfter(ed, line, lineText);
- 
+
   memset(lineText, '\0', sizeof(lineText));
   memcpy(lineText, line->text, atPos);
   updateLine(ed, line, lineText, atPos);
- 
+
   return newLine;
 }
- 
+
 /**
 *** change LRECL
 **/
- 
+
 typedef struct _lineToMarkIdx {
   LinePtr line;
   int markIdx;
 } LineToMarkIdx;
- 
+
 bool /* truncated? */ silrecl(EditorPtr ed, int newLrecl) {
   if (newLrecl < MIN_LRECL) { return false; }
   if (newLrecl > MAX_LRECL) { newLrecl = MAX_LRECL; }
   if (newLrecl == ed->fileLrecl) { return false; }
- 
+
   LineToMarkIdx marks[26];
   int markCount = 0;
   int i;
- 
+
   for (i = 0; i < 26; i++) {
     if (ed->lineMarks[i]) {
       marks[markCount].line = ed->lineMarks[i];
@@ -2029,7 +2030,7 @@ bool /* truncated? */ silrecl(EditorPtr ed, int newLrecl) {
     }
     ed->lineMarks[i] = NULL;
   }
- 
+
   int oldLrecl = ed->fileLrecl;
   int oldWorkLrecl = ed->workLrecl;
   LinePtr oldLineFirstFree = ed->lineFirstFree;
@@ -2038,16 +2039,16 @@ bool /* truncated? */ silrecl(EditorPtr ed, int newLrecl) {
   LinePtr oldLineBOF = ed->lineBOF;
   LinePtr oldLineEOF = ed->lineEOF;
   LinePtr oldCurrentLine = ed->lineCurrent;
- 
+
   char truncated = false;
   char checkTrunc = (newLrecl < oldLrecl);
- 
+
   ed->lineFirstFree = NULL;
   ed->bufferFirst = NULL;
   ed->bufferLast = NULL;
   ed->fileLrecl = newLrecl;
   if (newLrecl < ed->workLrecl) { ed->workLrecl = newLrecl; }
- 
+
   /* pre-allocate all memory required and rollback if it fails */
   int neededBufferPages = ((ed->lineCount + 2) / LINESperBUFFERPAGE) + 1;
   BufferpagePtr lastFirst = ed->bufferFirst;
@@ -2061,47 +2062,47 @@ bool /* truncated? */ silrecl(EditorPtr ed, int newLrecl) {
         ed->bufferFirst = bf->next;
         freeMem(bf);
       }
- 
+
       /* restore old values*/
       ed->lineFirstFree = oldLineFirstFree;
       ed->bufferFirst = oldBufferPages;
       ed->bufferLast = oldBufferPagesLast;
       ed->fileLrecl = oldLrecl;
       ed->workLrecl = oldWorkLrecl;
- 
+
       /* abort */
       _rethrow;
     } _endtry;
     lastFirst = ed->bufferFirst;
   }
- 
+
   ed->lineBOF = getFreeLine(ed);
   ed->lineBOF->prev = NULL;
   ed->lineEOF = getFreeLine(ed);
   ed->lineEOF->next = NULL;
   ed->lineBOF->next = ed->lineEOF;
   ed->lineEOF->prev = ed->lineBOF;
- 
+
   ed->lineCurrent = ed->lineBOF;
   ed->lineCurrentNo = 0;
   ed->lineCount = 0;
   LinePtr newCurrentLine = NULL;
- 
+
   /*
   printf("  ed->lineBOF = 0x%08X, ed->lineBOF->next = 0x%08X\n",
            ed->lineBOF, ed->lineBOF->next);
   printf("  ed->lineEOF = 0x%08X, ed->lineEOF->prev = 0x%08X\n",
            ed->lineEOF, ed->lineEOF->prev);
   */
- 
+
   LinePtr _curr = oldLineBOF->next;
   while(_curr != oldLineEOF) {
     int oldLineLen = lineLength(ed, _curr);
- 
+
     LinePtr newLine = insertLine(ed, "");
     updateLine(ed, newLine, _curr->text, oldLineLen);
     truncated |= (checkTrunc && oldLineLen > newLrecl);
- 
+
     if (_curr == oldCurrentLine) { newCurrentLine = newLine; }
     for (i = 0; i < markCount; i++) {
       if (marks[i].line == _curr) {
@@ -2113,20 +2114,20 @@ bool /* truncated? */ silrecl(EditorPtr ed, int newLrecl) {
         markCount--;
       }
     }
- 
+
     _curr = _curr->next;
   }
   moveToLine(ed, newCurrentLine);
- 
+
   while(oldBufferPages) {
     BufferpagePtr bf = oldBufferPages;
     oldBufferPages = bf->next;
     freeMem(bf);
   }
- 
+
   return truncated;
 }
- 
+
 static int lineCompare(
     LinePtr line1,
     LinePtr line2,
@@ -2135,7 +2136,7 @@ static int lineCompare(
     bool caseInsensitive) {
   char *s1 = &line1->text[offset];
   char *s2 = &line2->text[offset];
- 
+
   if (caseInsensitive) {
     while(len > 0) {
       char c1 = c_upper(*s1++);
@@ -2155,18 +2156,18 @@ static int lineCompare(
   }
   return 0;
 }
- 
+
 void sort(EditorPtr ed, SortItem *sortItems) {
   if (ed->lineCount < 2) { return; } /* nothing to sort */
- 
+
   int i = 0;
   int itemCount = 0;
   int to = 0;
- 
+
   /* count sort items */
   while(sortItems[i++].length > 0) { itemCount++; }
   if (itemCount == 0) { return; } /* no sortItems */
- 
+
   /* remove out of range items resp. adjust compare ranges */
   for (i = 0; i < itemCount; i++) {
     if (sortItems[i].offset >= ed->workLrecl) { continue; }
@@ -2178,7 +2179,7 @@ void sort(EditorPtr ed, SortItem *sortItems) {
   }
   itemCount = to;
   if (itemCount == 0) { return; } /* no valid sortItems */
- 
+
   /* do a simple bubble sort over the lines of ed */
   /* to do: use a faster sort algorithm */
   bool doInsensitive = ed->caseU || !ed->caseRespect;
@@ -2189,7 +2190,7 @@ void sort(EditorPtr ed, SortItem *sortItems) {
     LinePtr curr = ed->lineBOF->next; /* != guard, as > 2 lines, see above */
     while(curr != guard) {
       bool swap = false;
- 
+
       /* check if curr and curr->next are to be swapped */
       SortItem *item = sortItems;
       bool equal = true;
@@ -2203,23 +2204,23 @@ void sort(EditorPtr ed, SortItem *sortItems) {
         equal = (res == 0);
         item++;
       }
- 
+
       /* swap if necessary */
       if (swap) {
         LinePtr before = curr->prev;
         LinePtr follower = curr->next;
         LinePtr after = follower->next;
- 
+
         before->next = follower;
         follower->next = curr;
         curr->next = after;
         after->prev = curr;
         curr->prev = follower;
         follower->prev = before;
- 
+
         unsorted = true; /* as lines where swapped */
         ed->isModified = true;
- 
+
         /* curr is the next line to check, as it has been swapped,
         ** so we're done if the old next line was the guard */
         if (follower == guard) { break; }
@@ -2229,11 +2230,11 @@ void sort(EditorPtr ed, SortItem *sortItems) {
     }
   }
 }
- 
+
 /**
 *** text shifting
 **/
- 
+
 static int getLeadingSpaceLen(EditorPtr ed, LinePtr line) {
   int lineLen = lineLength(ed, line);
   char *s = line->text;
@@ -2243,7 +2244,7 @@ static int getLeadingSpaceLen(EditorPtr ed, LinePtr line) {
   }
   return 9999; /* empty line can be shifted left by any amount! */
 }
- 
+
 static void shiftLineLeft(EditorPtr ed, LinePtr line, unsigned int by) {
   int lineLen = lineLength(ed, line);
   if (lineLen <= by) {
@@ -2256,12 +2257,12 @@ static void shiftLineLeft(EditorPtr ed, LinePtr line, unsigned int by) {
   lineText[newLen] = '\0';
   updateLine(ed, line, lineText, newLen);
 }
- 
+
 static int getRemainingLen(EditorPtr ed, LinePtr line) {
   int lineLen = lineLength(ed, line);
   return ed->workLrecl - lineLen;
 }
- 
+
 static void shiftLineRight(EditorPtr ed, LinePtr line, unsigned int by) {
   int lineLen = lineLength(ed, line);
   if (lineLen == 0) { return; } /* empty line stays emtpy: we're done! */
@@ -2277,13 +2278,13 @@ static void shiftLineRight(EditorPtr ed, LinePtr line, unsigned int by) {
   lineText[newLen] = '\0';
   updateLine(ed, line, lineText, newLen);
 }
- 
+
 /* edShftl : shift text in block of lines to the left
    mode:
     1 = shift each line as far as possible without truncating,
     2 = shift and truncate,
     others: shift only if all lines can be shifted without truncating
- 
+
    returns:
     0 = OK (lines shifted according 'mode' and 'by'),
     1 = (mode = IFALL) not shifted, as would truncate some line(s)
@@ -2299,10 +2300,10 @@ int edShftl(
         int mode) {
   if (!orderLines(ed, &fromLine, &toLine)) { return -1; }
   if (by == 0) { return 0; }
- 
+
   LinePtr currLine = fromLine;
   LinePtr guard = toLine->next;
- 
+
   if (mode == SHIFTMODE_LIMIT) {
     while(currLine != guard) {
       int leadingLen = getLeadingSpaceLen(ed, currLine);
@@ -2337,13 +2338,13 @@ int edShftl(
   }
   return 0;
 }
- 
+
 /* edShftr : shift text in block of lines to the right
    mode:
     1 = shift each line as far as possible without truncating,
     2 = shift and truncate,
     others: shift only if all lines can be shifted without truncating
- 
+
    returns:
     0 = OK (lines shifted according 'mode' and 'by'),
     1 = (mode = IFALL) not shifted, as would truncate some line(s)
@@ -2359,10 +2360,10 @@ int edShftr(
         int mode) {
   if (!orderLines(ed, &fromLine, &toLine)) { return -1; }
   if (by == 0) { return 0; }
- 
+
   LinePtr currLine = fromLine;
   LinePtr guard = toLine->next;
- 
+
   if (mode == SHIFTMODE_LIMIT) {
     while(currLine != guard) {
       int remainingLen = getRemainingLen(ed, currLine);
@@ -2397,9 +2398,9 @@ int edShftr(
   }
   return 0;
 }
- 
+
 /* gllindt :
- 
+
    (indent) <- getLastLineIndent(ed, forLine)
 */
 int gllindt(EditorPtr ed, LinePtr forLine) {
@@ -2420,9 +2421,9 @@ int gllindt(EditorPtr ed, LinePtr forLine) {
   }
   return indent;
 }
- 
+
 /* gclindt :
- 
+
    (indent) <- getCurrLineIndent(ed, forLine)
 */
 int gclindt(EditorPtr ed, LinePtr forLine) {

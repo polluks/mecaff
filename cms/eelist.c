@@ -17,46 +17,47 @@
 ** Written by Dr. Hans-Walter Latz, Berlin (Germany), 2011,2012,2013
 ** Released to the public domain.
 */
- 
+
 #include "glblpre.h"
- 
+
 #include <stdio.h>
+#include <cmssys.h>
 #include <string.h>
- 
+
 #include "errhndlg.h"
- 
+
 #include "eecore.h"
 #include "eeutil.h"
 #include "eescrn.h"
 #include "eemain.h"
- 
+
 #include "glblpost.h"
- 
+
 static char *HEAD_PATTERN_FSLIST
     = "%s: %s %s %s\t\tLines %d-%d/%d  %s " VERSION;
 static char *HEAD_PATTERN_SHOWF
     = "FSVIEW: %s %s %s\t\tLines %d-%d/%d %c%d[%d-%d]  FSVIEW " VERSION;
- 
+
 static char FOOT_FSLIST[90];
 static char FOOT_SHOWF[90];
- 
+
 static ScreenPtr fslistScreen = NULL;
 static ScreenPtr browseScreen = NULL;
- 
+
 static bool fslistPrefixOn = false;
- 
+
 static char listPfCmds[25][CMDLINELENGTH+1]; /* the FSLIST PF key commands */
 static char viewPfCmds[25][CMDLINELENGTH+1]; /* the FSVIEW PF key commands */
- 
+
 static bool fslisterSearchUp;
 static char fslisterSearchBuffer[CMDLINELENGTH + 1];
- 
+
 static bool browserSearchUp;
 static char browserSearchBuffer[CMDLINELENGTH + 1];
- 
+
 static SortItem sortSpecs[12]; /* max 9 columns + TS + FORMAT + last */
 int sortSpecCount = 0;
- 
+
 void setFSLInfoLine(char *infoLine) {
   memset(FOOT_FSLIST, '\0', sizeof(FOOT_FSLIST));
   if (!infoLine || !*infoLine) { infoLine = " "; }
@@ -67,7 +68,7 @@ void setFSLInfoLine(char *infoLine) {
     sprintf(FOOT_FSLIST, "\t%s\t", infoLine);
   }
 }
- 
+
 void setFSVInfoLine(char *infoLine) {
   memset(FOOT_SHOWF, '\0', sizeof(FOOT_SHOWF));
   if (!infoLine || !*infoLine) { infoLine = " "; }
@@ -78,7 +79,7 @@ void setFSVInfoLine(char *infoLine) {
     sprintf(FOOT_SHOWF, "\t%s\t", infoLine);
   }
 }
- 
+
 void setFSLPFKey(int key, char *cmd) {
   if (key < 1 || key > 24) { return; }
   memset(listPfCmds[key], '\0', CMDLINELENGTH + 1);
@@ -87,7 +88,7 @@ void setFSLPFKey(int key, char *cmd) {
     memcpy(listPfCmds[key], cmd, len);
   }
 }
- 
+
 void setFSVPFKey(int key, char *cmd) {
   if (key < 1 || key > 24) { return; }
   memset(viewPfCmds[key], '\0', CMDLINELENGTH + 1);
@@ -96,7 +97,7 @@ void setFSVPFKey(int key, char *cmd) {
     memcpy(viewPfCmds[key], cmd, len);
   }
 }
- 
+
 void setFSLPrefix(bool on) {
   fslistPrefixOn = on;
   if (!fslistScreen) { return; }
@@ -108,7 +109,7 @@ void setFSLPrefix(bool on) {
     fslistScreen->prefixMode = 0;
   }
 }
- 
+
 void initFSPFKeys() {
   setFSLPFKey(1, "CENTER");
   setFSLPFKey(2, "EE");
@@ -138,7 +139,7 @@ void initFSPFKeys() {
     "02=EE 03=Quit 04=Srch "
     "05=Top 06=PgUp 07=Up 08=Down 09=PgDown 10=Bot "
     "12=View");
- 
+
   setFSVPFKey(1, "CENTER");
   setFSVPFKey(2, "EE");
   setFSVPFKey(3, "QUIT");
@@ -168,11 +169,11 @@ void initFSPFKeys() {
     "05=Top 06=PgUp 07=Up 08=Dwn 09=PgDwn 10=Bot 11=SL "
     "12=SR");
 }
- 
+
 static ScreenPtr initScreen(ScreenPtr tmpl, char *msg) {
   ScreenPtr scr = allocateScreen(msg);
   if (scr == NULL) { return NULL; }
- 
+
   scr->attrFile = tmpl->attrFile;
   scr->attrCmd = tmpl->attrCmd;
   scr->attrCmdArrow = tmpl->attrCmdArrow;
@@ -180,7 +181,7 @@ static ScreenPtr initScreen(ScreenPtr tmpl, char *msg) {
   scr->attrHeadLine = tmpl->attrHeadLine;
   scr->attrFootLine = tmpl->attrFootLine;
   scr->attrSelectedLine = tmpl->attrCurrLine;
- 
+
   scr->attrCurrLine = scr->attrFile;
   scr->readOnly = true;
   scr->wrapOverflow = false;
@@ -192,10 +193,10 @@ static ScreenPtr initScreen(ScreenPtr tmpl, char *msg) {
   scr->showTofBof = false;
   scr->infoLinesPos = -1; /* top */
   scr->attrInfoLines = scr->attrHeadLine;
- 
+
   return scr;
 }
- 
+
 static bool isShortParam(char *cmd, char *msg) {
   char *params = getCmdParam(cmd);
   if (!params || !*params) { return false; }
@@ -215,43 +216,43 @@ static bool isShortParam(char *cmd, char *msg) {
   }
   return true;
 }
- 
+
 void initFSList(ScreenPtr tmpl, char *msg) {
   if (fslistScreen) { freeScreen(fslistScreen); fslistScreen = NULL; }
   if (browseScreen) { freeScreen(browseScreen); browseScreen = NULL; }
- 
+
   if (tmpl == NULL) { return; }
- 
+
   memset(sortSpecs, '\0', sizeof(sortSpecs));
- 
+
   fslisterSearchUp = false;
   browserSearchUp = false;
- 
+
   memset(fslisterSearchBuffer, '\0', sizeof(fslisterSearchBuffer));
   memset(browserSearchBuffer, '\0', sizeof(browserSearchBuffer));
- 
+
   fslistScreen = initScreen(tmpl, msg);
   browseScreen = initScreen(tmpl, msg);
 }
- 
+
 /* get the cms filename from a line in the filelist list */
 static void extractFilename(char *line, char *fn, char *ft, char *fm) {
   char *src = line;
   char *trg = fn;
   while(*src != ' ') { *trg++ = *src++; }
   *trg = '\0';
- 
+
   src = &line[9];
   trg = ft;
   while(*src != ' ') { *trg++ = *src++; }
   *trg = '\0';
- 
+
   src = &line[18];
   trg = fm;
   while(*src != ' ') { *trg++ = *src++; }
   *trg = '\0';
 }
- 
+
 static deltaHShift(ScreenPtr scr, short by) {
   short newHSHift = scr->hShift + by;
   short lineOverhead
@@ -265,7 +266,7 @@ static deltaHShift(ScreenPtr scr, short by) {
             newHSHift,
             getFileLrecl(scr->ed) + lineOverhead - scr->screenColumns));
 }
- 
+
 typedef enum _scrollCmd {
   CENTER,
   LEFT,
@@ -275,12 +276,12 @@ typedef enum _scrollCmd {
   TOP,
   BOTTOM
   } ScrollCmd;
- 
+
 static bool handleScrolling(ScreenPtr scr, ScrollCmd cmd, bool shortScroll) {
   EditorPtr ed = scr->ed;
   int middleLine = scr->visibleEdLines / 2;
   int middleCol = scr->screenColumns / 2;
- 
+
   if (scr->cElemType == 2) {
     if (cmd == CENTER || cmd == LEFT || cmd == RIGHT) {
       deltaHShift(
@@ -330,7 +331,7 @@ static bool handleScrolling(ScreenPtr scr, ScrollCmd cmd, bool shortScroll) {
   } else {
     return false;
   }
- 
+
   unsigned int lineCount;
   unsigned int currLine;
   getLineInfo(scr->ed, &lineCount, &currLine);
@@ -339,15 +340,15 @@ static bool handleScrolling(ScreenPtr scr, ScrollCmd cmd, bool shortScroll) {
   } else if (currLine == 0) {
     moveToLineNo(scr->ed, 1);
   }
- 
+
   return true;
 }
- 
+
 static void loadSingleFile(char *line, void *cbdata) {
   EditorPtr ed = (EditorPtr)cbdata;
   insertLine(ed, line);
 }
- 
+
 /* load a new file list and return a new editor */
 static EditorPtr loadList(char *fn, char *ft, char *fm, int *rc, char *msg) {
   EditorPtr ed = createEditor(NULL, 72, 'V');
@@ -378,7 +379,7 @@ static EditorPtr loadList(char *fn, char *ft, char *fm, int *rc, char *msg) {
     *rc = 24;
     return NULL;
   }
- 
+
   *msg = '\0';
   if (sortSpecCount > 0) {
      sort(ed, sortSpecs);
@@ -386,7 +387,7 @@ static EditorPtr loadList(char *fn, char *ft, char *fm, int *rc, char *msg) {
   moveToLineNo(ed, 1);
   return ed;
 }
- 
+
 static void doFind(EditorPtr ed, bool upwards, char *pattern, char *msg) {
   LinePtr oldCurrentLine = getCurrentLine(ed);
   if (!findString(ed, pattern, upwards, NULL)) {
@@ -398,11 +399,11 @@ static void doFind(EditorPtr ed, bool upwards, char *pattern, char *msg) {
     moveToLine(ed, oldCurrentLine);
   }
 }
- 
+
 /* load a file into a new editor and display/interact in 'browseScreen' */
 int doBrowse(char *fn, char *ft, char *fm, char *msg) {
   if (!browseScreen) { return -1; }
- 
+
   int rc;
   EditorPtr fEd = createEditorForFile(NULL, fn, ft, fm, 80, 'V', &rc, msg);
   if (!fEd || rc != 0) {
@@ -415,17 +416,17 @@ int doBrowse(char *fn, char *ft, char *fm, char *msg) {
     return rc;
   }
   moveToLineNo(fEd, 1);
- 
+
   browseScreen->ed = fEd;
   browseScreen->hShift = 0;
   browseScreen->cElemType = 0;
   browseScreen->cElemOffset = 0;
- 
+
   char headline[80];
   browseScreen->headLine = headline;
- 
+
   browseScreen->footLine = FOOT_SHOWF;
- 
+
   browseScreen->aidCode = Aid_NoAID;
   browseScreen->cmdLinePrefill = NULL;
   while (rc == 0 && browseScreen->aidCode != Aid_PF03) {
@@ -433,7 +434,7 @@ int doBrowse(char *fn, char *ft, char *fm, char *msg) {
     browseScreen->cursorOffset = 0;
     browseScreen->msgText = msg;
     *msg = '\0';
- 
+
     char *cmd = NULL;
     int aidIdx = aidPfIndex(browseScreen->aidCode);
     if (aidIdx == 0 && *browseScreen->cmdLine) {
@@ -441,7 +442,7 @@ int doBrowse(char *fn, char *ft, char *fm, char *msg) {
     } else if (aidIdx > 0 && aidIdx < 25) {
       cmd = viewPfCmds[aidIdx];
     }
- 
+
     if (cmd && *cmd) {
       if (isAbbrev(cmd, "Quit") || isAbbrev(cmd, "RETurn")) {
         break;
@@ -494,7 +495,7 @@ int doBrowse(char *fn, char *ft, char *fm, char *msg) {
         sprintf(msg, "Invalid command: %s", cmd);
       }
     }
- 
+
     unsigned int lineCount;
     unsigned int currLineNo;
     getLineInfo(fEd, &lineCount, &currLineNo);
@@ -511,14 +512,14 @@ int doBrowse(char *fn, char *ft, char *fm, char *msg) {
       );
     rc = writeReadScreen(browseScreen);
   }
- 
+
   *msg = '\0';
   browseScreen->ed = NULL;
   freeEditor(fEd);
- 
+
   return rc;
 }
- 
+
 static int addSortSpec(int count, bool desc, int offset, int length) {
   int i = 0;
   while(i < count) {
@@ -532,23 +533,23 @@ static int addSortSpec(int count, bool desc, int offset, int length) {
   sortSpecs[count].length = length;
   return count + 1;
 }
- 
+
 static bool isSortCommand(char *cmd, char *msg) {
   if (!isAbbrev(cmd, "Sort")) { return false; }
- 
+
   char *param = getCmdParam(cmd);
   if (!param || !*param) {
     strcpy(msg, "Missing parameter for sort");
     return true;
   }
- 
+
   memset(sortSpecs, '\0', sizeof(sortSpecs));
   sortSpecCount = 0;
- 
+
   if (isAbbrev(param, "OFf")) {
     return true;
   }
- 
+
   while(param && *param) {
     bool sortDescending = false;
     if (*param == '-') {
@@ -557,7 +558,7 @@ static bool isSortCommand(char *cmd, char *msg) {
     } else if (*param == '+') {
       param++;
     }
- 
+
     while(*param == ' ') { param++; }
     if (!*param) {
       if (sortSpecCount == 0) {
@@ -565,7 +566,7 @@ static bool isSortCommand(char *cmd, char *msg) {
       }
       return true;
     }
- 
+
     if (isAbbrev(param, "NAme")) {
       sortSpecCount = addSortSpec(sortSpecCount, sortDescending, 0, 8);
     } else if (isAbbrev(param, "TYpe")) {
@@ -594,17 +595,17 @@ static bool isSortCommand(char *cmd, char *msg) {
       sprintf(msg, "Invalid sort parameter at: %s", param);
       return true;
     }
- 
+
     param = getCmdParam(param);
   }
- 
+
   return true;
 }
- 
+
 static void diskLineCallback(char *line, void *cbdata) {
   tmpInfAppend(line);
 }
- 
+
 static int xlistSaveActions(
     ScreenPtr scr,
     char *pfn, char *pft, char *pfm,
@@ -619,11 +620,11 @@ static int xlistSaveActions(
   char cmdline[256];
   int targetCount = 0;
   bool hadCmdParm = false;
- 
+
   int i;
- 
+
   *selCount = 0;
- 
+
   memset(cmdline, '\0', sizeof(cmdline));
   char *s = command;
   char *t = cmdline;
@@ -660,16 +661,16 @@ static int xlistSaveActions(
   }
   *t = '\0';
   if (!hadCmdParm) { strcat(t, " &1 &2 &3 "); }
- 
+
   tmpInfClear();
- 
+
   tmpInfAppend("&CONTROL OFF NOMSG");
   sprintf(line, "STATE %s XLISTRES %s", exfn, exfm);
   tmpInfAppend(line);
   sprintf(line, "&IF &RETCODE EQ 0 ERASE %s XLISTRES %s", exfn, exfm);
   tmpInfAppend(line);
   tmpInfAppend("*");
- 
+
   for (i = 0; i < sortSpecCount; i++) {
     sprintf(line, "*#SORT %d %02d %02d",
       (sortSpecs[i].sortDescending) ? 1 : 0,
@@ -680,7 +681,7 @@ static int xlistSaveActions(
   sprintf(line, "*#LIST %-8s %-8s %-2s", pfn, pft, pfm);
   tmpInfAppend(line);
   tmpInfAppend("*");
- 
+
   if (collectReturncodes) {
     s_upper(command, command);
     sprintf(line,
@@ -691,7 +692,7 @@ static int xlistSaveActions(
     sprintf(line, "EXECUTIL WRITE %s XLISTRES %s * 1 V 80", exfn, exfm);
     tmpInfAppend(line);
   }
- 
+
   _try {
     LinePtr lastUnselected = NULL;
     LinePtr currLine = getCurrentLine(ed);
@@ -734,7 +735,7 @@ static int xlistSaveActions(
       }
       f = getNextLine(ed, f);
     }
- 
+
     tmpInfAppend("*");
     tmpInfAppend("EMIT Press ENTER to continue and return to XLIST");
     if (!connectedtoMecaffConsole()) {
@@ -752,9 +753,9 @@ static int xlistSaveActions(
     strcat(msg, "\n**\n** ");
     return -2;
   } _endtry;
- 
+
   *selCount = targetCount;
- 
+
   if (displayOnly && targetCount > 0) {
     char *fLine
       = "01=RUN\t03=Quit 05=Top 06=PgUp 07=Up 08=Dwn 09=PgDwn 10=Bot\t";
@@ -769,7 +770,7 @@ static int xlistSaveActions(
     return -1;
   }
 }
- 
+
 static void rtrim(char *s) {
   while(*s) {
     if (*s == ' ') {
@@ -779,7 +780,7 @@ static void rtrim(char *s) {
     s++;
   }
 }
- 
+
 static void removeFileEntry(EditorPtr ed, char *fn, char *ft, char *fm) {
   char pattern[32];
   sprintf(pattern, "%-8s %-8s %-2s", fn, ft, fm);
@@ -790,12 +791,12 @@ static void removeFileEntry(EditorPtr ed, char *fn, char *ft, char *fm) {
     deleteLine(ed, line);
   }
 }
- 
+
 static EditorPtr xlistRestart(
     ScreenPtr scr,
     char *exfn, char *exft, char *exfm,
     int  *rc, char *msg, int *selCount) {
- 
+
   EditorPtr ed = NULL;
   LinePtr currentLine = NULL;
   char fid[20];
@@ -803,16 +804,16 @@ static EditorPtr xlistRestart(
   CMSFILE *f = &cmsfile;
   char buffer[81];
   int selLines = 0;
- 
+
   sortSpecCount = 0;
   *selCount = 0;
- 
+
   if (tmpInfLoad(exfn, "XLISTRES", exfm)) {
     tmpInfShow(scr, msg, "\tReturncodes for commands applied\t", "", NULL);
   }
- 
+
   *rc = 0;
- 
+
   sprintf(fid, "%-8s%-8s%-2s", exfn, exft, exfm);
   int cmsrc = CMSfileOpen(fid, buffer, 80, 'V', 1, 1, f);
   if (cmsrc == 0) {
@@ -820,7 +821,7 @@ static EditorPtr xlistRestart(
     cmsrc = CMSfileRead(f, 0, &bytesRead);
     while(cmsrc == 0) {
       buffer[bytesRead] = '\0';
- 
+
       buffer[6] = '\0';
       if (strcmp(buffer, "*#LIST") == 0 && ed == NULL) {
         char *pfn = &buffer[7];
@@ -873,7 +874,7 @@ static EditorPtr xlistRestart(
     }
     CMSfileClose(f);
   }
- 
+
   if (ed == NULL && *rc == 0) {
     *rc = 28;
     strcpy(msg, "XLIST internal error, command & exchange EXEC not available");
@@ -881,9 +882,9 @@ static EditorPtr xlistRestart(
   if (*rc != 0) {
     return ed;
   }
- 
+
   *selCount = selLines;
- 
+
   if (currentLine != NULL) {
     moveToLine(ed, currentLine);
   } else {
@@ -891,7 +892,7 @@ static EditorPtr xlistRestart(
   }
   return ed;
 }
- 
+
 /* to: < 0 = unmark if marked, > 0 mark if unmarked, == 0 = toggle */
 static void toggleSelected(ScreenPtr scr, LinePtr line, int to) {
   char currMark = line->text[scr->selectionColumn];
@@ -901,7 +902,7 @@ static void toggleSelected(ScreenPtr scr, LinePtr line, int to) {
     line->text[scr->selectionColumn] = scr->selectionMark;
   }
 }
- 
+
 static bool deselectAll(ScreenPtr scr) {
   EditorPtr ed = scr->ed;
   bool hadSelected = false;
@@ -915,7 +916,7 @@ static bool deselectAll(ScreenPtr scr) {
   }
   return hadSelected;
 }
- 
+
 static void applyPatternSelection(
     ScreenPtr scr,
     char *pattern,
@@ -927,7 +928,7 @@ static void applyPatternSelection(
   char tft[9];
   char tfm[3];
   EditorPtr ed = scr->ed;
- 
+
   int rc = parse_fileid(
           &pattern, 0, 1,
           tfn, tft, tfm, &consumed,
@@ -952,19 +953,19 @@ static void applyPatternSelection(
     }
   }
 }
- 
+
 int doFSList(
   char *fn, char *ft, char *fm,
   char *fnout, char*ftout, char *fmout,
   char *msg,
   unsigned short xlistMode) {
- 
+
   /* printf("doFSList, pattern: '%s %s %s'\n", fn, ft, fm); */
- 
+
   int i;
- 
+
   if (!fslistScreen) { return -1; }
- 
+
   if (fslistPrefixOn) {
     fslistScreen->prefixMode = 1;
     fslistScreen->prefixChar = ' ';
@@ -972,25 +973,25 @@ int doFSList(
   } else {
     fslistScreen->prefixMode = 0;
   }
- 
+
   char fnDefault[9];
   char ftDefault[9];
   char fmDefault[3];
   strcpy(fnDefault, fn);
   strcpy(ftDefault, ft);
   strcpy(fmDefault, fm);
- 
+
   bool isFileChooser = (fnout && ftout && fmout && xlistMode == 0);
   int rc = 0;
   int selCount = 0;
- 
+
   ScreenPtr scr = fslistScreen;
   scr->selectionColumn = (xlistMode > 0) ? 71 : 0;
   scr->selectionMark = '*';
   scr->attrPrefix = DA_WhiteIntens;
- 
+
   *msg = '\0';
- 
+
   EditorPtr ed = (xlistMode != 2)
                ? loadList(fn, ft, fm, &rc, msg)
                : xlistRestart(scr, fnout, ftout, fmout, &rc, msg, &selCount);
@@ -999,16 +1000,16 @@ int doFSList(
     return rc;
   }
   scr->ed = ed;
- 
+
   char cmdPrefill[CMDLINELENGTH + 1];
   memset(cmdPrefill, '\0', sizeof(cmdPrefill));
- 
+
   char *headToolname = (xlistMode) ? "XLIST" : "FSLIST";
   char headline[80];
   scr->headLine = headline;
- 
+
   scr->footLine = FOOT_FSLIST;
- 
+
   char listHeader[81];
   memset(listHeader, '\0', sizeof(listHeader));
   strcpy(listHeader, "  ");
@@ -1017,24 +1018,24 @@ int doFSList(
   char *lhp1 = listHeader;
 #define setFileListHeader() \
   { scr->infoLines[0] = (scr->prefixMode) ? lhp1 : lhp0; }
- 
+
   setFileListHeader();
- 
+
   rc = 0;
   scr->aidCode = Aid_NoAID;
   scr->cmdLinePrefill = NULL;
   while(rc == 0) {
- 
+
     scr->cursorPlacement = 0;
     scr->cursorOffset = 0;
     scr->msgText = msg;
     scr->cmdLinePrefill = NULL;
- 
+
     if (xlistMode) {
       for (i = 0; i < scr->cmdPrefixesAvail; i++) {
         PrefixInput *pi = &scr->cmdPrefixes[i];
         int prefixLen = strlen(pi->prefixCmd);
- 
+
         if (pi->prefixCmd[0] == '\0' || pi->prefixCmd[0] == ' ') {
           toggleSelected(scr, pi->line, -1);
         } else {
@@ -1047,7 +1048,7 @@ int doFSList(
         scr->cursorOffset = scr->cElemOffset;
       }
     }
- 
+
     char *cmd = NULL;
     bool tryKeepCommand = true;
     int aidIdx = aidPfIndex(scr->aidCode);
@@ -1057,7 +1058,7 @@ int doFSList(
     } else if (aidIdx > 0 && aidIdx < 25) {
       cmd = listPfCmds[aidIdx];
     }
- 
+
     if (cmd && *cmd) {
       while(*cmd == ' ') { cmd++; }
       if (isAbbrev(cmd, "Listfile")) {
@@ -1070,7 +1071,7 @@ int doFSList(
           char tfn[9];
           char tft[9];
           char tfm[3];
- 
+
           lrc = parse_fileid(
                   &param, 0, 1,
                   tfn, tft, tfm, &consumed,
@@ -1281,8 +1282,8 @@ int doFSList(
         sprintf(msg, "Invalid command: %s", cmd);
       }
     }
- 
- 
+
+
     unsigned int lineCount;
     unsigned int currLineNo;
     getLineInfo(ed, &lineCount, &currLineNo);
@@ -1307,7 +1308,7 @@ int doFSList(
     rc = writeReadScreen(scr);
     *msg = '\0';
   }
- 
+
   scr->msgText = NULL;
   *msg = '\0';
   freeEditor(ed);

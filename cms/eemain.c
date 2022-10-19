@@ -19,46 +19,47 @@
 ** Written by Dr. Hans-Walter Latz, Berlin (Germany), 2011,2012,2013
 ** Released to the public domain.
 */
- 
+
 #include "glblpre.h"
- 
+
 #include <stdio.h>
+#include <cmssys.h>
 #include <string.h>
- 
+
 #include "errhndlg.h"
- 
+
 #include "eecore.h"
 #include "eeutil.h"
 #include "eescrn.h"
 #include "eemain.h"
- 
+
 #include "glblpost.h"
- 
+
 /*
 ** ****** global screen data
 */
- 
+
 static ScreenPtr scr = NULL;
- 
+
 #define LINES_LEN 80
- 
+
 static char headline[LINES_LEN + 1];
 static char footline[LINES_LEN + 1];
- 
+
 static char infoline0[LINES_LEN + 1];
 static char infoline1[LINES_LEN + 1];
- 
+
 static char *progName = "EE";
- 
+
 /*
 ** -- infolines handling
 */
- 
+
 void clInfols() {
   scr->infoLines[0] = NULL;
   scr->infoLines[1] = NULL;
 }
- 
+
 void addInfol(char *line) {
   if (scr->infoLines[0] == NULL) {
     memset(infoline0, '\0', sizeof(infoline0));
@@ -74,19 +75,19 @@ void addInfol(char *line) {
     strncpy(infoline1, line, sizeof(infoline1) - 1);
   }
 }
- 
+
 /*
 ** head-/footline construction
 */
- 
+
 static void buildHeadFootlinesDelta(bool deltaModified, int deltaLines) {
   if (scr == NULL) {
     return;
   }
- 
+
   scr->headLine = headline;
   scr->footLine = footline;
- 
+
   EditorPtr ed = scr->ed;
   char fn[9];
   char ft[9];
@@ -100,7 +101,7 @@ static void buildHeadFootlinesDelta(bool deltaModified, int deltaLines) {
   bool isBinary = false;
   int fileCnt = 0;
   char posTxt[16];
- 
+
   /* collect data to display in head-/footlines */
   posTxt[0] = '\0';
   if (ed) {
@@ -120,18 +121,18 @@ static void buildHeadFootlinesDelta(bool deltaModified, int deltaLines) {
     strcpy(fm, "?");
   }
   if (!posTxt[0]) { strcpy(posTxt, "  TOP"); }
- 
+
   /* build headline */
   sprintf(headline,
     "File: %-8s %-8s %-2s\t\tRECFM: %c LRECL: %3d(%d) Lines: %5d Current: %s",
     fn, ft, fm, recfm, workLrecl, fileLrecl, lineCnt, posTxt);
- 
+
   /* build footline */
   sprintf(footline, "%s%s\t\t%s " VERSION ", %2d File(s)",
     (isModified) ? "Modified" : "Unchanged",
     (isBinary) ? ", Binary" : "",
     progName, fileCnt);
- 
+
   /* extend message lines with potential common messages */
   addPrefixMessages(scr);
   char *emergencyMessage = getLastEmergencyMessage();
@@ -142,11 +143,11 @@ static void buildHeadFootlinesDelta(bool deltaModified, int deltaLines) {
     strcat(scr->msgText, "\n**\n** ");
   }
 }
- 
+
 static void buildHeadFootlines() {
   buildHeadFootlinesDelta(true, 0);
 }
- 
+
 /*
 ** save the cursor's position in the file area to
 ** allow TABFORWARD to jump back
@@ -157,16 +158,16 @@ static void saveCursorPosition(ScreenPtr scr) {
     scr->ed->clientdata2 = (void*)((int)scr->cElemOffset);
   }
 }
- 
+
 /*
 ** ****** input mode ******
 */
- 
+
 void doInputM(ScreenPtr scr) {
   /* remember and override editor settings */
   EditorPtr ed = scr->ed;
   bool wasModified = getModified(ed);
- 
+
   /* remember and override screen settings */
   char oldPrefixMode = scr->prefixMode;
   scr->prefixMode = 0; /* off */
@@ -178,38 +179,38 @@ void doInputM(ScreenPtr scr) {
          "01/13=Tab/Backtab   "
          "03/15=Leave Input   ";
   scr->infoLines[1] = NULL;
- 
+
   /* prepare input mode */
   short inputLinesCount = scr->visibleEdLinesAfterCurrent;
   unsigned int lineCount;
   unsigned int currLineNo;
   getLineInfo(ed, &lineCount, &currLineNo);
- 
+
   LinePtr currentLine = getCurrentLine(ed);
   LinePtr inputModeGuard = NULL;
- 
+
   _try {
     inputModeGuard = insertLineAfter(ed, currentLine, "--INPUTGUARD--");
     int deltaLines = -inputLinesCount - 1;
- 
+
     bool inInputMode = true;
     unsigned int requiredEmptyLinesCount = inputLinesCount;
     int i;
- 
+
     int savedLines = 0;
     int savedLastModifiedLineNo = -1;
     LinePtr savedLastModifiedLine = NULL;
     int savedInputLinesAvail = 0;
     bool lastWasTab = false;
- 
+
     LinePtr currentInputLine = NULL;
- 
+
     while(inInputMode) {
       /* create new input lines frame w/ 'requiredEmptyLinesCount' new lines */
       for(i = 0; i < requiredEmptyLinesCount; i++) {
         insertLineAfter(ed, currentLine, NULL);
       }
- 
+
       /* do terminal roundtrip */
       scr->cursorPlacement = 2;
       if (lastWasTab) {
@@ -227,7 +228,7 @@ void doInputM(ScreenPtr scr) {
       buildHeadFootlinesDelta(wasModified, deltaLines);
       int rc = writeReadScreen(scr);
       if (rc != 0) { return; } /* Error => ABORT IT !! */
- 
+
       /* update modified lines and find last modified in input lines frame */
       int lastModifiedLineNo = -1;
       LinePtr lastModifiedLine = NULL;
@@ -241,7 +242,7 @@ void doInputM(ScreenPtr scr) {
           lastModifiedLine = li->line;
         }
       }
- 
+
       /* tab handling */
       if (scr->aidCode == Aid_PF01 || scr->aidCode == Aid_PF13) {
         if (scr->aidCode == Aid_PF01) {
@@ -261,12 +262,12 @@ void doInputM(ScreenPtr scr) {
             savedLastModifiedLine = lastModifiedLine;
           }
         }
- 
+
         requiredEmptyLinesCount = 0;
         lastWasTab = true;
         continue; /* move cursor without "entering" the current lines */
       }
- 
+
       /* compute new requiredEmptyLinesCount as inputLinesCount - 'unused' */
       requiredEmptyLinesCount = 0;
       if (lastWasTab) {
@@ -285,7 +286,7 @@ void doInputM(ScreenPtr scr) {
       savedLastModifiedLine = NULL;
       savedInputLinesAvail = 0;
       lastWasTab = false;
- 
+
       /* check for end of input mode */
       if (scr->aidCode == Aid_PF03) { inInputMode = false; }
       if (scr->aidCode == Aid_PF15) { inInputMode = false; }
@@ -293,10 +294,10 @@ void doInputM(ScreenPtr scr) {
           && scr->inputLinesAvail == 0
           && scr->cElemType == 2
           && scr->cElem == currentInputLine) { inInputMode = false; }
- 
+
       /* if none of the input but any of the old lines was modified: retry */
       if (lastModifiedLineNo < 0) { continue; }
- 
+
       /* move current line to lowest modified line in input frame */
       /*currLineNo = lastModifiedLineNo;*/
       currentLine = lastModifiedLine;
@@ -306,16 +307,16 @@ void doInputM(ScreenPtr scr) {
   } _catchall() {
     /* nothing to do, resetting the screen and the editor follows */
   } _endtry;
- 
+
   /* save cursor position */
   saveCursorPosition(scr);
- 
+
   /* delete last input lines frame and fix modified */
   if (inputModeGuard != NULL) {
     deleteLineRange(ed, getNextLine(ed, currentLine), inputModeGuard);
   }
   setModified(ed, wasModified);
- 
+
   /* revert to initial screen state */
   scr->prefixMode = oldPrefixMode;
   scr->infoLines[0] = infoL0;
@@ -325,11 +326,11 @@ void doInputM(ScreenPtr scr) {
   scr->cursorPlacement = 0;
   scr->cursorOffset = 0;
 }
- 
+
 /*
 ** ****** programmer's input mode ******
 */
- 
+
 /* special version of SplitJoin command, as the standard command
    implementation wont't and can't handle the following correctly,
    as it does not know about the special function of the current line as
@@ -339,7 +340,7 @@ void doInputM(ScreenPtr scr) {
    - splitting the current line will append the rest-line behind the
      current line, which will programmers-input make insert a new input
      line between the 2 part-lines instead of behind the rest-line
- 
+
   returns: true if a new input line must be inserted, i.e.
             - if the current line was splitted
             - if the current line disappeared due to appending to preceding
@@ -351,14 +352,14 @@ static bool piSplitjoin(ScreenPtr scr, bool force, char *msg) {
     strcpy(msg, "Cursor must be placed in file area for SPLTJOIN");
     return false;
   }
- 
+
   EditorPtr ed = scr->ed;
   LinePtr line = scr->cElem;
   int linePos = scr->cElemOffset;
   int lineLen = lineLength(ed, line);
- 
+
   bool needsNewInputLine = false;
- 
+
   if (linePos >= lineLen) {
     /* cursor after last char => join with next line */
     if (line == getLastLine(ed)) {
@@ -392,15 +393,15 @@ static bool piSplitjoin(ScreenPtr scr, bool force, char *msg) {
       moveDown(ed, 1);
     }
   }
- 
+
   return needsNewInputLine;
 }
- 
+
 void doPInpM(ScreenPtr scr) {
   /* remember and override editor settings */
   EditorPtr ed = scr->ed;
   bool wasModified = getModified(ed);
- 
+
   /* remember and override screen settings */
   char oldPrefixMode = scr->prefixMode;
   char fillChar = scr->fileToPrefixFiller;
@@ -416,7 +417,7 @@ void doPInpM(ScreenPtr scr) {
   scr->fileToPrefixFiller = ' '; /*(char)0xBF;*/
   scr->cmdLinePrefill = " * * * programmer's input mode * * *";
   scr->cmdLineReadOnly = true;
- 
+
   /* do the programmer's input mode */
   LinePtr currentLine = getCurrentLine(ed);
   if (scr->cElemType ==  1 || scr->cElemType == 2) {
@@ -437,7 +438,7 @@ void doPInpM(ScreenPtr scr) {
         deleteCurrentLine = true;
         indent = getLastLineIndent(ed, currentLine);
       }
- 
+
       /* do terminal roundtrip */
       if (placeCursor) {
         scr->cursorPlacement = 2;
@@ -449,7 +450,7 @@ void doPInpM(ScreenPtr scr) {
       if (rc != 0) { return; } /* Error => ABORT IT !! */
       scr->msgText[0] = '\0'; /* clear message line */
       placeCursor = true;
- 
+
       /* process modified lines, if any */
       insertInputLine = false;
       bool hadCurrentLine = false;
@@ -466,7 +467,7 @@ void doPInpM(ScreenPtr scr) {
         }
         wasModified = true;
       }
- 
+
       /* process AID keys */
       if (scr->aidCode == Aid_PF01) {
         execCmd(scr, "TABFORWARD", scr->msgText, false);
@@ -516,7 +517,7 @@ void doPInpM(ScreenPtr scr) {
   } _catchall() {
     /* nothing to do, resetting the screen and the editor follows */
   } _endtry;
- 
+
   /* delete the input line if not modified and place the cursor */
   if (scr->cElemType != 2) {
     /* cursor not in the file area -> simulate it was on the currentLine */
@@ -534,10 +535,10 @@ void doPInpM(ScreenPtr scr) {
                        && scr->cElemOffset < getWorkLrecl(ed))
     ? scr->cElemOffset
     : getCurrLineIndent(ed, scr->cursorLine);
- 
+
   /* fix modified value */
   setModified(ed, wasModified);
- 
+
   /* revert to initial screen state */
   scr->prefixMode = oldPrefixMode;
   scr->infoLines[0] = infoL0;
@@ -546,13 +547,13 @@ void doPInpM(ScreenPtr scr) {
   scr->cmdLinePrefill = NULL;
   scr->cmdLineReadOnly = false;
 }
- 
+
 /*
 ** ****** change confirm dialog ******
 */
 int doConfCh(ScreenPtr scr, char *iTxt, short offset, short len) {
   int result = 2; /* abort all */
- 
+
   /* remember and override screen settings */
   bool oldPrefixRO = scr->prefixReadOnly;
   scr->prefixReadOnly = true;
@@ -572,7 +573,7 @@ int doConfCh(ScreenPtr scr, char *iTxt, short offset, short len) {
   scr->currLinePos = 1;
   short oldScaleLinePos = scr->scaleLinePos;
   scr->scaleLinePos = 1;
- 
+
   /* get the user's response */
   bool done = false;
   buildHeadFootlinesDelta(getModified(scr->ed), 0);
@@ -596,7 +597,7 @@ int doConfCh(ScreenPtr scr, char *iTxt, short offset, short len) {
       done = true;
     }
   }
- 
+
   /* revert to initial screen state */
   scr->prefixReadOnly = oldPrefixRO;
   scr->infoLines[0] = infoL0;
@@ -609,23 +610,23 @@ int doConfCh(ScreenPtr scr, char *iTxt, short offset, short len) {
   scr->msgText = savedMsgText;
   scr->currLinePos = oldCurrLinePos;
   scr->scaleLinePos = oldScaleLinePos;
- 
+
   /* done, return the answer */
   return result;
 }
- 
+
 /*
 ** ****** temp info display ******
 */
- 
+
 static EditorPtr tmpInf = NULL;
- 
+
 void tmpInfClear() {
   if (tmpInf == NULL) { return; }
   freeEditor(tmpInf);
   tmpInf = NULL;
 }
- 
+
 void tmpInfAppend(char *line) {
   if (!tmpInf) { tmpInf = createEditor(NULL, 80, 'V'); }
   if (tmpInf) {
@@ -634,16 +635,16 @@ void tmpInfAppend(char *line) {
     _throw(__ERR_OUT_OF_MEMORY);
   }
 }
- 
+
 int tmpInfWrite(char *fn, char *ft, char *fm, bool overwrite, char *msg) {
   if (!tmpInf) { return -2; }
   return writeFile(tmpInf, fn, ft, fm, overwrite, msg);
 }
- 
+
 bool tmpInfLoad(char *fn, char *ft, char *fm) {
   tmpInfClear();
   if (!f_exists(fn, ft, fm)) { return false; }
- 
+
   int state;
   char msg[120];
   tmpInf = createEditorForFile(NULL, fn, ft, fm, 80, 'V', &state, msg);
@@ -653,7 +654,7 @@ bool tmpInfLoad(char *fn, char *ft, char *fm) {
   }
   return true;
 }
- 
+
 void tmpInfShow(
    ScreenPtr tmpl,
    char *msg,
@@ -661,22 +662,22 @@ void tmpInfShow(
    char *introLine,
    char *infoLine
    ) {
- 
+
   if (!tmpInf) {
     strcpy(msg, "No informations to show");
     return;
   }
- 
+
   ScreenPtr scr = allocateScreen(msg);
   if (scr == NULL) { return; }
- 
+
   scr->attrFile = tmpl->attrFile;
   scr->attrCmd = tmpl->attrCmd;
   scr->attrCmdArrow = tmpl->attrCmdArrow;
   scr->attrMsg = tmpl->attrMsg;
   scr->attrHeadLine = tmpl->attrHeadLine;
   scr->attrFootLine = tmpl->attrFootLine;
- 
+
   scr->attrCurrLine = scr->attrFile;
   scr->readOnly = true;
   scr->wrapOverflow = false;
@@ -688,7 +689,7 @@ void tmpInfShow(
   scr->showTofBof = false;
   scr->infoLinesPos = -1; /* top */
   scr->attrInfoLines = scr->attrHeadLine;
- 
+
   scr->headLine = headerLine;
   scr->infoLines[0] = introLine;
   if (infoLine && *infoLine) {
@@ -698,7 +699,7 @@ void tmpInfShow(
   }
   scr->ed = tmpInf;
   moveToBOF(tmpInf);
- 
+
   int rc = 0;
   scr->aidCode = Aid_NoAID;
   scr->cmdLinePrefill = NULL;
@@ -706,7 +707,7 @@ void tmpInfShow(
   while(rc == 0 && scr->aidCode != Aid_PF03 && scr->aidCode != Aid_PF15) {
     scr->cursorPlacement = 0;
     scr->cursorOffset = 0;
- 
+
     if (scr->aidCode == Aid_PF05) {
       moveToBOF(tmpInf);
     } else if (scr->aidCode == Aid_PF06) {
@@ -720,7 +721,7 @@ void tmpInfShow(
     } else if (scr->aidCode == Aid_PF10) {
       moveToLastLine(tmpInf);
     }
- 
+
     unsigned int lineCount;
     unsigned int currLine;
     getLineInfo(scr->ed, &lineCount, &currLine);
@@ -731,21 +732,21 @@ void tmpInfShow(
     } else if (currLine == 0) {
       moveToLineNo(scr->ed, 1);
     }
- 
+
     scr->cmdLinePrefill = NULL;
     rc = writeReadScreen(scr);
     *msg = '\0';
   }
- 
+
   freeScreen(scr);
 }
- 
+
 /*
 ** ****** main program ******
 */
- 
+
 int main(int argc, char *argv[], char *argstrng) {
- 
+
     /* work-around for bug in GCCLIB runtime startup code:
        -> if called from an EXEC, the PLIST is copied to 'argv', but
           sometimes there is an additional character appended to parameters
@@ -779,9 +780,9 @@ int main(int argc, char *argv[], char *argstrng) {
         argc--;
       }
     }
- 
+
     progName = argv[0];
- 
+
     int pcount = 0;
     bool isOption = false;
     bool isFSLIST = false;
@@ -838,26 +839,26 @@ int main(int argc, char *argv[], char *argstrng) {
         }
       }
     }
- 
+
   /*isXLIST |= (isAbbrev(progName, "XList") || isAbbrev(progName, "XXList"));*/
     isFSLIST |= (isAbbrev(progName, "FSList"));
     isFSVIEW |= (isAbbrev(progName, "FSView"));
     /* printf("isFSLIST = %s\n", (isFSLIST) ? "true" : "false"); */
- 
+
     if (isXLIST && xlargc < 3) {
       printf("XLIST mode invocation error\n");
       return 4;
     }
- 
+
     char messages[512];
- 
+
     char fn[9];
     char ft[9];
     char fm[3];
     int consumed = 0;
     char *lastCharParsed = NULL;
     int parsefid_result = PARSEFID_NONE;
- 
+
     if (isFSLIST || isXLIST) {
       if (pcount > 0) {
         parsefid_result = parse_fileid(
@@ -893,10 +894,10 @@ int main(int argc, char *argv[], char *argstrng) {
       }
       return 4;
     }
- 
+
     /* init EE command machinery */
     initCmds();
- 
+
     /* initialize the EE main screen */
     char cmdtext[80];
     simu3270(24, 80);
@@ -908,19 +909,19 @@ int main(int argc, char *argv[], char *argstrng) {
       printf("%s\n", messages);
       return 12;
     }
- 
+
     Printf0("## initializing scr-data\n");
- 
+
     scr->cmdLinePos = 1; /* at bottom */
     scr->msgLinePos = 0; /* at top */
     scr->prefixMode = 1; /* left */
     scr->prefixNumbered = false;
     scr->currLinePos = 1; /* middle */
     scr->scaleLinePos = 1; /* before currline */
- 
+
     messages[0] = '\0';
     scr->ed = NULL;
- 
+
     /* set default pfkeys, overridable by profile, set infoLines accordingly */
     setPF( 1, "TABFORWARD");
     setPF( 2, "RINGNEXT");
@@ -933,12 +934,12 @@ int main(int argc, char *argv[], char *argstrng) {
     setPF(10, "PINPUT");
     setPF(11, "CLRCMD");
     setPF(12, "RECALL");
- 
+
     setPF(13, "TABBACKWARD");
     setPF(16, "REVSEARCHNEXT");
     setPF(19, "PGUP 66");
     setPF(20, "PGDOWN 66");
- 
+
     scr->infoLinesPos = 2; /* max. 2 on bottom */
     scr->infoLines[0] = "02=RingNext "
                         "03=Quit "
@@ -949,17 +950,17 @@ int main(int argc, char *argv[], char *argstrng) {
                         "11=ClrCmd "
                         "12=Recall";
     scr->attrInfoLines = DA_Pink;
- 
+
     scr->fileToPrefixFiller = (char)0x00;
     scr->msgText = messages;
- 
+
     /* init prefix operations */
     initBlockOps();
- 
+
     /* init FSLIST, FSVIEW and FSHELP PF keys presettings */
     initFSPFKeys();
     initHlpPfKeys();
- 
+
     /* read SYSPROF EE * and PROFILE EE * */
     int rc = 0;
     _try {
@@ -968,10 +969,10 @@ int main(int argc, char *argv[], char *argstrng) {
       execCommandFile(scr, "PROFILE", &rc);
       rc = 0; /* ignore it for PROFILE EE */
     } _catchall() { } _endtry;
- 
+
     /* init the FSLIST and FSVIEW screens */
     initFSList(scr, messages);
- 
+
     /* dispatch to initial screen */
     _try {
       if (isXLIST) {
@@ -989,7 +990,7 @@ int main(int argc, char *argv[], char *argstrng) {
         rc = doEdit(fn, ft, fm, messages);
       }
     } _catchall() { } _endtry;
- 
+
     /* shutdown and deinitialize all screens */
     if (*messages) { CMSconsoleWrite(messages, CMS_EDIT); }
     if (scr->ed != NULL) { freeEditor(scr->ed); }
@@ -997,12 +998,12 @@ int main(int argc, char *argv[], char *argstrng) {
     deinitCmds();
     initFSList(NULL, messages);
     tmpInfClear();
- 
+
     /* return to CMS */
     if (rc == RC_CLOSEALL) { rc = 0; }
     return rc;
 }
- 
+
 /* perform editor interactions for 'fn ft fm' */
 int doEdit(char *fn, char *ft, char *fm, char *messages) {
     /* load the file into the editor */
@@ -1016,7 +1017,7 @@ int doEdit(char *fn, char *ft, char *fm, char *messages) {
       /* if (*messages) { printf("%s\n", messages); } */
       return 28;
     }
- 
+
       scr->aidCode = Aid_NoAID;
       scr->cmdLine[0] = '\0';
       scr->cmdLinePrefill = NULL;
@@ -1024,16 +1025,16 @@ int doEdit(char *fn, char *ft, char *fm, char *messages) {
         rc, aidTran(scr->aidCode));
       while(rc == 0) {
         Printf0("## preparing screen structure based on last input\n");
- 
+
         bool cursorPlaced = false;
         bool currentMoved = false;
         int i,j;
- 
+
         /* process overwrites in file content, ignoring lines with @-prefix */
         for (i = 0; i < scr->cmdPrefixesAvail; i++) {
           PrefixInput *pi = &scr->cmdPrefixes[i];
           int prefixLen = strlen(pi->prefixCmd);
- 
+
           if (prefixLen == 1 && pi->prefixCmd[0] == '@') {
             for (j = 0; j < scr->inputLinesAvail; j++) {
               LineInput *li = &scr->inputLines[j];
@@ -1050,16 +1051,16 @@ int doEdit(char *fn, char *ft, char *fm, char *messages) {
             updateLine(scr->ed, li->line, li->newText, li->newTextLength);
           }
         }
- 
+
         /* process prefix operations */
         cursorPlaced = execPrefixesCmds(scr, cursorPlaced);
- 
+
         /* if the cursor was'nt moved -> place it in the command line */
         if (!cursorPlaced) {
           scr->cursorPlacement = 0;
           scr->cursorOffset = 0;
         }
- 
+
         scr->cmdLinePrefill = NULL;
         int aidIdx = aidPfIndex(scr->aidCode);
         if (aidIdx == 0){
@@ -1090,23 +1091,23 @@ int doEdit(char *fn, char *ft, char *fm, char *messages) {
             scr->cmdLinePrefill = scr->cmdLine;
           }
         }
- 
+
         Printf0("## invoking writeReadScreen()\n");
         buildHeadFootlines();
         rc = writeReadScreen(scr);
         saveCursorPosition(scr);
- 
+
         /* clear message line: it has been displayed */
         scr->msgText[0] = '\0';
- 
+
         Printf2("## writeReadScreen -> rc = %d, aid = '%s'\n",
           rc, aidTran(scr->aidCode));
       }
- 
+
       if (rc == FS_SESSION_LOST) {
         rescueCommandLoop(scr, messages);
         rc = 0; /* as all files have been closed */
       }
- 
+
       return rc;
 }

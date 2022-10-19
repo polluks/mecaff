@@ -19,39 +19,40 @@
 ** Written by Dr. Hans-Walter Latz, Berlin (Germany), 2011,2012,2013
 ** Released to the public domain.
 */
- 
+
 #include "glblpre.h"
- 
+
 #include <stdio.h>
+#include <cmssys.h>
 #include <string.h>
- 
+
 #include "eecore.h"
 #include "eeutil.h"
 #include "eescrn.h"
 #include "eemain.h"
- 
+
 #include "glblpost.h"
- 
+
 #define innerInitHelp() \
     _hlpinit()
 extern void _hlpinit();
- 
+
 extern EditorPtr openHelp(
     EditorPtr prevEd,
     char *topic,
     char *helptype,
     char *msg);
- 
+
 #define innerShowHelp(scr, topic, helptype) \
     _hlpish(scr, topic, helptype)
 extern int _eeish(ScreenPtr scr, char *topic, char *helptype);
- 
+
 typedef bool (*HlpFilter)(char *listfileLine);
- 
+
 static bool HlpFilterAlways(char *listfileLine) {
   return true;
 }
- 
+
 /* 012345678901234567890 */
 /* ABCDEFGH ABCDEFGH AB */
 static bool HlpFilterCMSorCP(char *ll, bool chkCMS, bool chkCP) {
@@ -61,9 +62,9 @@ static bool HlpFilterCMSorCP(char *ll, bool chkCMS, bool chkCP) {
   char fid[19];
   bool result = false;
   int checkLineNo = 1;
- 
+
   if (strlen(ll) < 19) { return true; } /* not filterable */
- 
+
   ll[8] = '\0';
   ll[17] = '\0';
   ll[20] = '\0';
@@ -71,7 +72,7 @@ static bool HlpFilterCMSorCP(char *ll, bool chkCMS, bool chkCP) {
   sprintf(fid, "%s%s%s", ll, &ll[9], &ll[18]);
   ll[8] = '\0';
   ll[17] = '\0';
- 
+
   CMSFILE cmsfile;
   CMSFILE *f = &cmsfile;
   char buffer[256];
@@ -115,23 +116,23 @@ static bool HlpFilterCMSorCP(char *ll, bool chkCMS, bool chkCP) {
     }
     CMSfileClose(f);
   }
- 
+
   return result;
 #endif
 }
- 
+
 static bool HlpFilterCMS(char *listfileLine) {
   return HlpFilterCMSorCP(listfileLine, true, false);
 }
- 
+
 static bool HlpFilterCP(char *listfileLine) {
   return HlpFilterCMSorCP(listfileLine, false, true);
 }
- 
+
 static bool HlpFilterOthers(char *listfileLine) {
   return !HlpFilterCMSorCP(listfileLine, true, true);
 }
- 
+
 typedef struct _bldmenu_cbdata {
   int currOnLine;
   int topicsFound;
@@ -140,21 +141,21 @@ typedef struct _bldmenu_cbdata {
   HlpFilter filter;
   char line[81];
   } BldMenuCbDataObj, *BldMenuCbData;
- 
+
 static void addToCurrMenu(char *buffer, void *cbdata) {
   BldMenuCbData d = (BldMenuCbData)cbdata;
- 
+
   /* do we look for this menu group? */
   if (!d->filter(buffer)) { return; }
   buffer[8] = '\0';
- 
+
   /* do we already have found it on another disk? */
   /* (i.e.: already in the current line or in the topics of the submenu?) */
   if (strstr(d->line, buffer)) { return; }
   moveToLine(d->ed, d->searchLine);
   if (findString(d->ed, buffer, false, NULL)) { return; }
   moveToLastLine(d->ed);
- 
+
   /* this topic is OK, so add it */
   strcat(d->line, buffer);
   d->currOnLine++;
@@ -167,10 +168,10 @@ static void addToCurrMenu(char *buffer, void *cbdata) {
   } else {
     strcat(d->line, "   ");
   }
- 
+
   d->topicsFound++;
 }
- 
+
 static int appendHelpSubmenu(
     EditorPtr ed,
     char *forComponent,
@@ -183,28 +184,28 @@ static int appendHelpSubmenu(
   strcat(d.line, "   ");
   d.currOnLine = 0;
   d.topicsFound = 0;
- 
+
   char ft[16];
   sprintf(ft, "HELP%s", forComponent);
   char *m = getFileList(&addToCurrMenu, &d, "*", ft, "*");
   if (m) { return 0; }
- 
+
   if (strcmp(forComponent, "CMD") == 0) {
     m = getFileList(&addToCurrMenu, &d, "*", "HELP", "*");
   }
- 
+
   if (d.currOnLine > 0) {
     insertLine(ed, d.line);
   }
- 
+
   return d.topicsFound;
 }
- 
+
 static void locateHelpMenu(char *fmToUse) {
   strcpy(fmToUse, "A2");
   locateFileDisk("MENU", "FSHELP", fmToUse);
 }
- 
+
 static EditorPtr openHelpMenu(bool rebuild, char *msg) {
   int state;
   char fmToUse[3];
@@ -234,7 +235,7 @@ static EditorPtr openHelpMenu(bool rebuild, char *msg) {
   } else if (state == 0) {
     return ed;
   }
- 
+
   int tc;
   LinePtr l1;
   LinePtr l2;
@@ -271,7 +272,7 @@ static EditorPtr openHelpMenu(bool rebuild, char *msg) {
   tc = appendHelpSubmenu(ed, "DBG", HlpFilterAlways);
   if (tc == 0) { deleteLine(ed, l1); deleteLine(ed, l2); deleteLine(ed, l3); }
   insertLine(ed, "");
- 
+
   LinePtr line = getLineAbsNo(ed, 1);
   char txt[81];
   while(line != NULL) {
@@ -282,17 +283,17 @@ static EditorPtr openHelpMenu(bool rebuild, char *msg) {
     }
     line = getNextLine(ed, line);
   }
- 
+
   saveFile(ed, msg);
- 
+
   moveToBOF(ed);
   return ed;
 }
- 
+
 static bool handleProfileLine(void *userdata, char *cmd, char *msg) {
   bool doClear = false;
   int pfNo = -1;
- 
+
   if (isAbbrev(cmd, "PF")) {
     char *params = getCmdParam(cmd);
     if (!isAbbrev(params, "FSHELP")) { return false; }
@@ -322,24 +323,24 @@ static bool handleProfileLine(void *userdata, char *cmd, char *msg) {
   }
   return false;
 }
- 
+
 int main(int argc, char *argv[]) {
- 
+
     char msg[512];
     char msg2[512];
- 
+
     char *topic;
     char helptype[80];
     int rc;
- 
+
     EditorPtr ed;
- 
+
     innerInitHelp();
     initHlpPFKeys();
- 
+
     doCmdFil(&handleProfileLine, NULL, "SYSPROF", &rc);
     doCmdFil(&handleProfileLine, NULL, "PROFILE", &rc);
- 
+
     if (argc < 2) {
       ed = openHelpMenu(false, msg);
       topic = "HELPMENU";
@@ -357,7 +358,7 @@ int main(int argc, char *argv[]) {
     if (!ed) {
       return 28;
     }
- 
+
     ScreenPtr scr = allocateScreen(msg2);
     if (scr == NULL) {
       printf("** error allocating screen, message:\n");
@@ -366,6 +367,6 @@ int main(int argc, char *argv[]) {
     }
     scr->ed = ed;
     scr->msgText = msg;
- 
+
     return innerShowHelp(scr, topic, helptype);
 }

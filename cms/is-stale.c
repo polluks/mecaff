@@ -17,18 +17,19 @@
 ** Written by Dr. Hans-Walter Latz, Berlin (Germany), 2011,2012
 ** Released to the public domain.
 */
- 
+
 #include <stdio.h>
- 
+#include <cmssys.h>
+
 #define _cp(t, s, l) \
 { int cnt = l; char *trg = t; char *src = s; \
   while(cnt > 0 && *src) { *trg++ = *src++; cnt--; } }
- 
+
 int main(int argc, char **argv) {
   if (argc < 7) { return 1; }
- 
+
   char fid[20];
- 
+
   memset(fid, ' ', sizeof(fid));
   _cp(fid,      argv[1], 8);
   _cp(&fid[8],  argv[2], 8);
@@ -40,7 +41,7 @@ int main(int argc, char **argv) {
   unsigned short srcYear = (unsigned short)fi->fileYear;
   unsigned short srcDate = (unsigned short)fi->filedate;
   unsigned short srcTime = (unsigned short)fi->filetime;
- 
+
   memset(fid, ' ', sizeof(fid));
   _cp(fid,      argv[4], 8);
   _cp(&fid[8],  argv[5], 8);
@@ -60,6 +61,6 @@ int main(int argc, char **argv) {
   if (srcYear < trgYear) { return 0; } else if (srcYear > trgYear) { return 1; }
   if (srcDate < trgDate) { return 0; } else if (srcDate > trgDate) { return 1; }
   if (srcTime < trgTime) { return 0; }
- 
+
   return 1;
 }
