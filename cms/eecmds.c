@@ -32,6 +32,11 @@
 
 #include "glblpost.h"
 
+#define _rc_success    0
+#define _rc_unspecific 1
+#define _rc_error      2
+#define _rc_failure   -1
+
 /* set the filename for error messages from memory protection in EEUTIL */
 static const char *_FILE_NAME_ = "eecmds.c";
 
@@ -69,6 +74,7 @@ static bool searchUp;                         /* was last search upwards ? */
    XXXX being the EE command implemented.
 */
 typedef int (*CmdImpl)(ScreenPtr scr, char *params, char *msg);
+typedef int (*CmdSqmetImpl)(ScreenPtr scr, char sqmet, char *params, char *msg);
 
 static void checkNoParams(char *params, char *msg) {
   if (!params) { return; }
@@ -368,6 +374,14 @@ static int closeAllFiles(ScreenPtr scr, bool saveModified, char *msg) {
 int _fcount() {
   return fileCount;
 }
+
+
+/* SET, Query, MODify, EXTract, TRAnsfer */
+typedef struct _mysqmetdef {
+  char *sqmetName;
+  char *sqmetFlag;
+  CmdSqmetImpl sqmetImpl;
+} MySqmetDef;
 
 /*
 ** ****** commands ******
@@ -2072,6 +2086,197 @@ static int CmdMemUnLock(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
+static int CmdSqmetNYI(ScreenPtr scr, char sqmet, char *params, char *msg) {
+    sprintf(msg, "%s\nSET/QUERY/MODIFY/EXTRACT/TRANSFER subcommand not yet implemented:  * * * Work In Progress * * *\n%s", msg, params);
+    return 0*_rc_failure;
+}
+static MySqmetDef sqmetCmds[] = {
+  {"AAaa"                    , "SQMET" , &CmdSqmetNYI               },
+  {"="                       , "sqmet" , &CmdSqmetNYI               },
+  {"ACTion"                  , "sqmet" , &CmdSqmetNYI               },
+  {"ALT"                     , "sqmet" , &CmdSqmetNYI               },
+  {"APL"                     , "sqmet" , &CmdSqmetNYI               },
+  {"ARBchar"                 , "sqmet" , &CmdSqmetNYI               },
+  {"AUtosave"                , "sqmet" , &CmdSqmetNYI               },
+  {"BASEft"                  , "sqmet" , &CmdSqmetNYI               },
+  {"BRKkey"                  , "sqmet" , &CmdSqmetNYI               },
+  {"CASE"                    , "SQMET" , &CmdSqmetNYI               },
+  {"CMDline"                 , "sqmet" , &CmdSqmetNYI               },
+  {"COLOR"                   , "sqmet" , &CmdSqmetNYI               },
+  {"COLPtr"                  , "sqmet" , &CmdSqmetNYI               },
+  {"COLumn"                  , "sqmet" , &CmdSqmetNYI               },
+  {"CTLchar"                 , "sqmet" , &CmdSqmetNYI               },
+  {"CURLine"                 , "sqmet" , &CmdSqmetNYI               },
+  {"CURSor"                  , "sqmet" , &CmdSqmetNYI               },
+  {"DISPlay"                 , "sqmet" , &CmdSqmetNYI               },
+  {"EFMode"                  , "sqmet" , &CmdSqmetNYI               },
+  {"EFName"                  , "sqmet" , &CmdSqmetNYI               },
+  {"EFType"                  , "sqmet" , &CmdSqmetNYI               },
+  {"ENTer"                   , "sqmet" , &CmdSqmetNYI               },
+  {"EOF"                     , "sqmet" , &CmdSqmetNYI               },
+  {"EOL"                     , "sqmet" , &CmdSqmetNYI               },
+  {"ESCape"                  , "sqmet" , &CmdSqmetNYI               },
+  {"ETARBCH"                 , "sqmet" , &CmdSqmetNYI               },
+  {"ETMODE"                  , "sqmet" , &CmdSqmetNYI               },
+  {"FILler"                  , "sqmet" , &CmdSqmetNYI               },
+  {"FLscreen"                , "sqmet" , &CmdSqmetNYI               },
+  {"FMode"                   , "sqmet" , &CmdSqmetNYI               },
+  {"FName"                   , "sqmet" , &CmdSqmetNYI               },
+  {"FType"                   , "sqmet" , &CmdSqmetNYI               },
+  {"FULLread"                , "sqmet" , &CmdSqmetNYI               },
+  {"HEX"                     , "sqmet" , &CmdSqmetNYI               },
+  {"IMage"                   , "sqmet" , &CmdSqmetNYI               },
+  {"IMPcmscp"                , "sqmet" , &CmdSqmetNYI               },
+  {"INPmode"                 , "sqmet" , &CmdSqmetNYI               },
+  {"LASTLorc"                , "sqmet" , &CmdSqmetNYI               },
+  {"LASTmsg"                 , "sqmet" , &CmdSqmetNYI               },
+  {"LENgth"                  , "sqmet" , &CmdSqmetNYI               },
+  {"LIBName"                 , "sqmet" , &CmdSqmetNYI               },
+  {"LIBType"                 , "sqmet" , &CmdSqmetNYI               },
+  {"LIne"                    , "-qmet" , &CmdSqmetNYI               },
+  {"LINENd"                  , "sqmet" , &CmdSqmetNYI               },
+  {"LRecl"                   , "sqmet" , &CmdSqmetNYI               },
+  {"LScreen"                 , "sqmet" , &CmdSqmetNYI               },
+  {"MACRO"                   , "sqmet" , &CmdSqmetNYI               },
+  {"MASK"                    , "sqmet" , &CmdSqmetNYI               },
+  {"MEMber"                  , "sqmet" , &CmdSqmetNYI               },
+  {"MSGLine"                 , "sqmet" , &CmdSqmetNYI               },
+  {"MSGMode"                 , "sqmet" , &CmdSqmetNYI               },
+  {"NBFile"                  , "SQMET" , &CmdSqmetNYI               },
+  {"NBScope"                 , "sqmet" , &CmdSqmetNYI               },
+  {"NONDisp"                 , "sqmet" , &CmdSqmetNYI               },
+  {"NULls"                   , "sqmet" , &CmdSqmetNYI               },
+  {"NUMber"                  , "sqmet" , &CmdSqmetNYI               },
+  {"PA"                      , "sqmet" , &CmdSqmetNYI               },
+  {"PACK"                    , "sqmet" , &CmdSqmetNYI               },
+  {"PENDing"                 , "sqmet" , &CmdSqmetNYI               },
+  {"PF"                      , "sqmet" , &CmdSqmetNYI               },
+  {"Point"                   , "sqmet" , &CmdSqmetNYI               },
+  {"PREfix"                  , "sqmet" , &CmdSqmetNYI               },
+  {"RANge"                   , "sqmet" , &CmdSqmetNYI               },
+  {"RECFm"                   , "sqmet" , &CmdSqmetNYI               },
+  {"REMOte"                  , "*****" , &CmdSqmetNYI               },
+  {"RESERved"                , "sqmet" , &CmdSqmetNYI               },
+  {"RING"                    , "sqmet" , &CmdSqmetNYI               },
+  {"SCALe"                   , "sqmet" , &CmdSqmetNYI               },
+  {"SCOPE"                   , "sqmet" , &CmdSqmetNYI               },
+  {"SCReen"                  , "sqmet" , &CmdSqmetNYI               },
+  {"SELect"                  , "sqmet" , &CmdSqmetNYI               },
+  {"Seq8"                    , "sqmet" , &CmdSqmetNYI               },
+  {"SERial"                  , "sqmet" , &CmdSqmetNYI               },
+  {"SHADow"                  , "sqmet" , &CmdSqmetNYI               },
+  {"SIDcode"                 , "sqmet" , &CmdSqmetNYI               },
+  {"SIZe"                    , "-q-et" , &CmdSqmetNYI               },
+  {"SPAN"                    , "sqmet" , &CmdSqmetNYI               },
+  {"SPILL"                   , "sqmet" , &CmdSqmetNYI               },
+  {"STAY"                    , "sqmet" , &CmdSqmetNYI               },
+  {"STReam"                  , "sqmet" , &CmdSqmetNYI               },
+  {"SYNonym"                 , "sqmet" , &CmdSqmetNYI               },
+  {"TABLine"                 , "sqmet" , &CmdSqmetNYI               },
+  {"TABS"                    , "sqmet" , &CmdSqmetNYI               },
+  {"TARGet"                  , "sqmet" , &CmdSqmetNYI               },
+  {"TERMinal"                , "sqmet" , &CmdSqmetNYI               },
+  {"TEXT"                    , "sqmet" , &CmdSqmetNYI               },
+  {"TOF"                     , "sqmet" , &CmdSqmetNYI               },
+  {"TOFEOF"                  , "sqmet" , &CmdSqmetNYI               },
+  {"TOL"                     , "sqmet" , &CmdSqmetNYI               },
+  {"TRANSLat"                , "sqmet" , &CmdSqmetNYI               },
+  {"TRunc"                   , "sqmet" , &CmdSqmetNYI               },
+  {"UNIQueid"                , "sqmet" , &CmdSqmetNYI               },
+  {"UNTil"                   , "sqmet" , &CmdSqmetNYI               },
+  {"UPDate"                  , "sqmet" , &CmdSqmetNYI               },
+  {"VARblank"                , "sqmet" , &CmdSqmetNYI               },
+  {"Verify"                  , "sqmet" , &CmdSqmetNYI               },
+  {"VERShift"                , "sqmet" , &CmdSqmetNYI               },
+  {"VERSIon"                 , "SQMEt" , &CmdSqmetNYI               },
+  {"Width"                   , "sqmet" , &CmdSqmetNYI               },
+  {"WINdow"                  , "sqmet" , &CmdSqmetNYI               },
+  {"WRap"                    , "sqmet" , &CmdSqmetNYI               },
+  {"Zone"                    , "sqmet" , &CmdSqmetNYI               },
+  {"ZZzz"                    , "-Q-et" , &CmdSqmetNYI               }
+};
+
+MySqmetDef* fndsqmet(char *cand, MySqmetDef *cmdList, unsigned int cmdCount) {
+  unsigned int i;
+  for (i = 0; i < cmdCount; i++) {
+    if (isAbbrev(cand, cmdList->sqmetName)) { return cmdList; }
+    cmdList++;
+  }
+
+  return NULL;
+}
+
+static int CmdCmsg(ScreenPtr scr, char *params, char *msg) {
+  scr->cmdLinePrefill = params;
+  return 0*_rc_success;
+}
+
+static int CmdSqmetDispatch(ScreenPtr scr, char sqmet, char *params, char *msg) {
+
+  MySqmetDef *sqmetDef = (MySqmetDef*)fndsqmet(
+    params,
+    (MySqmetDef*)sqmetCmds,
+    sizeof(sqmetCmds) / sizeof(MySqmetDef));
+
+  int  c_index = 0;
+  int  s_index = 0;
+  char c_temp = '?';
+  char s_temp = '?';
+  char *p_s_temp = "SsQqMmEeTt*-=+ ";
+  char *p_c_temp = &c_temp;
+  void *p_v_temp = p_c_temp;
+  int  *p_i_temp = p_v_temp;
+
+  if (sqmet == 'S')  { c_index = 0;    s_index = 0; }
+  if (sqmet == 'Q')  { c_index = 2;    s_index = 1; }
+  if (sqmet == 'M')  { c_index = 4;    s_index = 2; }
+  if (sqmet == 'E')  { c_index = 6;    s_index = 3; }
+  if (sqmet == 'T')  { c_index = 8;    s_index = 4; }
+
+    if (sqmetDef) {
+      p_c_temp = sqmetDef->sqmetFlag;
+      p_v_temp = p_c_temp;
+      p_i_temp = p_v_temp;
+
+      c_temp = p_c_temp[s_index];
+      if (c_temp == sqmet)  return (*(sqmetDef->sqmetImpl))(scr, sqmet, params, msg);
+
+      if (c_upper(c_temp) == sqmet)
+      /* if (c_temp == 's') */ /* p_s_temp[1]  */  {
+        sprintf(msg, "%c sqmet subcommand not yet implemented: '%s'", sqmet, sqmetDef->sqmetName);
+        return 0*_rc_failure;
+      }
+      if (c_temp == '*' /* p_s_temp[10] */ ) {
+        sprintf(msg, "VM/SP XEDIT feature not implemented: 'SET %s'", sqmetDef->sqmetName);
+        return 0*_rc_failure;
+      }
+      if (c_temp == 'S' /* p_s_temp[0]  */ ) {
+        sprintf(msg, "SET subcommand found: '%s - %s'", sqmetDef->sqmetName, sqmetDef->sqmetFlag);
+        return (*(sqmetDef->sqmetImpl))(scr, 'S', params, msg);
+      }
+    }
+    sprintf(msg, "SET subcommand not found: '%s - %x - %x'", params, *p_i_temp, c_temp);
+    return 0*_rc_failure;
+}
+static int CmdSet(ScreenPtr scr, char *params, char *msg) {
+  return CmdSqmetDispatch(scr, 'S', params, msg);
+}
+static int CmdImpSet(ScreenPtr scr, char *params, char *msg) {
+  return CmdSet(scr, params, msg);
+}
+static int CmdTransfer(ScreenPtr scr, char *params, char *msg) {
+  return CmdSqmetDispatch(scr, 'T', params, msg);
+}
+static int CmdExtract(ScreenPtr scr, char *params, char *msg) {
+  return CmdSqmetDispatch(scr, 'E', params, msg);
+}
+static int CmdModify(ScreenPtr scr, char *params, char *msg) {
+  return CmdSqmetDispatch(scr, 'M', params, msg);
+}
+static int CmdQuery(ScreenPtr scr, char *params, char *msg) {
+  return CmdSqmetDispatch(scr, 'Q', params, msg);
+}
+
 typedef struct _mycmddef {
   char *commandName;
   CmdImpl impl;
@@ -2088,6 +2293,7 @@ static MyCmdDef eeCmds[] = {
   {"DELete"                  , &CmdDelete                           },
   {"EEdit"                   , &CmdEditFile                         },
   {"EXIt"                    , &CmdExit                             },
+  {"EXTract"                 , &CmdExtract                          },
   {"FFILe"                   , &CmdFFile                            },
   {"FILe"                    , &CmdFile                             },
   {"FSLIst"                  , &CmdFSList                           },
@@ -2106,6 +2312,7 @@ static MyCmdDef eeCmds[] = {
   {"MEMLOCK"                 , &CmdMemLock                          }, /* consume all memory to test EE's behaviour */
   {"MEMUNLOCK"               , &CmdMemUnLock                        }, /* release the memory again */
 #endif
+  {"MODify"                  , &CmdModify                           },
   {"MOVEHere"                , &CmdMoveHere                         },
   {"MSGLines"                , &CmdMsglines                         },
   {"Next"                    , &CmdNext                             },
@@ -2122,7 +2329,8 @@ static MyCmdDef eeCmds[] = {
   {"PUT"                     , &CmdPut                              },
   {"PUTD"                    , &CmdPutD                             },
   {"QQuit"                   , &CmdQQuit                            },
-  {"Quit"                    , &CmdQuit                             },
+  {"Query"                   , &CmdQuery                            },
+  {"QUIt"                    , &CmdQuit                             },
   {"RECFM"                   , &CmdRecfm                            },
   {"RESet"                   , &CmdReset                            },
   {"REVSEArchnext"           , &CmdReverseSearchNext                },
@@ -2134,6 +2342,7 @@ static MyCmdDef eeCmds[] = {
   {"SAVe"                    , &CmdSave                             },
   {"SCALe"                   , &CmdScale                            },
   {"SEArchnext"              , &CmdSearchNext                       },
+  {"SET"                     , &CmdSet                              },
   {"SHIFT"                   , &CmdShift                            },
   {"SHIFTCONFig"             , &CmdShiftConfig                      },
   {"SPLTJoin"                , &CmdSplitjoin                        },
@@ -2142,6 +2351,7 @@ static MyCmdDef eeCmds[] = {
   {"TABforward"              , &CmdTabForward                       },
   {"TABSet"                  , &CmdTabs                             },
   {"TOp"                     , &CmdTop                              },
+  {"TRAnsfer"                , &CmdTransfer                         },
   {"UNBINARY"                , &CmdUnbinary                         },
   {"WORKLrecl"               , &CmdWorkLrecl                        }
 };
