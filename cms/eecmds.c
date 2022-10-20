@@ -68,7 +68,7 @@ static bool searchUp;                         /* was last search upwards ? */
    Routines implementing this function pointer type are named 'CmdXXXX' with
    XXXX being the EE command implemented.
 */
-typedef bool (*CmdImpl)(ScreenPtr scr, char *params, char *msg);
+typedef int (*CmdImpl)(ScreenPtr scr, char *params, char *msg);
 
 static void checkNoParams(char *params, char *msg) {
   if (!params) { return; }
@@ -327,7 +327,7 @@ void openFile(
   }
 }
 
-static bool closeFile(ScreenPtr scr, char *msg) {
+static int closeFile(ScreenPtr scr, char *msg) {
   EditorPtr ed = scr->ed;
   if (!ed) { return true; }
   EditorPtr nextEd = getNextEd(ed);
@@ -342,7 +342,7 @@ static bool closeFile(ScreenPtr scr, char *msg) {
   return false;
 }
 
-static bool closeAllFiles(ScreenPtr scr, bool saveModified, char *msg) {
+static int closeAllFiles(ScreenPtr scr, bool saveModified, char *msg) {
   EditorPtr ed = scr->ed;
   while(fileCount > 0) {
     EditorPtr nextEd = getNextEd(ed);
@@ -373,7 +373,7 @@ int _fcount() {
 ** ****** commands ******
 */
 
-static bool CmdInput(ScreenPtr scr, char *params, char *msg) {
+static int CmdInput(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   /*checkNoParams(params, msg);*/
   if (params && *params) {
@@ -384,28 +384,28 @@ static bool CmdInput(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdProgrammersInput(ScreenPtr scr, char *params, char *msg) {
+static int CmdProgrammersInput(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   checkNoParams(params, msg);
   processProgrammersInputMode(scr);
   return false;
 }
 
-static bool CmdTop(ScreenPtr scr, char *params, char *msg) {
+static int CmdTop(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   checkNoParams(params, msg);
   moveToBOF(scr->ed);
   return false;
 }
 
-static bool CmdBottom(ScreenPtr scr, char *params, char *msg) {
+static int CmdBottom(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   checkNoParams(params, msg);
   moveToLastLine(scr->ed);
   return false;
 }
 
-static bool CmdNext(ScreenPtr scr, char *params, char *msg) {
+static int CmdNext(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   int count = 1;
   if (tryParseInt(params, &count)) {
@@ -420,7 +420,7 @@ static bool CmdNext(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdPrevious(ScreenPtr scr, char *params, char *msg) {
+static int CmdPrevious(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   int count = 1;
   if (tryParseInt(params, &count)) {
@@ -451,7 +451,7 @@ static int getLineDistance(ScreenPtr scr, char **params) {
   return lines;
 }
 
-static bool CmdPgUp(ScreenPtr scr, char *params, char *msg) {
+static int CmdPgUp(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   int distance = getLineDistance(scr, &params);
   bool doMoveHere = false;
@@ -471,7 +471,7 @@ static bool CmdPgUp(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdPgDown(ScreenPtr scr, char *params, char *msg) {
+static int CmdPgDown(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   int distance = getLineDistance(scr, &params);
   bool doMoveHere = false;
@@ -491,7 +491,7 @@ static bool CmdPgDown(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdMoveHere(ScreenPtr scr, char *params, char *msg) {
+static int CmdMoveHere(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   if (scr->cElemType == 2) {
     moveToLine(scr->ed, scr->cElem);
@@ -503,7 +503,7 @@ static bool CmdMoveHere(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdSaveInner(
+static int CmdSaveInner(
     ScreenPtr scr,
     char *params,
     char *msg,
@@ -539,27 +539,27 @@ static bool CmdSaveInner(
   return false;
 }
 
-static bool CmdSave(ScreenPtr scr, char *params, char *msg) {
+static int CmdSave(ScreenPtr scr, char *params, char *msg) {
   CmdSaveInner(scr, params, msg, false, false);
   return false;
 }
 
-static bool CmdSSave(ScreenPtr scr, char *params, char *msg) {
+static int CmdSSave(ScreenPtr scr, char *params, char *msg) {
   CmdSaveInner(scr, params, msg, true, false);
   return false;
 }
 
-static bool CmdFile(ScreenPtr scr, char *params, char *msg) {
+static int CmdFile(ScreenPtr scr, char *params, char *msg) {
   CmdSaveInner(scr, params, msg, false, true);
   return false;
 }
 
-static bool CmdFFile(ScreenPtr scr, char *params, char *msg) {
+static int CmdFFile(ScreenPtr scr, char *params, char *msg) {
   CmdSaveInner(scr, params, msg, true, true);
   return false;
 }
 
-static bool CmdQuit(ScreenPtr scr, char *params, char *msg) {
+static int CmdQuit(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   bool isModified = getModified(scr->ed);
   if (isModified) {
@@ -571,7 +571,7 @@ static bool CmdQuit(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdQQuit(ScreenPtr scr, char *params, char *msg) {
+static int CmdQQuit(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   if (isAbbrev(params, "ALL")) {
     params = getCmdParam(params);
@@ -583,7 +583,7 @@ static bool CmdQQuit(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdEditFile(ScreenPtr scr, char *params, char *msg) {
+static int CmdEditFile(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
 
   char fn[9];
@@ -612,27 +612,27 @@ static bool CmdEditFile(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdRingNext(ScreenPtr scr, char *params, char *msg) {
+static int CmdRingNext(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   switchToEditor(scr, getNextEd(scr->ed));
   checkNoParams(params, msg);
   return false;
 }
 
-static bool CmdRingPrev(ScreenPtr scr, char *params, char *msg) {
+static int CmdRingPrev(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   switchToEditor(scr, getPrevEd(scr->ed));
   checkNoParams(params, msg);
   return false;
 }
 
-static bool CmdExit(ScreenPtr scr, char *params, char *msg) {
+static int CmdExit(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   checkNoParams(params, msg);
   return closeAllFiles(scr, true, msg);
 }
 
-static bool CmdCase(ScreenPtr scr, char *params, char *msg) {
+static int CmdCase(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   bool paramErr = true;
   if (params && params[1] == '\0') {
@@ -660,13 +660,13 @@ static bool CmdCase(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdReset(ScreenPtr scr, char *params, char *msg) {
+static int CmdReset(ScreenPtr scr, char *params, char *msg) {
   checkNoParams(params, msg);
   /* do nothing, as RESET is handled as part of prefix handling */
   return false;
 }
 
-static bool CmdCmdline(ScreenPtr scr, char *params, char *msg) {
+static int CmdCmdline(ScreenPtr scr, char *params, char *msg) {
   if (isAbbrev(params, "TOP")) {
     scr->cmdLinePos = -1;
   } else if (isAbbrev(params, "BOTtom")) {
@@ -680,7 +680,7 @@ static bool CmdCmdline(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdMsglines(ScreenPtr scr, char *params, char *msg) {
+static int CmdMsglines(ScreenPtr scr, char *params, char *msg) {
   if (isAbbrev(params, "TOP")) {
     scr->msgLinePos = -1;
   } else if (isAbbrev(params, "BOTtom")) {
@@ -694,7 +694,7 @@ static bool CmdMsglines(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdPrefix(ScreenPtr scr, char *params, char *msg) {
+static int CmdPrefix(ScreenPtr scr, char *params, char *msg) {
   bool forFsList = false;
   if (isAbbrev(params, "FSLIST")) {
     forFsList = true;
@@ -721,7 +721,7 @@ static bool CmdPrefix(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdNumbers(ScreenPtr scr, char *params, char *msg) {
+static int CmdNumbers(ScreenPtr scr, char *params, char *msg) {
   if (isAbbrev(params, "ON")) {
     scr->prefixNumbered = true;
   } else if (isAbbrev(params, "OFf")) {
@@ -735,7 +735,7 @@ static bool CmdNumbers(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdCurrline(ScreenPtr scr, char *params, char *msg) {
+static int CmdCurrline(ScreenPtr scr, char *params, char *msg) {
   if (isAbbrev(params, "TOp")) {
     scr->currLinePos = 0;
   } else if (isAbbrev(params, "MIddle")) {
@@ -749,7 +749,7 @@ static bool CmdCurrline(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdScale(ScreenPtr scr, char *params, char *msg) {
+static int CmdScale(ScreenPtr scr, char *params, char *msg) {
   if (isAbbrev(params, "OFf")) {
     scr->scaleLinePos = 0;
   } else if (isAbbrev(params, "TOp")) {
@@ -767,7 +767,7 @@ static bool CmdScale(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdInfolines(ScreenPtr scr, char *params, char *msg) {
+static int CmdInfolines(ScreenPtr scr, char *params, char *msg) {
   bool forFsList = false;
   bool forFsView = false;
   bool forFsHelp = false;
@@ -831,7 +831,7 @@ static bool CmdInfolines(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdNulls(ScreenPtr scr, char *params, char *msg) {
+static int CmdNulls(ScreenPtr scr, char *params, char *msg) {
   if (isAbbrev(params, "OFf")) {
     scr->lineEndBlankFill = true;
   } else if (isAbbrev(params, "ON")) {
@@ -852,7 +852,7 @@ static char *locNames[] = {
     };
 
 
-static bool CmdLocate(ScreenPtr scr, char *params, char *msg) {
+static int CmdLocate(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   EditorPtr ed = scr->ed;
   LinePtr oldCurrentLine = getCurrentLine(ed);
@@ -927,7 +927,7 @@ static bool CmdLocate(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdSearchNext(ScreenPtr scr, char *params, char *msg) {
+static int CmdSearchNext(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   EditorPtr ed = scr->ed;
   if (!*searchPattern) {
@@ -946,13 +946,13 @@ static bool CmdSearchNext(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdReverseSearchNext(ScreenPtr scr, char *params, char *msg) {
+static int CmdReverseSearchNext(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   searchUp = !searchUp;
   return CmdSearchNext(scr, params, msg);
 }
 
-static bool CmdMark(ScreenPtr scr, char *params, char *msg) {
+static int CmdMark(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   bool clear = false;
   bool paramsOk = false;
@@ -984,7 +984,7 @@ static bool CmdMark(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdChange(ScreenPtr scr, char *params, char *msg) {
+static int CmdChange(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   char *fromText;
   int fromTextLen;
@@ -1108,7 +1108,7 @@ static bool CmdChange(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdSplitjoin(ScreenPtr scr, char *params, char *msg) {
+static int CmdSplitjoin(ScreenPtr scr, char *params, char *msg) {
   EditorPtr ed = scr->ed;
   if (!ed) { return false; }
   if (scr->cElemType != 2) {
@@ -1158,7 +1158,7 @@ static bool CmdSplitjoin(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdPf(ScreenPtr scr, char *params, char *msg) {
+static int CmdPf(ScreenPtr scr, char *params, char *msg) {
   int pfNo = -1;
   bool clear = false;
   bool forFsList = false;
@@ -1226,7 +1226,7 @@ static bool CmdPf(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdAttr(ScreenPtr scr, char *params, char *msg) {
+static int CmdAttr(ScreenPtr scr, char *params, char *msg) {
   char *whatName = params;
   char whatTokenLen = getToken(params, ' ');
   if (whatTokenLen == 0) {
@@ -1291,7 +1291,7 @@ static bool CmdAttr(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdRecfm(ScreenPtr scr, char *params, char *msg) {
+static int CmdRecfm(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   char recfm;
   if (isAbbrev(params, "V")) {
@@ -1311,7 +1311,7 @@ static bool CmdRecfm(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdLrecl(ScreenPtr scr, char *params, char *msg) {
+static int CmdLrecl(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   int lrecl;
   if (tryParseInt(params, &lrecl)) {
@@ -1325,7 +1325,7 @@ static bool CmdLrecl(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdWorkLrecl(ScreenPtr scr, char *params, char *msg) {
+static int CmdWorkLrecl(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   int lrecl;
   if (tryParseInt(params, &lrecl)) {
@@ -1338,7 +1338,7 @@ static bool CmdWorkLrecl(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdUnbinary(ScreenPtr scr, char *params, char *msg) {
+static int CmdUnbinary(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   if (resetIsBinary(scr->ed)) {
     strcpy(msg,
@@ -1348,7 +1348,7 @@ static bool CmdUnbinary(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdFtDefaults(ScreenPtr scr, char *params, char *msg) {
+static int CmdFtDefaults(ScreenPtr scr, char *params, char *msg) {
   char ft[9];
   char recfm;
   char caseMode;
@@ -1412,7 +1412,7 @@ static bool CmdFtDefaults(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdGapFill(ScreenPtr scr, char *params, char *msg) {
+static int CmdGapFill(ScreenPtr scr, char *params, char *msg) {
   char fillChar;
   if (isAbbrev(params, "NONE")) {
     fillChar = (char)0x00;
@@ -1442,7 +1442,7 @@ static CmdDef allowedCmsCommands[] = {
   {"SET", NULL},    {"STATEw", NULL},   {"TAPE", NULL},    {"Type", NULL}
 };
 
-static bool CmdCms(ScreenPtr scr, char *params, char *msg) {
+static int CmdCms(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   if (!params || !*params) {
     int rc = CMScommand("SUBSET", CMS_CONSOLE);
@@ -1545,7 +1545,7 @@ static bool getLineRange(
   return (fromLine != NULL && toLine != NULL);
 }
 
-static bool CmdPutInner(
+static int CmdPutInner(
     ScreenPtr scr,
     char *params,
     char *msg,
@@ -1596,23 +1596,23 @@ static bool CmdPutInner(
   return false;
 }
 
-static bool CmdPut(ScreenPtr scr, char *params, char *msg) {
+static int CmdPut(ScreenPtr scr, char *params, char *msg) {
   return CmdPutInner(scr, params, msg, false, false);
 }
 
-static bool CmdPPut(ScreenPtr scr, char *params, char *msg) {
+static int CmdPPut(ScreenPtr scr, char *params, char *msg) {
   return CmdPutInner(scr, params, msg, true, false);
 }
 
-static bool CmdPutD(ScreenPtr scr, char *params, char *msg) {
+static int CmdPutD(ScreenPtr scr, char *params, char *msg) {
   return CmdPutInner(scr, params, msg, false, true);
 }
 
-static bool CmdPPutD(ScreenPtr scr, char *params, char *msg) {
+static int CmdPPutD(ScreenPtr scr, char *params, char *msg) {
   return CmdPutInner(scr, params, msg, true, true);
 }
 
-static bool CmdGetInner(
+static int CmdGetInner(
     ScreenPtr scr,
     char *params,
     char *msg,
@@ -1656,15 +1656,15 @@ static bool CmdGetInner(
   return false;
 }
 
-static bool CmdGet(ScreenPtr scr, char *params, char *msg) {
+static int CmdGet(ScreenPtr scr, char *params, char *msg) {
   return CmdGetInner(scr, params, msg, false);
 }
 
-static bool CmdGetD(ScreenPtr scr, char *params, char *msg) {
+static int CmdGetD(ScreenPtr scr, char *params, char *msg) {
   return CmdGetInner(scr, params, msg, true);
 }
 
-static bool CmdDelete(ScreenPtr scr, char *params, char *msg) {
+static int CmdDelete(ScreenPtr scr, char *params, char *msg) {
   int lineCount = 1;
 
   int tokLen = getToken(params, ' ');
@@ -1733,7 +1733,7 @@ static bool /*valid?*/ parseShiftMode(
 }
 
 /* SHIFTCONFig mode [shiftBy] */
-static bool CmdShiftConfig(ScreenPtr scr, char *params, char *msg) {
+static int CmdShiftConfig(ScreenPtr scr, char *params, char *msg) {
   parseShiftMode(params, &shiftMode, msg, true);
   params = getCmdParam(params);
   int defaultBy = shiftBy;
@@ -1750,7 +1750,7 @@ static bool CmdShiftConfig(ScreenPtr scr, char *params, char *msg) {
 }
 
 /* SHift [<by>] Left|Right [<count>|:<line>|.<mark>] [mode] */
-static bool CmdShift(ScreenPtr scr, char *params, char *msg) {
+static int CmdShift(ScreenPtr scr, char *params, char *msg) {
   EditorPtr ed = scr->ed;
   if (!ed) { return false; }
   int by = shiftBy;
@@ -1832,7 +1832,7 @@ static bool CmdShift(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdFSList(ScreenPtr scr, char *params, char *msg) {
+static int CmdFSList(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
 
   char fn[9];
@@ -1876,7 +1876,7 @@ static bool CmdFSList(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdTabBackward(ScreenPtr scr, char *params, char *msg) {
+static int CmdTabBackward(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   if (scr->cElemType == 2) {
     int oldOffset = scr->cElemOffset;
@@ -1899,7 +1899,7 @@ static bool CmdTabBackward(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdTabForward(ScreenPtr scr, char *params, char *msg) {
+static int CmdTabForward(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   if (scr->cElemType == 2) {
     int oldOffset = scr->cElemOffset;
@@ -1983,7 +1983,7 @@ static bool parseTabs(char *params, int *tabs, int *count) {
   return someIgnored;
 }
 
-static bool CmdTabs(ScreenPtr scr, char *params, char *msg) {
+static int CmdTabs(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   int tabs[MAX_TAB_COUNT];
   int tabCount;
@@ -2001,7 +2001,7 @@ static bool CmdTabs(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdFtTabs(ScreenPtr scr, char *params, char *msg) {
+static int CmdFtTabs(ScreenPtr scr, char *params, char *msg) {
   char ft[9];
   char recfm;
   char caseMode;
@@ -2032,7 +2032,7 @@ static bool CmdFtTabs(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdHelp(ScreenPtr scr, char *params, char *msg) {
+static int CmdHelp(ScreenPtr scr, char *params, char *msg) {
   checkNoParams(params, msg);
   doHelp("$EE", msg);
   return false;
@@ -2045,7 +2045,7 @@ typedef struct _lockblock {
 
 static LockBlockPtr lockedMem = NULL;
 
-static bool CmdMemLock(ScreenPtr scr, char *params, char *msg) {
+static int CmdMemLock(ScreenPtr scr, char *params, char *msg) {
   int count = 0;
   LockBlockPtr block = (LockBlockPtr)allocMem(sizeof(LockBlock));
   while(block) {
@@ -2059,7 +2059,7 @@ static bool CmdMemLock(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static bool CmdMemUnLock(ScreenPtr scr, char *params, char *msg) {
+static int CmdMemUnLock(ScreenPtr scr, char *params, char *msg) {
   int count = 0;
   while(lockedMem) {
     count++;
@@ -2171,7 +2171,7 @@ void setPF(int pfNo, char *cmdline) {
   }
 }
 
-bool execCmd(
+int execCmd(
     ScreenPtr scr,
     char *cmd,
     char *msg,
@@ -2223,7 +2223,7 @@ bool execCmd(
   }
   while(*params && *params == ' ') { params++; }
 
-  bool result;
+  int result;
   _try {
     result = (*impl)(scr, params, msg);
   } _catchall() {
@@ -2238,7 +2238,7 @@ char* gPfCmd(char aidCode) {
   return pfCmds[idx];
 }
 
-bool tryExPf(ScreenPtr scr, char aidCode, char *msg) {
+int tryExPf(ScreenPtr scr, char aidCode, char *msg) {
   int idx = aidPfIndex(aidCode);
   if (idx < 1 || idx > 24) { return false; }
   char *pfCmd = pfCmds[idx];
@@ -2266,7 +2266,7 @@ void unrHist() {
   moveToBOF(commandHistory);
 }
 
-static bool handleProfileLine(void *userdata, char *cmdline, char *msg) {
+static int handleProfileLine(void *userdata, char *cmdline, char *msg) {
   ScreenPtr scr = (ScreenPtr)userdata;
   return execCmd(scr, cmdline, msg, false);
 }
@@ -2276,7 +2276,7 @@ bool exCmdFil(ScreenPtr scr, char *fn, int *rc) {
 }
 
 #if 0
-bool exCmdFil(ScreenPtr scr, char *fn, int *rc) {
+int exCmdFil(ScreenPtr scr, char *fn, int *rc) {
   char buffer[256];
   char msg[512];
   char fspec[32];
@@ -2353,7 +2353,7 @@ bool exCmdFil(ScreenPtr scr, char *fn, int *rc) {
 ** rescue line mode
 */
 
-static bool RescueRingList(ScreenPtr scr, char *params, char *msg) {
+static int RescueRingList(ScreenPtr scr, char *params, char *msg) {
   EditorPtr ed = scr->ed;
 
   if (ed == NULL) {

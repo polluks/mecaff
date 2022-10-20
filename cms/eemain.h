@@ -21,7 +21,7 @@
 #define _EEMMAINimported
 
 /* the version information for the tools, displayed in header/footer lines */
-#define VERSION "V1.2.5a72" /* https://github.com/s390guy/vm370/issues/72 fixed */
+#define VERSION "V1.3.0_201336" /* branch AGPLv3_WIP */
 
 /*
 ** -- user interface
@@ -194,7 +194,7 @@ extern void setPF(int pfNo, char *cmdline);
    If 'addToHistory' is true, the the command line is added to the history.
    Returns if we are done with the file.
 */
-extern bool execCmd(
+extern int execCmd(
     ScreenPtr scr,
     char *cmd,
     char *msg,
@@ -214,7 +214,7 @@ extern char* gPfCmd(char aidCode);
 /* execute the command associated with the PF key identified by 'aidCode', if
    a command is bound.
 */
-extern bool tryExPf(ScreenPtr scr, char aidCode, char *msg);
+extern int tryExPf(ScreenPtr scr, char aidCode, char *msg);
 #define tryExecPf(scr, aidCode, msg) \
   tryExPf(scr, aidCode, msg)
 
