@@ -2320,6 +2320,88 @@ static int CmdQuery(ScreenPtr scr, char *params, char *msg) {
   return CmdSqmetDispatch(scr, 'Q', params, msg);
 }
 
+static int CmdRingList(ScreenPtr scr, char *params, char *msg) {
+  if (getToken(params, ' ')) {
+    CmdRingNext(scr, params, msg);
+    /* CmdCmsg(scr, "RR 1", msg); */
+  }
+
+  EditorPtr ed = scr->ed;
+
+  if (ed == NULL) {
+    printf("No open files in EE, terminating...\n");
+    return true;
+  }
+
+  EditorPtr guardEd = ed;
+  char fn[9];
+  char ft[9];
+  char fm[3];
+  char *currMarker = "12345";
+  int  counter = 0;
+  unsigned int *lineCount;
+  unsigned int *currLineNo;
+
+  if (*msg) sprintf(msg, "%s\n", msg);
+
+  /* checkNoParams(params, msg); */
+  sprintf(currMarker, "====>");
+  sprintf(msg, "%s%5d FileName FileType FM Format   Size  Line Col         %d file(s) in ring ", msg, fileCount, fileCount);
+  while(true) {
+    getFnFtFm(ed, fn, ft, fm);
+    getLineInfo(ed, &lineCount, &currLineNo);
+    sprintf(msg, "%s\n%s %-8s %-8s %-2s %c %4d %6d%6d   0   %s%s%s",
+      msg,
+      currMarker,
+      fn, ft, fm,
+      getRecfm(ed),
+      getFileLrecl(ed),
+      lineCount,
+      currLineNo,
+      (isInternalEE(ed)) ? "*INTERNAL*, " : "",
+      (getModified(ed)) ? "* * * Modified * * *    " : "Unchanged",
+      (isBinary(ed)) ? ", Binary" : "");
+    ed = getNextEd(ed);
+    if (ed == guardEd) { break; }
+    sprintf(currMarker, "%5d", ++counter);
+  }
+  return false;
+}
+
+
+static int CmdCancel(ScreenPtr scr, char *params, char *msg) {
+  EditorPtr ed = scr->ed;
+
+  if (ed == NULL) {
+    printf("No open files in EE, terminating...\n");
+    return true;
+  }
+
+  EditorPtr guardEd = ed;
+  EditorPtr modified = NULL;
+
+  checkNoParams(params, msg);
+  while(true) {
+    if (getModified(ed) && !isInternalEE(ed)) {
+      if (modified == NULL) { modified = ed; }
+
+      if (ed != guardEd) {
+        switchToEditor(scr, ed);
+        return CmdRingList(scr, params, msg);
+      }
+    }
+    ed = getNextEd(ed);
+    if (ed == guardEd) {
+      if (modified == NULL) {
+        return closeAllFiles(scr, true, msg);
+      } else {
+        return CmdRingList(scr, params, msg);
+      }
+    }
+  }
+  return false;
+}
+
 typedef struct _mycmddef {
   char *commandName;
   CmdImpl impl;
@@ -2443,10 +2525,13 @@ static MyCmdDef eeCmds[] = {
   {"RESet"                   , &CmdReset                            },
   {"REVSEArchnext"           , &CmdReverseSearchNext                },
   {"RING"                    , &CmdImpSet                           },
+  {"RINGList"                , &CmdRingList                         },
   {"RINGNext"                , &CmdRingNext                         },
   {"RINGPrev"                , &CmdRingPrev                         },
+  {"RList"                   , &CmdRingList                         },
   {"RN"                      , &CmdRingNext                         },
   {"RP"                      , &CmdRingPrev                         },
+  {"Rr"                      , &CmdRingList                         },
   {"RSEArchnext"             , &CmdReverseSearchNext                },
   {"SAVe"                    , &CmdSave                             },
   {"SCALe"                   , &CmdImpSet                           },
