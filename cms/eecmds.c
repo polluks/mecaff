@@ -650,6 +650,13 @@ static int CmdRingPrev(ScreenPtr scr, char *params, char *msg) {
 static int CmdEditFile(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
 
+  if ((params[0] == '-') && (params[1] == '\0')) {
+    return CmdRingPrev(scr, ++params, msg);  /* behave like KEDIT   */
+  }
+  if ((params[0] == '+') && (params[1] == '\0')) {
+    return CmdRingNext(scr, ++params, msg);
+  }
+
   char fn[9];
   char ft[9];
   char fm[3];
@@ -662,8 +669,8 @@ static int CmdEditFile(ScreenPtr scr, char *params, char *msg) {
     return false;
   }
   if (!fFound) {
-    strcpy(msg, "No file specified");
-    return false;
+    /* strcpy(msg, "No file specified"); */
+    return CmdRingNext(scr, params, msg);  /* behave like XEDIT, KEDIT   */
   }
 
   int state;
@@ -2343,7 +2350,7 @@ static MyCmdDef eeCmds[] = {
   {"CURSor"                  , &CmdImpSet                           },
   {"DELete"                  , &CmdDelete                           },
   {"DISPlay"                 , &CmdImpSet                           },
-  {"EEdit"                   , &CmdEditFile                         },
+  {"Eedit"                   , &CmdEditFile                         },
   {"EFMode"                  , &CmdImpSet                           },
   {"EFName"                  , &CmdImpSet                           },
   {"EFType"                  , &CmdImpSet                           },
@@ -2376,6 +2383,7 @@ static MyCmdDef eeCmds[] = {
   {"INFOLines"               , &CmdInfolines                        },
   {"INPmode"                 , &CmdImpSet                           },
   {"Input"                   , &CmdInput                            },
+  {"Kedit"                   , &CmdEditFile                         },
   {"LASTLorc"                , &CmdImpSet                           },
   {"LASTmsg"                 , &CmdImpSet                           },
   {"LENgth"                  , &CmdImpSet                           },
@@ -2470,6 +2478,7 @@ static MyCmdDef eeCmds[] = {
   {"TARGet"                  , &CmdImpSet                           },
   {"TERMinal"                , &CmdImpSet                           },
   {"TEXT"                    , &CmdImpSet                           },
+  {"Thedit"                  , &CmdEditFile                         },
   {"TOF"                     , &CmdImpSet                           },
   {"TOFEOF"                  , &CmdImpSet                           },
   {"TOL"                     , &CmdImpSet                           },
@@ -2489,6 +2498,7 @@ static MyCmdDef eeCmds[] = {
   {"WINdow"                  , &CmdImpSet                           },
   {"WORKLrecl"               , &CmdWorkLrecl                        },
   {"WRap"                    , &CmdImpSet                           },
+  {"Xedit"                   , &CmdEditFile                         },
   {"Zone"                    , &CmdImpSet                           }
 };
 
