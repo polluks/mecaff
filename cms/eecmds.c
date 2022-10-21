@@ -2508,8 +2508,11 @@ static MyCmdDef eeCmds[] = {
   {"BASEft"                  , &CmdImpSet                           },
   {"BOTtom"                  , &CmdBottom                           },
   {"BRKkey"                  , &CmdImpSet                           },
+  {"CANcel"                  , &CmdCancel                           },
   {"CASe"                    , &CmdImpSet                           },
   {"CASEOLD"                 , &CmdCaseold                          },
+  {"CC"                      , &CmdCancel                           },
+  {"CCCC"                    , &CmdExit                             },
   {"Change"                  , &CmdChange                           },
   {"CMDLine"                 , &CmdCmdline                          },
 /*{"CMDline"                 , &CmdImpSet                           },*/
