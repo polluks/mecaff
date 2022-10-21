@@ -960,6 +960,8 @@ static int countMsgLines(
     lineLengths[i] = 0;
   }
 
+  /* if no msg => no empty line : assume SET MSGLINE ... OVERLAY */
+  if (!msg || !*msg) { return 0; }
   /* if no msg => one empty line */
   if (!msg || !*msg) { return lineCount; }
 
