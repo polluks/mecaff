@@ -117,7 +117,7 @@ static char colorsFor3270[16] = {
 /* some UI text constants */
 static char *cmdArrow = "===>";
 static char *topOfFileText = "* * * Top of file * * *";
-static char *bottomOfFileText = "* * * Bottom of file * * *";
+static char *bottomOfFileText = "* * * End of file * * *";
 static char *prefixLocked = ".....";
 
 #ifdef _NOCMS
