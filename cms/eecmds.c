@@ -42,6 +42,7 @@ static const char *_FILE_NAME_ = "eecmds.c";
 
 /* forward declarations */
 static bool parseTabs(char *params, int *tabs, int *count);
+static bool isInternalEE(EditorPtr ed);
 
 /*
 ** ****** global screen data
@@ -52,6 +53,7 @@ static EditorPtr commandHistory;   /* eecore-editor with the command history */
 
 static EditorPtr filetypeDefaults; /* eecore-editor with the ft-defaults */
 static EditorPtr filetypeTabs;     /* eecore-editor with the ft-default-tabs */
+static EditorPtr macroLibrary;     /* eecore-editor with the macro library */
 
 static char pfCmds[25][CMDLINELENGTH+1]; /* the PF key commands */
 
@@ -336,6 +338,11 @@ void openFile(
 static int closeFile(ScreenPtr scr, char *msg) {
   EditorPtr ed = scr->ed;
   if (!ed) { return true; }
+
+    if (isInternalEE(ed)) {
+      sprintf(msg, "Cannot close internal file HISTORY/DEFAULT/TABS/MACROS");
+      return false;
+    }
   EditorPtr nextEd = getNextEd(ed);
   freeEditor(ed);
   fileCount--;
@@ -353,7 +360,7 @@ static int closeAllFiles(ScreenPtr scr, bool saveModified, char *msg) {
   while(fileCount > 0) {
     EditorPtr nextEd = getNextEd(ed);
 
-    if (getModified(ed) && saveModified) {
+    if (getModified(ed) && saveModified && !isInternalEE(ed)) {
       char myMsg[120];
       int result = saveFile(ed, myMsg);
       if (result != 0) {
@@ -363,8 +370,13 @@ static int closeAllFiles(ScreenPtr scr, bool saveModified, char *msg) {
       }
     }
 
-    freeEditor(ed);
-    fileCount--;
+    if (!isInternalEE(ed)) {
+      freeEditor(ed);
+      fileCount--;
+    } else {
+      /* detachEditor(ed); */     /* DEBUG */
+      fileCount--;                /* DEBUG */
+    }
     ed = nextEd;
   }
   scr->ed = NULL;
@@ -2456,20 +2468,61 @@ static MyCmdDef eeCmds[] = {
   {"Zone"                    , &CmdImpSet                           }
 };
 
-void initCmds() {
+
+
+
+/*
+extern EditorPtr mkEdFil(
+    EditorPtr prevEd,
+    char *fn,
+    char *ft,
+    char *fm,
+    int defaultLrecl,
+    char defaultRecfm,
+    int *state, / * 0=OK, 1=FileNotFound, 2=ReadError, 3=OtherError * /
+    char *msg);
+*#define createEditorForFile( \
+    prevEd, fn, ft, fm, defLrecl, defRecfm, state, msg) \
+  mkEdFil(prevEd, fn, ft, fm, defLrecl, defRecfm, state, msg)
+*/
+EditorPtr initCmds() {
+  char *_dummy_msg[4096];
+  int  _dummy_state;
   memset(pfCmds, '\0', sizeof(pfCmds));
+
+  commandHistory   = createEditorForFile(NULL,                        "HISTORY ", "EE$INTRN", "A0", CMDLINELENGTH + 2, 'V', &_dummy_state, _dummy_msg);
+  fileCount++;
+  filetypeDefaults = createEditorForFile(getPrevEd(commandHistory),   "DEFAULTS", "EE$INTRN", "A0", 24,                'F', &_dummy_state, _dummy_msg);
+  fileCount++;
+  filetypeTabs     = createEditorForFile(getPrevEd(filetypeDefaults), "TABS    ", "EE$INTRN", "A0", 80,                'F', &_dummy_state, _dummy_msg);
+  fileCount++;
+  macroLibrary     = createEditorForFile(getPrevEd(filetypeTabs),     "MACROS  ", "EE$INTRN", "A0", 255,               'V', &_dummy_state, _dummy_msg);
+  fileCount++;
+/*
   commandHistory = createEditor(NULL, CMDLINELENGTH + 2, 'V');
   filetypeDefaults = createEditor(NULL, 24, 'F');
   filetypeTabs = createEditor(NULL, 80, 'F');
+*/
 
   searchPattern[0] = '\0';
   searchUp = false;
+  return macroLibrary;
+}
+
+
+bool isInternalEE(EditorPtr ed) {
+  if (ed == commandHistory    ) return true;
+  if (ed == filetypeDefaults  ) return true;
+  if (ed == filetypeTabs      ) return true;
+  if (ed == macroLibrary      ) return true;
+  return false;
 }
 
 void deinCmds() {
   freeEditor(commandHistory);
   freeEditor(filetypeDefaults);
   freeEditor(filetypeTabs);
+  freeEditor(macroLibrary);
 }
 
 void setPF(int pfNo, char *cmdline) {

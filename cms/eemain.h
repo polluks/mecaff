@@ -21,7 +21,7 @@
 #define _EEMMAINimported
 
 /* the version information for the tools, displayed in header/footer lines */
-#define VERSION "V1.3.0_202319" /* branch AGPLv3_WIP */
+#define VERSION "V1.3.0_1020-0610" /* branch AGPLv3_WIP */
 
 /*
 ** -- user interface
@@ -160,7 +160,7 @@ extern void addPrMsg(ScreenPtr scr);
 
 /* initialize the command processor for EE
 */
-extern void initCmds();
+extern EditorPtr initCmds();
 
 
 /* deinitialize the command processor for EE
