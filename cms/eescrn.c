@@ -1189,15 +1189,16 @@ static void writeFileLine(
 
   lineInfo->edLine = line;
   lineInfo->edLineNo = lineNo;
+  unsigned char attr = (isCurrentLine) ? pub->attrCurrLine : pub->attrPrefix;
 
   /* prefix before file line text ? */
   if (pub->prefixMode == 1) {
-    startField(pub->attrPrefix, pub->prefixReadOnly || isLocked, false);
+    startField(attr, pub->prefixReadOnly || isLocked, false);
     writePrefix(pub, priv, lineInfo, lineNo, pfixPrefill);
   }
 
   /* start the file line text and remember position of input field */
-  unsigned char attr = (isCurrentLine) ? pub->attrCurrLine : pub->attrFile;
+  attr = (isCurrentLine) ? pub->attrCurrLine : pub->attrFile;
   if (isSelected) { attr = pub->attrSelectedLine; }
   startField(
     attr,
@@ -1289,8 +1290,9 @@ static void writeFileLine(
 
   /* prefix after file line text ? */
   if (pub->prefixMode > 1) {
+    attr = (isCurrentLine) ? pub->attrCurrLine : pub->attrPrefix;
     SBA(endRow, lastLineCol);
-    startField(pub->attrPrefix, pub->prefixReadOnly || isLocked, false);
+    startField(attr, pub->prefixReadOnly || isLocked, false);
     writePrefix(pub, priv, lineInfo, lineNo, pfixPrefill);
   }
 }
