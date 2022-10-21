@@ -2360,7 +2360,7 @@ static MyCmdDef eeCmds[] = {
   {"LIne"                    , &CmdImpSet                           },
   {"LINENd"                  , &CmdImpSet                           },
   {"Locate"                  , &CmdLocate                           },
-  {"LRecl"                   , &CmdImpSet                           },
+/*{"LRecl"                   , &CmdImpSet                           },*/
   {"LRECL"                   , &CmdLrecl                            },
   {"LScreen"                 , &CmdImpSet                           },
 /*{"MACRO"                   , &CmdImpSet                           },*/
@@ -2387,7 +2387,7 @@ static MyCmdDef eeCmds[] = {
   {"PA"                      , &CmdImpSet                           },
   {"PACK"                    , &CmdImpSet                           },
   {"PENDing"                 , &CmdImpSet                           },
-  {"PF"                      , &CmdImpSet                           },
+/*{"PF"                      , &CmdImpSet                           },*/
   {"PF"                      , &CmdPf                               },
   {"PGDOwn"                  , &CmdPgDown                           },
   {"PGUP"                    , &CmdPgUp                             },
@@ -2395,7 +2395,7 @@ static MyCmdDef eeCmds[] = {
   {"Point"                   , &CmdImpSet                           },
   {"PPUT"                    , &CmdPPut                             },
   {"PPUTD"                   , &CmdPPutD                            },
-  {"PREfix"                  , &CmdImpSet                           },
+/*{"PREfix"                  , &CmdImpSet                           },*/
   {"PREFIX"                  , &CmdPrefix                           },
   {"Previous"                , &CmdPrevious                         },
   {"PUT"                     , &CmdPut                              },
@@ -2404,7 +2404,7 @@ static MyCmdDef eeCmds[] = {
   {"Query"                   , &CmdQuery                            },
   {"QUIt"                    , &CmdQuit                             },
   {"RANge"                   , &CmdImpSet                           },
-  {"RECFm"                   , &CmdImpSet                           },
+/*{"RECFm"                   , &CmdImpSet                           },*/
   {"RECFM"                   , &CmdRecfm                            },
   {"REMOte"                  , &CmdImpSet                           },
   {"RESERved"                , &CmdImpSet                           },
