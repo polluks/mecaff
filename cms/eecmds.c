@@ -197,7 +197,11 @@ static const char* FNFT_ALLOWED
     = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$+-_";
 
 static const char* FM1_ALLOWED = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-static const char* FM2_ALLOWED = "0123456789";
+static const char* FM2_ALLOWED = "012345"; /* was "0123456789" */
+/* VM/370 and VM/SP allow the file mode number from 0 to 5.
+   see SC19-6204-1 IBM Virtual Machine/System Product: System Messages and Codes
+   048E INVALID MODE 'mode'
+   The mode number, if specified, is not between 0 and 5    */
 
 /* return first char of 'cand' not in 'allowed' or NULL if all were found */
 static char* strchk(char *cand, const char *allowed) {
