@@ -693,7 +693,7 @@ static int CmdExit(ScreenPtr scr, char *params, char *msg) {
   return closeAllFiles(scr, true, msg);
 }
 
-static int CmdCase(ScreenPtr scr, char *params, char *msg) {
+static int CmdCaseold(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   bool paramErr = true;
   if (params && params[1] == '\0') {
@@ -2133,6 +2133,93 @@ static int CmdMemUnLock(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
+
+
+static int CmdSqmetCase(ScreenPtr scr, char sqmet, char *params, char *msg) {
+  char case_um = '?';
+  char case_ir = '?';
+
+ if (sqmet == 'S') {
+  params =  getCmdParam(params);   /* skip 'CASE' */
+  char whatTokenLen = getToken(params, ' ');
+  if (whatTokenLen == 0) {
+    strcpy(msg, "Missing operand for SET CASE: 'Upper' or 'Mixed' expected");
+    return false;
+  }
+  if (isAbbrev(params, "Upper")) {
+    case_um = 'U';
+  } else if (isAbbrev(params, "Mixed")) {
+    case_um = 'M';
+  } else if (isAbbrev(params, "Ignore")) {
+    case_um = 'M';
+    case_ir = 'I';
+  } else if (isAbbrev(params, "Respect")) {
+    case_um = 'M';
+    case_ir = 'R';
+  } else {
+    strcpy(msg, "Invalid operand for SET CASE: 'Upper' or 'Mixed' expected");
+    return false;
+  }
+
+  params =  getCmdParam(params);   /* skip 'Upper/Mixed' */
+  whatTokenLen = getToken(params, ' ');
+  if (whatTokenLen == 0) {
+    ;
+  } else if (isAbbrev(params, "Ignore")) {
+    case_ir = 'I';
+  } else if (isAbbrev(params, "Respect")) {
+    case_ir = 'R';
+  } else {
+    strcpy(msg, "Invalid operand for SET CASE: 'Ignore' or 'Respect' expected");
+    return false;
+  }
+
+
+  params =  getCmdParam(params);   /* skip 'Respect/Ignore' */
+  whatTokenLen = getToken(params, ' ');
+  if (whatTokenLen != 0) {
+    sprintf(msg, "KEDIT compatibility not implemented, too many operands for SET CASE: %s", params);
+    return false;
+  }
+
+  if (!scr->ed) { return false; }
+
+  if (case_um == 'U') { setCaseMode(scr->ed, true ); }
+  if (case_um == 'M') { setCaseMode(scr->ed, false); }
+
+
+  if (case_ir == 'R') { setCaseRespect(scr->ed, true ); }
+  if (case_ir == 'I') { setCaseRespect(scr->ed, false); }
+ }
+  case_um = '?';
+  case_ir = '?';
+
+  if (edGcase(scr->ed))  { case_um = 'U'; }  else { case_um = 'M'; }
+  if (edGcasR(scr->ed))  { case_ir = 'R'; }  else { case_ir = 'I'; }
+
+    if (sqmet == 'Q') sprintf(msg, "CASE %c %c", case_um, case_ir);
+    if (sqmet == 'T') sprintf(msg, "&STACK FIFO SET CASE %c %c", case_um, case_ir);
+    if (sqmet == 'M') {
+       sprintf(msg, "SET CASE %c %c", case_um, case_ir);
+       scr->cmdLinePrefill = msg;
+       /* sprintf(msg, ""); */
+    }
+
+    if (sqmet == 'E') {
+      strcpy(msg, "case.0 = 2");
+      if (case_um == 'U') sprintf(msg, "%s\ncase.1 = UPPER", msg)    ;
+      if (case_um == 'M') sprintf(msg, "%s\ncase.1 = MIXED", msg)    ;
+      if (case_ir == 'I') sprintf(msg, "%s\ncase.2 = IGNORE", msg)   ;
+      if (case_ir == 'R') sprintf(msg, "%s\ncase.2 = RESPECT", msg)  ;
+    }
+
+
+
+
+    return 0*_rc_success;
+}
+
+
 static int CmdSqmetNYI(ScreenPtr scr, char sqmet, char *params, char *msg) {
     sprintf(msg, "%s\nSET/QUERY/MODIFY/EXTRACT/TRANSFER subcommand not yet implemented:  * * * Work In Progress * * *\n%s", msg, params);
     return 0*_rc_failure;
@@ -2147,7 +2234,7 @@ static MySqmetDef sqmetCmds[] = {
   {"AUtosave"                , "sqmet" , &CmdSqmetNYI               },
   {"BASEft"                  , "sqmet" , &CmdSqmetNYI               },
   {"BRKkey"                  , "sqmet" , &CmdSqmetNYI               },
-  {"CASE"                    , "SQMET" , &CmdSqmetNYI               },
+  {"CASe"                    , "SQMET" , &CmdSqmetCase              },
   {"CMDline"                 , "sqmet" , &CmdSqmetNYI               },
   {"COLOR"                   , "sqmet" , &CmdSqmetNYI               },
   {"COLPtr"                  , "sqmet" , &CmdSqmetNYI               },
@@ -2421,8 +2508,8 @@ static MyCmdDef eeCmds[] = {
   {"BASEft"                  , &CmdImpSet                           },
   {"BOTtom"                  , &CmdBottom                           },
   {"BRKkey"                  , &CmdImpSet                           },
-  {"CASe"                    , &CmdCase                             },
-/*{"CASe"                    , &CmdImpSet                           },*/
+  {"CASe"                    , &CmdImpSet                           },
+  {"CASEOLD"                 , &CmdCaseold                          },
   {"Change"                  , &CmdChange                           },
   {"CMDLine"                 , &CmdCmdline                          },
 /*{"CMDline"                 , &CmdImpSet                           },*/
