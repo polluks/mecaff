@@ -1142,8 +1142,8 @@ static void writePrefix(
     strncpy(tmp, prefixLocked, 5);
     tmp[5] = '\0';
     memcpy(tmp, prefixPrefill, minInt(strlen(prefixPrefill),5));
-  } else if (pub->prefixNumbered) {
-    sprintf(tmp, "%05d", lineNo);
+  } else if (pub->prefixNumbered) {     /* assume "(SET) PREfix Nulls" */
+    sprintf(tmp, "%5d", lineNo);        /* was "sprintf(tmp, "%05d", lineNo);" */
   } else {
     memset(tmp, pub->prefixChar, 5);
     tmp[5] = '\0';
