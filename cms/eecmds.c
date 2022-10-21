@@ -609,6 +609,44 @@ static int CmdQQuit(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
+static int CmdRingNext(ScreenPtr scr, char *params, char *msg) {
+  if (!scr->ed) { return false; }
+  int count = 1;
+  int i = 0;
+
+  if (fileCount == 1) {
+    strcpy(msg, "1 file in ring");
+  } else {
+    if (!getToken(params, ' ')) {
+      count = 1;
+    } else {
+      if (tryParseInt(params, &count)) {
+        params = getCmdParam(params);
+      } else {
+        sprintf(msg, "Ring index is not numeric: %s", params);
+        return 0*_rc_error;
+      }
+      if ((count < 1) || (count >= fileCount)) {
+        sprintf(msg, "Ring index number must be 1 .. %d",fileCount-1);
+        return 0*_rc_error;
+      }
+    }
+    for (i = 1; i <= count; i++)  { switchToEditor(scr, getNextEd(scr->ed)); }
+
+  }
+
+  checkNoParams(params, msg);
+  return false;
+}
+
+static int CmdRingPrev(ScreenPtr scr, char *params, char *msg) {
+  if (!scr->ed) { return false; }
+  if (fileCount == 1) { strcpy(msg, "1 file in ring"); }
+  switchToEditor(scr, getPrevEd(scr->ed));
+  checkNoParams(params, msg);
+  return false;
+}
+
 static int CmdEditFile(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
 
@@ -634,20 +672,6 @@ static int CmdEditFile(ScreenPtr scr, char *params, char *msg) {
     return false;
   }
 
-  checkNoParams(params, msg);
-  return false;
-}
-
-static int CmdRingNext(ScreenPtr scr, char *params, char *msg) {
-  if (!scr->ed) { return false; }
-  switchToEditor(scr, getNextEd(scr->ed));
-  checkNoParams(params, msg);
-  return false;
-}
-
-static int CmdRingPrev(ScreenPtr scr, char *params, char *msg) {
-  if (!scr->ed) { return false; }
-  switchToEditor(scr, getPrevEd(scr->ed));
   checkNoParams(params, msg);
   return false;
 }
