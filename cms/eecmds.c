@@ -2418,10 +2418,10 @@ static MyCmdDef eeCmds[] = {
   {"BOTtom"                  , &CmdBottom                           },
   {"BRKkey"                  , &CmdImpSet                           },
   {"CASe"                    , &CmdCase                             },
-  {"CASe"                    , &CmdImpSet                           },
+/*{"CASe"                    , &CmdImpSet                           },*/
   {"Change"                  , &CmdChange                           },
   {"CMDLine"                 , &CmdCmdline                          },
-  {"CMDline"                 , &CmdImpSet                           },
+/*{"CMDline"                 , &CmdImpSet                           },*/
   {"CMS"                     , &CmdCms                              },
   {"COLOR"                   , &CmdImpSet                           },
   {"COLPtr"                  , &CmdImpSet                           },
@@ -2487,16 +2487,16 @@ static MyCmdDef eeCmds[] = {
 #endif
   {"MODify"                  , &CmdModify                           },
   {"MOVEHere"                , &CmdMoveHere                         },
-  {"MSGLine"                 , &CmdImpSet                           },
+/*{"MSGLine"                 , &CmdImpSet                           },*/
   {"MSGLines"                , &CmdMsglines                         },
   {"MSGMode"                 , &CmdImpSet                           },
   {"NBFile"                  , &CmdImpSet                           },
   {"NBScope"                 , &CmdImpSet                           },
   {"Next"                    , &CmdNext                             },
   {"NONDisp"                 , &CmdImpSet                           },
-  {"NULls"                   , &CmdImpSet                           },
+/*{"NULls"                   , &CmdImpSet                           },*/
   {"NULls"                   , &CmdNulls                            },
-  {"NUMber"                  , &CmdImpSet                           },
+/*{"NUMber"                  , &CmdImpSet                           },*/
   {"NUMbers"                 , &CmdNumbers                          },
   {"PA"                      , &CmdImpSet                           },
   {"PACK"                    , &CmdImpSet                           },
@@ -2534,7 +2534,7 @@ static MyCmdDef eeCmds[] = {
   {"Rr"                      , &CmdRingList                         },
   {"RSEArchnext"             , &CmdReverseSearchNext                },
   {"SAVe"                    , &CmdSave                             },
-  {"SCALe"                   , &CmdImpSet                           },
+/*{"SCALe"                   , &CmdImpSet                           },*/
   {"SCALe"                   , &CmdScale                            },
   {"SCOPE"                   , &CmdImpSet                           },
   {"SCReen"                  , &CmdImpSet                           },
@@ -2558,7 +2558,7 @@ static MyCmdDef eeCmds[] = {
   {"TABBackward"             , &CmdTabBackward                      },
   {"TABforward"              , &CmdTabForward                       },
   {"TABLine"                 , &CmdImpSet                           },
-  {"TABS"                    , &CmdImpSet                           },
+/*{"TABS"                    , &CmdImpSet                           },*/
   {"TABSet"                  , &CmdTabs                             },
   {"TARGet"                  , &CmdImpSet                           },
   {"TERMinal"                , &CmdImpSet                           },
