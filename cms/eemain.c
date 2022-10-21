@@ -895,9 +895,6 @@ int main(int argc, char *argv[], char *argstrng) {
       return 4;
     }
 
-    /* init EE command machinery */
-    initCmds();
-
     /* initialize the EE main screen */
     char cmdtext[80];
     simu3270(24, 80);
@@ -921,6 +918,9 @@ int main(int argc, char *argv[], char *argstrng) {
 
     messages[0] = '\0';
     scr->ed = NULL;
+
+    /* init EE command machinery */
+    scr->ed = initCmds();
 
     /* set default pfkeys, overridable by profile, set infoLines accordingly */
     setPF( 1, "TABFORWARD");
