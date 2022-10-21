@@ -22,27 +22,27 @@
 ** Written by Dr. Hans-Walter Latz, Berlin (Germany), 2011,2012,2013
 ** Released to the public domain.
 */
- 
+
 #include "glblpre.h"
- 
+
 #include <stdio.h>
 #include <string.h>
- 
+
 #define _eescrn_implementation
 #include "eescrn.h"
 #include "eeutil.h"
 #include "fs3270.h"
 #include "fsio.h"
- 
+
 #include "glblpost.h"
- 
+
 /* set the filename for error messages from memory protection in EEUTIL */
 static const char *_FILE_NAME_ = "eescrn.c";
- 
+
 /* constants defining the basic limits of EE screens */
 #define MAX_ED_LINES 64
-#define MAX_MSG_LINES 3
- 
+#define MAX_MSG_LINES 13
+
 /* each displayed line is recorded in the following structure before the
    roundtrip to recognize it in the input stream.
 */
@@ -55,7 +55,7 @@ typedef struct _edline_place {
   unsigned int prefixCol;
   char prefixFill[PREFIXLENGTH + 1];
 } EdLinePlace;
- 
+
 /* the additional private data in ScreenPtr needed by the implementation */
 typedef struct _eescreen_private {
   bool cursorIsPlaced;
@@ -65,19 +65,19 @@ typedef struct _eescreen_private {
   unsigned int edLinesUsed;
   EdLinePlace edLinePlaces[MAX_ED_LINES];
 } ScreenPrivate;
- 
+
 /* the complete ScreenPtr structure seen by the implementation */
 typedef struct _screen {
   ScreenPublic screenPublic;
   ScreenPrivate screenPrivate;
 } Screen;
- 
+
 typedef ScreenPrivate *ScreenPrivPtr;
 typedef ScreenPublic *ScreenPublPtr;
- 
+
 #define SCREENPUBL(p) (&(p->screenPublic))
 #define SCREENPRIV(p) (&(p->screenPrivate))
- 
+
 /* screen characteristics */
 static char termName[TERM_NAME_LENGTH + 1];
 static int numAltRows = -1;
@@ -87,13 +87,13 @@ static bool canExtHighLight = false;
 static bool canColors = false;
 static int sessionId = 0;
 static int sessionMode = 0;
- 
+
 static unsigned int rows = 24;
 static unsigned int cols = 80;
- 
+
 static unsigned int lastRow = 23;
 static unsigned int lastCol = 79;
- 
+
 /* mapping of EESCRN-attributes to FS3270-colors */
 static char colorsFor3270[16] = {
   Color_Default,
@@ -113,13 +113,13 @@ static char colorsFor3270[16] = {
   Color_White,
   Color_White
 };
- 
+
 /* some UI text constants */
 static char *cmdArrow = "===>";
 static char *topOfFileText = "* * * Top of file * * *";
 static char *bottomOfFileText = "* * * Bottom of file * * *";
 static char *prefixLocked = ".....";
- 
+
 #ifdef _NOCMS
 void simu3270(int simuRows, int simuCols) {
   numAltRows = simuRows;
@@ -132,24 +132,24 @@ void simu3270(int simuRows, int simuCols) {
   canColors = 1;
 }
 #endif
- 
+
 /* forward declarations */
- 
+
 static bool initScreenInfo(char *msgBuffer);
- 
+
 static int countMsgLines(
     ScreenPublPtr scr,
     char *lineStarts[MAX_MSG_LINES],
     int lineLengths[MAX_MSG_LINES]);
- 
+
 static void addWidenedLine(ScreenPublPtr scr, char *line);
- 
+
 static void startField(unsigned char pubAttr, bool readonly, bool autoSkip);
- 
+
 static void writeScale(ScreenPublPtr scr);
- 
+
 static char* getCurrPrefixMark(ScreenPublPtr scr, LinePtr line);
- 
+
 static void writeFileLine(
     ScreenPublPtr pub,
     ScreenPrivPtr priv,
@@ -158,7 +158,7 @@ static void writeFileLine(
     short scrLinesPerEdLine,
     bool isCurrentLine,
     char *prefixPrefill);
- 
+
 static void writeTextAsFileMarker(
     ScreenPublPtr pub,
     ScreenPrivPtr priv,
@@ -167,13 +167,13 @@ static void writeTextAsFileMarker(
     short scrLinesPerEdLine,
     bool isCurrentLine,
     bool allowPrefix);
- 
+
 /*
 ** public methods
 */
- 
+
 #define doIC() { IC(); priv->cursorIsPlaced = true; }
- 
+
 ScreenPtr _scrmk(char *msgBuffer) {
   if (numAltRows < 0 && !initScreenInfo(msgBuffer)) {
     return NULL;
@@ -214,21 +214,21 @@ ScreenPtr _scrmk(char *msgBuffer) {
   }
   pub->screenRows = rows;
   pub->screenColumns = cols;
- 
+
   pub->visibleEdLines = 8;
- 
+
   pub->inputLinesAvail = 0;
   pub->cmdPrefixesAvail = 0;
   pub->cmdLine[0] = '\0';
   pub->aidCode = Aid_NoAID;
- 
+
   return screen;
 }
- 
+
 void _scrfr(ScreenPtr screen) {
   freeMem(screen);
 }
- 
+
 /* internal screen build-up and roundtrip routine, possibly called twice
    by the public routine if the terminal connection was lost (disconnected).
 */
@@ -236,7 +236,7 @@ static int _scrio_inner(ScreenPtr screen) {
   ScreenPublPtr pub = SCREENPUBL(screen);
   ScreenPrivPtr priv = SCREENPRIV(screen);
   int i;
- 
+
   /* reset data input fields */
   pub->inputLinesAvail = 0;
   pub->cmdPrefixesAvail = 0;
@@ -248,17 +248,17 @@ static int _scrio_inner(ScreenPtr screen) {
   pub->aidCode = Aid_NoAID;
   priv->edLinesUsed = 0;
   priv->cursorIsPlaced = false;
- 
+
   /* is there anything to display? */
   if (pub->ed == NULL) {
     return -1;
   }
- 
+
   /* analyze message text for 'screen' */
   char *lineStarts[MAX_MSG_LINES];
   int lineLengths[MAX_MSG_LINES];
   int msgLineCount = countMsgLines(pub, lineStarts, lineLengths);
- 
+
   /* gather information about infolines */
   char *infoLines[2] = { NULL, NULL };
   short infoLineCount = 0;
@@ -268,7 +268,7 @@ static int _scrio_inner(ScreenPtr screen) {
   if (pub->infoLines[1]) {
     infoLines[infoLineCount++] = pub->infoLines[1];
   }
- 
+
   /* compute screen characteristics */
   pub->prefixLen = maxShort(1,minShort(5,pub->prefixLen));
   short lineOverhead
@@ -375,12 +375,12 @@ static int _scrio_inner(ScreenPtr screen) {
       edLinesBelowCurr++;
     }
   }
- 
+
   /* compute visible "page" height */
   pub->visibleEdLines = edLinesAboveCurr + 1 + edLinesBelowCurr;
   pub->visibleEdLinesBeforeCurrent = edLinesAboveCurr;
   pub->visibleEdLinesAfterCurrent = edLinesBelowCurr;
- 
+
 #ifdef _NOCMS
   printf("---------- _scrio() results:\n");
   printf(" <- lrecl = %d\n", getLrecl(pub->ed));
@@ -421,15 +421,15 @@ static int _scrio_inner(ScreenPtr screen) {
   printf("  -> scrLineForFirstAboveCurr = %d\n", scrLineForFirstAboveCurr);
   printf("  -> scrLineForFirstBelowCurr = %d\n", scrLineForFirstBelowCurr);
   printf("\n");
- 
+
   pub->inputLinesAvail = 0;
   pub->cmdPrefixesAvail = 0;
   pub->cmdLine[0] = '\0';
   pub->aidCode = Aid_NoAID;
   /*return -2;*/
- 
+
 #endif
- 
+
   /* fetch the lines to be displayed from the editor */
   LinePtr uplines[64];
   unsigned int uplinesCount = 0;
@@ -438,17 +438,17 @@ static int _scrio_inner(ScreenPtr screen) {
   LinePtr currLine;
   unsigned int currLineNo = 0;
   int firstUplineNo = -1;
- 
+
   Printf1(" -- preparing for getLineFrame, sizeof(LinePtr) = %d\n",
     sizeof(LinePtr));
- 
+
   memset(uplines, '\0', 64 * sizeof(LinePtr));
   memset(downlines, '\0', 64 * sizeof(LinePtr));
   currLine = NULL;
- 
+
   Printf2(" -- doing getLineFrame(ed, %d, ..., %d, ...)\n",
     edLinesAboveCurr, edLinesBelowCurr);
- 
+
   getLineFrame(pub->ed,
     edLinesAboveCurr, uplines, &uplinesCount,
     &currLine, &currLineNo,
@@ -460,10 +460,10 @@ static int _scrio_inner(ScreenPtr screen) {
       && pub->cursorLine == NULL) {
     pub->cursorLine = currLine;
   }
- 
+
   Printf3(" -- uplinesCount = %d, currLineNo = %d, downlinesCount = %d\n",
     uplinesCount, currLineNo, downlinesCount);
- 
+
   if (uplinesCount < edLinesAboveCurr) {
     scrLineForFirstAboveCurr
       += scrLinesPerEdLine * (edLinesAboveCurr - uplinesCount);
@@ -471,17 +471,17 @@ static int _scrio_inner(ScreenPtr screen) {
       scrLineForTof = scrLineForFirstAboveCurr - scrLinesPerEdLine;
     }
   }
- 
+
   if (downlinesCount < edLinesBelowCurr && pub->showTofBof) {
     scrLineForBof
       = scrLineForFirstBelowCurr + (scrLinesPerEdLine * downlinesCount);
   }
- 
+
   /* build up the 3270 screen */
   bool cmdPrefilled = (pub->cmdLinePrefill && *(pub->cmdLinePrefill));
   char cmdLineModifier = (cmdPrefilled) ? 64 : 0;
   int maxCmdLen = minInt(lastCol - strlen(cmdArrow) - 1, CMDLINELENGTH);
- 
+
   /*char wccFlags = WCC_KbdRestore | WCC_ResetMDT;*/
   char wccFlags = WCC_KbdRestore | WCC_Reset;
   if (pub->doBeep) { wccFlags |= WCC_SoundAlarm; }
@@ -490,19 +490,19 @@ static int _scrio_inner(ScreenPtr screen) {
   } else {
     strtEW(wccFlags);
   }
- 
+
   Printf0(" -- done strtEW(A)\n");
- 
+
   /* headline */
   SBA(lastRow, lastCol);
   startField(pub->attrHeadLine, true, false);
   addWidenedLine(pub, pub->headLine);
- 
+
   Printf0(" -- headline written\n");
- 
+
   int currRow = 0;
   SBA(currRow++, lastCol);
- 
+
   /* infolines on top ? */
   if (pub->infoLinesPos < 0) {
     for (i = 0; i < infoLineCount; i++) {
@@ -512,7 +512,7 @@ static int _scrio_inner(ScreenPtr screen) {
       SBA(currRow++, lastCol);
     }
   }
- 
+
   /* commandline on top ? */
   if (pub->cmdLinePos <= 0) {
     startField(pub->attrCmdArrow, true, false);
@@ -536,7 +536,7 @@ static int _scrio_inner(ScreenPtr screen) {
     }
     SBA(currRow++, lastCol);
   }
- 
+
   /* message line(s) on top ? */
   if (pub->msgLinePos <= 0) {
     for(i = 0; i < msgLineCount; i++) {
@@ -545,14 +545,14 @@ static int _scrio_inner(ScreenPtr screen) {
       SBA(currRow++, lastCol);
     }
   }
- 
+
   /* ------------   file & [scale] incl. filling priv parts ---------- */
   /* scale on top ? */
   if (pub->scaleLinePos < 0 && scrLineForScale > 0)  {
     SBA(scrLineForScale - 1, lastCol);
     writeScale(pub);
   }
- 
+
   /* top of file marker visible above curr line ? */
   if (scrLineForTof > 0) {
     SBA(scrLineForTof - 1, lastCol);
@@ -565,7 +565,7 @@ static int _scrio_inner(ScreenPtr screen) {
        false,
        true);
   }
- 
+
   /* file lines above curr line */
   if (scrLineForFirstAboveCurr > 0 && uplinesCount > 0) {
     int upCurrLineNo = firstUplineNo;
@@ -596,13 +596,13 @@ static int _scrio_inner(ScreenPtr screen) {
       }
     }
   }
- 
+
   /* scale above curr line ? */
   if (pub->scaleLinePos == 1 && scrLineForScale > 0)  {
     SBA(scrLineForScale - 1, lastCol);
     writeScale(pub);
   }
- 
+
   /* curr file line */
   SBA(scrLineForCurr - 1, lastCol);
   if (currLine) {
@@ -626,13 +626,13 @@ static int _scrio_inner(ScreenPtr screen) {
        true);
   } /* else: if not showBofTof, the editor should be
              moved to line 1 instead of above first line !! */
- 
+
   /* scale below curr line ? */
   if (pub->scaleLinePos == 2 && scrLineForScale > 0)  {
     SBA(scrLineForScale - 1, lastCol);
     writeScale(pub);
   }
- 
+
   /* file lines below curr line */
   if (scrLineForFirstBelowCurr > 0 && downlinesCount > 0) {
     int downCurrLineNo = currLineNo + 1;
@@ -663,7 +663,7 @@ static int _scrio_inner(ScreenPtr screen) {
       }
     }
   }
- 
+
   /* bottom of file visible below curr line ? */
   if (scrLineForBof > 0) {
     SBA(scrLineForBof - 1, lastCol);
@@ -676,11 +676,11 @@ static int _scrio_inner(ScreenPtr screen) {
        false,
        false);
   }
- 
+
   /* footlines */
   currRow = scrFirstFootLine - 1;
   SBA(currRow++,lastCol);
- 
+
   /* message line(s) at bottom ? */
   if (pub->msgLinePos > 0) {
     for(i = 0; i < msgLineCount; i++) {
@@ -689,7 +689,7 @@ static int _scrio_inner(ScreenPtr screen) {
       SBA(currRow++, lastCol);
     }
   }
- 
+
   /* commandline at bottom ? */
   if (pub->cmdLinePos > 0) {
     startField(pub->attrCmdArrow, true, false);
@@ -712,7 +712,7 @@ static int _scrio_inner(ScreenPtr screen) {
     }
     SBA(currRow++, lastCol);
   }
- 
+
   /* infolines on bottom ? */
   if (pub->infoLinesPos > 0) {
     for (i = 0; i < infoLineCount; i++) {
@@ -722,37 +722,37 @@ static int _scrio_inner(ScreenPtr screen) {
       SBA(currRow++, lastCol);
     }
   }
- 
+
   /* final footline */
   startField(pub->attrFootLine, true, false);
   addWidenedLine(pub, pub->footLine);
- 
+
   /* force cursor place in command line if targeted place was not found */
   if (!priv->cursorIsPlaced) {
     SBA(priv->cmdRow, priv->cmdCol);
     doIC();
   }
- 
+
   /*printf(" -- stopping before sending screen\n");
   return 99;*/
- 
+
   /* remember the line range displayed */
   pub->firstLineVisible
     = (uplinesCount > 0) ? uplines[0] : getFirstLine(pub->ed);
   pub->lastLineVisible
     = (downlinesCount > 0) ? downlines[downlinesCount-1] : currLine;
- 
+
   /* send fullscreen */
   int rc = fs_tsnd();
   if (rc != 0) { return rc; }
- 
+
   /* read fullscreen input */
   char aidCode;
   unsigned int cursorRow;
   unsigned int cursorCol;
   rc = fs_trcv(&aidCode, &cursorRow, &cursorCol);
   if (rc != 0) { return rc; }
- 
+
   /* interpret data from screen and fill data for caller */
     /* AID and cursor position */
   pub->aidCode = aidCode;
@@ -796,7 +796,7 @@ static int _scrio_inner(ScreenPtr screen) {
       }
     }
   }
- 
+
 #if 0
   if (pub->aidCode == Aid_PA02) {
     printf("PA02 => edLinesUsed: %d\n", priv->edLinesUsed);
@@ -807,7 +807,7 @@ static int _scrio_inner(ScreenPtr screen) {
     }
   }
 #endif
- 
+
     /* modifications in input fields */
   int fldLen;
   char *fldStart;
@@ -840,7 +840,7 @@ static int _scrio_inner(ScreenPtr screen) {
           PrefixInput *pi = &pub->cmdPrefixes[pub->cmdPrefixesAvail++];
           pi->line = edp->edLine;
           pi->lineNo = edp->edLineNo;
- 
+
           int plen = 0;
           char *ref = edp->prefixFill;
           char *dst = &pi->prefixCmd[0];
@@ -855,13 +855,13 @@ static int _scrio_inner(ScreenPtr screen) {
             ref++;
             plen++;
           }
- 
+
           plen = dst - pi->prefixCmd;
           while(plen > 0 && pi->prefixCmd[plen - 1] == ' ') {
             pi->prefixCmd[plen - 1] = '\0';
             plen--;
           }
- 
+
           if (dst == guard) {
             /* prefix zone left unchanged (i.e. edited back to original) ? */
             pub->cmdPrefixesAvail--; /* -> forget this prefix input */
@@ -871,11 +871,11 @@ static int _scrio_inner(ScreenPtr screen) {
       }
     }
   }
- 
+
   /* that's it */
   return 0;
 }
- 
+
 /* the public screen-i/o routine
 */
 int _scrio(ScreenPtr screen) {
@@ -901,11 +901,11 @@ int _scrio(ScreenPtr screen) {
   }
   return result;
 }
- 
+
 /*
 ** internal methods
 */
- 
+
 static bool initScreenInfo(char *msgBuffer) {
   int rc = __qtrm(
       termName,
@@ -934,16 +934,16 @@ static bool initScreenInfo(char *msgBuffer) {
   if (rows == 24 && cols == 80) { canAltScreenSize = 0; }
   lastRow = rows - 1;
   lastCol = cols - 1;
- 
+
   Printf0("_scrmk -- initialized 3270 subsystem\n");
   Printf4("  rows = %d, cols = %d, canAltScreenSize = %d, canColor = %d\n",
       rows, cols, canAltScreenSize, canColors);
   Printf2("  sessionId = %d, sessionMode = %d\n", sessionId, sessionMode);
   Printf2("  sessionId = %d, sessionMode = %d\n", sessionId, sessionMode);
- 
+
   return true;
 }
- 
+
 static int countMsgLines(
     ScreenPublPtr scr,
     char *lineStarts[MAX_MSG_LINES],
@@ -952,17 +952,17 @@ static int countMsgLines(
   int len = 0;
   int i;
   char *msg = scr->msgText;
- 
+
   /* initialize out data */
   lineCount = 1;
   for(i = 0; i < MAX_MSG_LINES; i++) {
     lineStarts[i] = NULL;
     lineLengths[i] = 0;
   }
- 
+
   /* if no msg => one empty line */
   if (!msg || !*msg) { return lineCount; }
- 
+
   /* parse the message for line ends and collect max. 3 lines */
   lineStarts[lineCount - 1] = msg;
   while(*msg && lineCount <= MAX_MSG_LINES) {
@@ -978,18 +978,18 @@ static int countMsgLines(
     msg++;
   }
   lineLengths[lineCount - 1] = minInt(lastCol, len);
- 
+
   /* that's it */
   return lineCount;
 }
- 
+
 /* expand embedded tab-characters separating left/middle/right
 */
 static void addWidenedLine(ScreenPublPtr scr, char *line) {
   if (!line || !*line) { return; }
- 
+
   Printf1("++ addWidenedLine, line:\n>>%s<<\n", line);
- 
+
   int lineLen = 0;
   int tabCnt = 0;
   char *p = line;
@@ -998,13 +998,13 @@ static void addWidenedLine(ScreenPublPtr scr, char *line) {
     if (*p == '\t') { tabCnt++; }
     p++;
   }
- 
+
   Printf2("++ linelen = %d, tabCnt = %d\n", lineLen, tabCnt);
   if (tabCnt == 0) {
     appendStringWithLength(line, minInt(lineLen,lastCol), (char)0x00);
     return;
   }
- 
+
   char fillChar = scr->fillChar;
   int fillCnt = maxInt(0, lastCol - lineLen);
   int fillForTab = maxInt(0, (fillCnt - tabCnt) / tabCnt);
@@ -1012,7 +1012,7 @@ static void addWidenedLine(ScreenPublPtr scr, char *line) {
   lineLen = minInt(lastCol, lineLen);
   Printf4("++ fillChar: %c, fillCnt = %d, fillForTab= %d, lineLen = %d\n",
     fillChar, fillCnt, fillForTab, lineLen);
- 
+
   int i;
   while(*p && lineLen) {
     if (*p == '\t') {
@@ -1031,29 +1031,29 @@ static void addWidenedLine(ScreenPublPtr scr, char *line) {
     lineLen--;
   }
 }
- 
+
 static void startField(unsigned char pubAttr, bool readonly, bool autoSkip) {
   char attr3270 = (!readonly && pubAttr >= 64)
          ? FldAttr_Modified
          : FldAttr_None;
- 
+
   pubAttr = pubAttr & 0x0F;
- 
+
   if (pubAttr & 0x01) { attr3270 |= FldAttr_Intensified; }
   if (readonly) {
     attr3270 |= FldAttr_Protected;
     if (autoSkip) { attr3270 |= FldAttr_Numeric; }
   }
- 
+
   if (canColors) {
     SFE(attr3270, HiLit_None, colorsFor3270[pubAttr]);
   } else {
     SF(attr3270);
   }
 }
- 
+
 static char *digits = "0123456789";
- 
+
 static void writeScale(ScreenPublPtr scr) {
   int i;
   int inset
@@ -1065,7 +1065,7 @@ static void writeScale(ScreenPublPtr scr) {
     : minInt(lastCol - inset - 1, lrecl);
   int firstMarked = -1;
   int lastMarked = -1;
- 
+
   if (scr->scaleMark && scr->scaleMarkStart >= 0 && scr->scaleMarkLength > 0) {
     firstMarked = scr->scaleMarkStart + 1;
     lastMarked = firstMarked + scr->scaleMarkLength - 1;
@@ -1073,22 +1073,22 @@ static void writeScale(ScreenPublPtr scr) {
     scr->scaleMarkStart = -1;
     scr->scaleMarkLength = -1;
   }
- 
+
   startField(scr->attrScaleLine, true, false);
- 
+
   if (scr->prefixMode == 1) {
     for (i = 0; i < inset; i++) {
       appendChar(' ');
     }
   }
- 
+
   int tabs[MAX_TAB_COUNT];
   int tabCount = getTabs(scr->ed, tabs);
   for (i = 0; i < tabCount; i++) {
     tabs[i]++;
   }
   int currTab= 0;
- 
+
   for (i = 1; i <= scaleWidth; i++) {
     if (i >= firstMarked && i <= lastMarked) {
       appendChar('#');
@@ -1105,13 +1105,13 @@ static void writeScale(ScreenPublPtr scr) {
     }
   }
 }
- 
+
 static char* getCurrPrefixMark(ScreenPublPtr scr, LinePtr line) {
   if (!line) {
     /*printf("getCurrPrefixMark() -> line is NULL\n");*/
     return NULL;
   }
- 
+
   if (line == scr->prefixMarks[0].forLine) {
     /*printf("getCurrPrefixMark() -> is scr->prefixMarks[0]\n");*/
     return scr->prefixMarks[0].prefixPrefill;
@@ -1128,7 +1128,7 @@ static char* getCurrPrefixMark(ScreenPublPtr scr, LinePtr line) {
   /*printf("getCurrPrefixMark() -> not marked\n");*/
   return NULL;
 }
- 
+
 static void writePrefix(
     ScreenPublPtr pub,
     ScreenPrivPtr priv,
@@ -1169,7 +1169,7 @@ static void writePrefix(
     SBA(tmpRow, tmpCol);
   }
 }
- 
+
 static void writeFileLine(
     ScreenPublPtr pub,
     ScreenPrivPtr priv,
@@ -1184,16 +1184,16 @@ static void writeFileLine(
   bool isSelected = (pub->selectionColumn
                     && line->text[pub->selectionColumn] == pub->selectionMark);
   char *pfixPrefill = (isSelected) ? "»»»»»" : prefixPrefill;
- 
+
   lineInfo->edLine = line;
   lineInfo->edLineNo = lineNo;
- 
+
   /* prefix before file line text ? */
   if (pub->prefixMode == 1) {
     startField(pub->attrPrefix, pub->prefixReadOnly || isLocked, false);
     writePrefix(pub, priv, lineInfo, lineNo, pfixPrefill);
   }
- 
+
   /* start the file line text and remember position of input field */
   unsigned char attr = (isCurrentLine) ? pub->attrCurrLine : pub->attrFile;
   if (isSelected) { attr = pub->attrSelectedLine; }
@@ -1202,14 +1202,14 @@ static void writeFileLine(
     pub->readOnly || isLocked,
     pub->readOnly);
   GBA(&lineInfo->txtRow, &lineInfo->txtCol);
- 
+
   /* place cursor at start of this line ? */
   if (pub->cursorLine == line
       && pub->cursorOffset == 0
       && pub->cursorPlacement == 2) {
     doIC();
   }
- 
+
   /* compute end coordinates before writing the file line text out */
   int lastLineCol
     = lastCol
@@ -1254,7 +1254,7 @@ static void writeFileLine(
     } else {
       appendStringWithLength(line->text, lrecl, eolFill);
     }
- 
+
     /* compute end position of the nominal file line text */
     int fileLineEndCol
       = lrecl
@@ -1274,7 +1274,7 @@ static void writeFileLine(
       }
     }
   }
- 
+
   /* place cursor somewhere inside the line? */
   if (pub->cursorLine == line && pub->cursorPlacement == 2) {
     SBA(
@@ -1284,7 +1284,7 @@ static void writeFileLine(
                    0));
     doIC();
   }
- 
+
   /* prefix after file line text ? */
   if (pub->prefixMode > 1) {
     SBA(endRow, lastLineCol);
@@ -1292,7 +1292,7 @@ static void writeFileLine(
     writePrefix(pub, priv, lineInfo, lineNo, pfixPrefill);
   }
 }
- 
+
 static void writeTextAsFileMarker(
     ScreenPublPtr pub,
     ScreenPrivPtr priv,
@@ -1304,10 +1304,10 @@ static void writeTextAsFileMarker(
   int lrecl = getWorkLrecl(pub->ed);
   EdLinePlace *lineInfo = &priv->edLinePlaces[priv->edLinesUsed++];
   int hadPrefix = false;
- 
+
   lineInfo->edLine = NULL;
   lineInfo->edLineNo = lineNo;
- 
+
   if (pub->prefixMode == 1) {
     if (allowPrefix) {
       startField(pub->attrPrefix, pub->prefixReadOnly, false);
@@ -1317,32 +1317,32 @@ static void writeTextAsFileMarker(
       appendStringWithLength(" ", pub->prefixLen + 1, ' ');
     }
   }
- 
+
   startField((isCurrentLine) ? pub->attrCurrLine : pub->attrFile, true, false);
   GBA(&lineInfo->txtRow, &lineInfo->txtCol);
- 
+
   int lastLineCol
     = lastCol
     - ((pub->prefixMode > 1) ? pub->prefixLen + 1 : 0);
   int endRow = lineInfo->txtRow + scrLinesPerEdLine - 1;
- 
+
   appendStringWithLength(
     fileMarker,
     lastCol - pub->prefixLen - 1,
     (char)0x00);
- 
+
   if (pub->prefixMode > 1 && allowPrefix) {
     SBA(endRow, lastLineCol);
     startField(pub->attrPrefix, pub->prefixReadOnly, false);
     writePrefix(pub, priv, lineInfo, lineNo, NULL);
     hadPrefix = true;
   }
- 
+
   if (!hadPrefix) {
     priv->edLinesUsed--; /* no input-able field => forget field infos */
   }
 }
- 
+
 bool ismfcons() {
   return (sessionMode == 3270 || sessionMode == 3215);
 }
