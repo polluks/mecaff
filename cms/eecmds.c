@@ -2437,6 +2437,14 @@ static int CmdSet(ScreenPtr scr, char *params, char *msg) {
 static int CmdImpSet(ScreenPtr scr, char *params, char *msg) {
   return CmdSet(scr, params, msg);
 }
+
+
+static int CmdMacro(ScreenPtr scr, char *params, char *msg) {
+    strcpy(msg, "MACRO subcommand not yet implemented:  * * * Work In Progress * * *");
+    return false;
+}
+
+
 static int CmdTransfer(ScreenPtr scr, char *params, char *msg) {
   return CmdSqmetDispatch(scr, 'T', params, msg);
 }
@@ -2610,7 +2618,7 @@ static MyCmdDef eeCmds[] = {
 /*{"LRecl"                   , &CmdImpSet                           },*/
   {"LRECL"                   , &CmdLrecl                            },
   {"LScreen"                 , &CmdImpSet                           },
-/*{"MACRO"                   , &CmdImpSet                           },*/
+  {"MACRO"                   , &CmdMacro                            },
   {"MARK"                    , &CmdMark                             },
   {"MASK"                    , &CmdImpSet                           },
   {"MEMber"                  , &CmdImpSet                           },
