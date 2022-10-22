@@ -1530,7 +1530,9 @@ static int CmdGapFill(ScreenPtr scr, char *params, char *msg) {
 }
 
 static CmdDef allowedCmsCommands[] = {
-  {"ACcess", NULL}, {"CLOSE", NULL},    {"DETACH", NULL},  {"ERASE", NULL},
+  {"ACcess", NULL}, {"CLOSE", NULL},
+  {"CP", NULL},
+  {"DETACH", NULL}, {"ERASE", NULL},
   {"LINK", NULL},   {"Listfile", NULL}, {"PRint", NULL},   {"PUnch", NULL},
   {"Query", NULL},  {"READcard", NULL}, {"RELease", NULL}, {"Rename", NULL},
   {"SET", NULL},    {"STATEw", NULL},   {"TAPE", NULL},    {"Type", NULL}
@@ -1549,8 +1551,8 @@ static int CmdCms(ScreenPtr scr, char *params, char *msg) {
          sizeof(allowedCmsCommands) / sizeof(CmdDef))) {
     strcpy(msg,
       "CP/CMS command not allowed inside EE, allowed commands are:\n"
-      "  ACcess  CLOSE  DETACH  ERASE  LINK  Listfile  PRint  PUnch  Query\n"
-      "  READcard  RELease  Rename  SET  STATEw  TAPE  Type");
+      "  ACcess  CLOSE  CP  DETACH  ERASE  LINK  Listfile  PRint  PUnch\n"
+      "  Query  READcard  RELease  Rename  SET  STATEw  TAPE  Type");
     return false;
   }
 
