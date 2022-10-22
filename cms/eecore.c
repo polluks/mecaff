@@ -102,7 +102,7 @@ typedef struct _editor {
   bool caseRespect;  /* respect case of search strings to find lines? */
 
   bool isBinary;     /* are there any binary chars => forbid saving? */
-  bool isModified;   /* where there changes since opening or last write? */
+  bool isModified;   /* were there changes since opening or last write? */
 
     /* memory chunks for lines allocated to the editor */
   BufferpagePtr bufferFirst;
