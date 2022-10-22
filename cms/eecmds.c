@@ -2564,6 +2564,7 @@ static MyCmdDef eeCmds[] = {
   {"CMDLine"                 , &CmdCmdline                          },
 /*{"CMDline"                 , &CmdImpSet                           },*/
   {"CMS"                     , &CmdCms                              },
+  {"CMSG"                    , &CmdCmsg                             },
   {"COLOR"                   , &CmdImpSet                           },
   {"COLPtr"                  , &CmdImpSet                           },
   {"COLumn"                  , &CmdImpSet                           },
