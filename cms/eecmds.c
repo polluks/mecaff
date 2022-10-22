@@ -2884,12 +2884,22 @@ int tryExPf(ScreenPtr scr, char aidCode, char *msg) {
   int idx = aidPfIndex(aidCode);
   if (idx < 1 || idx > 24) { return false; }
   char *pfCmd = pfCmds[idx];
-  if (sncmp(pfCmd, "RECALL") == 0) {
+  if ( (sncmp(pfCmd, "RECALL")   == 0) || (sncmp(pfCmd, "RECALL-")   == 0) ||
+       (sncmp(pfCmd, "RETRIEVE") == 0) || (sncmp(pfCmd, "RETRIEVE-") == 0) ||
+       (sncmp(pfCmd, "?")        == 0) || (sncmp(pfCmd, "?-")        == 0) ) {
     LinePtr currCmd = getCurrentLine(commandHistory);
     LinePtr nextCmd = moveDown(commandHistory, 1);
     if (currCmd == nextCmd) { moveToBOF(commandHistory); }
     return false;
-  } else if (sncmp(pfCmd, "CLRCMD") == 0) {
+  } else if ( (sncmp(pfCmd, "RECALL+")   == 0) ||
+              (sncmp(pfCmd, "RETRIEVE+") == 0) ||
+              (sncmp(pfCmd, "?+")        == 0) ) {
+    LinePtr currCmd = getCurrentLine(commandHistory);
+    LinePtr prevCmd = moveUp(commandHistory, 1);
+    if (currCmd == prevCmd) { moveToBOF(commandHistory); }
+    return false;
+  } else if ( (sncmp(pfCmd, "RECALL=") == 0) || (sncmp(pfCmd, "RETRIEVE=") == 0) ||
+              (sncmp(pfCmd, "CLRCMD")  == 0) || (sncmp(pfCmd, "?=")        == 0) ) {
     moveToBOF(commandHistory);
     return false;
   } else if (*pfCmd) {
