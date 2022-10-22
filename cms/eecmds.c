@@ -2133,6 +2133,10 @@ static int CmdMemUnLock(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
+static int CmdSqmetVersion(ScreenPtr scr, char sqmet, char *params, char *msg) {
+  sprintf(msg, "version " VERSION);
+  return false;
+}
 
 
 static int CmdSqmetCase(ScreenPtr scr, char sqmet, char *params, char *msg) {
@@ -2322,7 +2326,7 @@ static MySqmetDef sqmetCmds[] = {
   {"VARblank"                , "sqmet" , &CmdSqmetNYI               },
   {"Verify"                  , "sqmet" , &CmdSqmetNYI               },
   {"VERShift"                , "sqmet" , &CmdSqmetNYI               },
-  {"VERSIon"                 , "SQMEt" , &CmdSqmetNYI               },
+  {"VERSIon"                 , "SQMEt" , &CmdSqmetVersion           },
   {"Width"                   , "sqmet" , &CmdSqmetNYI               },
   {"WINdow"                  , "sqmet" , &CmdSqmetNYI               },
   {"WRap"                    , "sqmet" , &CmdSqmetNYI               },
