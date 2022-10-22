@@ -1372,32 +1372,65 @@ static int CmdRecfm(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
+
+
+static bool tokcmp(char *s1, char *s2) {
+  int i  = 0;
+  int l1 = getToken(s1, ' ');
+  int l2 = getToken(s2, ' ');
+  if (l1 != l2) return true;
+  for (i = 1; i <= l1; i++) {
+    if (*(s1++) != *(s2++)) return true;
+  }
+  return false;
+}
+
+
 static int CmdLrecl(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   int lrecl;
-  if (tryParseInt(params, &lrecl)) {
+  if (!tokcmp(params, "*")) {
+    lrecl = 255;
+    params = getCmdParam(params);
+  } else   if (tryParseInt(params, &lrecl)) {
     params =  getCmdParam(params);
+  } else {
+    sprintf(msg, "LRECL operand must be numeric: %s", params);
+    return 0*_rc_error;
   }
-  checkNoParams(params, msg);
-
+  if (lrecl < 1 || lrecl > 255) {
+    strcpy(msg, "LRECL must be 1 .. 255");
+    return 0*_rc_error;
+  }
   bool truncated = setLrecl(scr->ed, lrecl);
   sprintf(msg, "LRECL changed to %d%s",
           lrecl, (truncated) ? ", some line(s) were truncated" : "");
+  checkNoParams(params, msg);
   return false;
 }
 
 static int CmdWorkLrecl(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
   int lrecl;
-  if (tryParseInt(params, &lrecl)) {
+  if (!tokcmp(params, "*")) {
+    lrecl = 255;
+    params = getCmdParam(params);
+  } else if (tryParseInt(params, &lrecl)) {
     params =  getCmdParam(params);
+  } else {
+    sprintf(msg, "WORKLRECL operand must be numeric: %s", params);
+    return 0*_rc_error;
   }
-  checkNoParams(params, msg);
-
+  if (lrecl < 1 || lrecl > 255) {
+    strcpy(msg, "WORKLRECL must be 1 .. 255");
+    return 0*_rc_error;
+  }
   setWorkLrecl(scr->ed, lrecl);
   sprintf(msg, "Working LRECL changed to %d", getWorkLrecl(scr->ed));
+  checkNoParams(params, msg);
   return false;
 }
+
 
 static int CmdUnbinary(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
