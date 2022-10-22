@@ -48,7 +48,8 @@ static bool isInternalEE(EditorPtr ed);
 ** ****** global screen data
 */
 
-#define CMD_HISTORY_LEN 32
+#define CMD_HISTORY_LEN 1024
+#define CMD_HISTORY_DUPE_CHECK 32
 static EditorPtr commandHistory;   /* eecore-editor with the command history */
 
 static EditorPtr filetypeDefaults; /* eecore-editor with the ft-defaults */
@@ -2804,13 +2805,27 @@ int execCmd(
   while(*cmd == ' ') { cmd++; }
   if (!*cmd) { return false; }
 
-  if (addToHistory) {
+  while (addToHistory) {
+    moveToBOF(commandHistory);
+    int i = getLineCount(commandHistory);
+    int scanLines = (i < CMD_HISTORY_DUPE_CHECK)
+                   ? i : CMD_HISTORY_DUPE_CHECK;
+
+    for (i = 1; i <= scanLines; i++) {
+      LinePtr dupCmd = moveDown(commandHistory,1);
+      if (!strcmp(cmd, dupCmd->text)) {
+        deleteLine(commandHistory, dupCmd);
+        break; /* we do not expect more than one duplicate */
+      }
+    }
+
     moveToBOF(commandHistory);
     insertLine(commandHistory, cmd);
     if (getLineCount(commandHistory) > CMD_HISTORY_LEN) {
       LinePtr oldestCmd = moveToLastLine(commandHistory);
       deleteLine(commandHistory, oldestCmd);
     }
+    break;
   }
   moveToBOF(commandHistory);
 
