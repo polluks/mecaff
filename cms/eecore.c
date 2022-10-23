@@ -68,7 +68,13 @@ typedef struct _bufferpage *BufferpagePtr;
 typedef struct _line {
   LinePtr prev;
   LinePtr next;
+
+  /* W A R N I N G :  this breaks potential portability to AMODE 31 and VM/380 */
   unsigned long lineinfo; /* encodes line-length and the EditorPtr */
+  /* W A R N I N G :  bits 31..8 = shifted EditorPtr, restricts VM to 16 MB    */
+  /* W A R N I N G :  bits  7..0 = line length, restricts LRECL to 255         */
+  /* W A R N I N G :  this breaks potential portability to AMODE 31 and VM/380 */
+
   long selectionLevel;
   char text[0];           /* will have LRECL characters when formatted */
 } Line;
