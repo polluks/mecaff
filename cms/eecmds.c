@@ -48,6 +48,8 @@ static bool isInternalEE(EditorPtr ed);
 ** ****** global screen data
 */
 
+#define SET_SELECT_MAX 2147483647 /* DEBUG: 7->6 */  /* z/VM 6.4: (2**31)-1 */
+
 #define CMD_HISTORY_LEN 1024
 #define CMD_HISTORY_DUPE_CHECK 32
 static EditorPtr commandHistory;   /* eecore-editor with the command history */
@@ -1347,6 +1349,8 @@ static int CmdAttr(ScreenPtr scr, char *params, char *msg) {
     scr->attrFootLine = attr;
   } else if (isAbbrev(whatName, "SCALEline")) {
     scr->attrScaleLine = attr;
+  } else if (isAbbrev(whatName, "HIGHlight")) {
+    scr->attrHighLight = attr;
   } else {
     strcpy(msg, "Invalid screen object for ATTR");
   }
@@ -2175,6 +2179,65 @@ static int CmdSqmetVersion(ScreenPtr scr, char sqmet, char *params, char *msg) {
 }
 
 
+
+
+static int CmdSqmetSelect(ScreenPtr scr, char sqmet, char *params, char *msg) {
+/* This implementation only works on the current line.
+   The optional target operand is not yet implemented. */
+
+  params =  getCmdParam(params);   /* skip 'SELECT' */
+  if (!scr->ed) { return false; }
+
+  /* we need select_old if parameter is relative */
+  int curline = getCurrLineNo(scr->ed);
+  LinePtr curlinePtr = getLineAbsNo(scr->ed, curline);
+  int select_old = curlinePtr->selectionLevel;
+
+  if (sqmet == 'Q') {
+    sprintf(msg, "SELECT %d %d", select_old, 0);
+    return 0*_rc_success;
+  }
+
+
+  long select = 0;
+  long minus1 = -1;
+  bool selectRelative = false;
+
+  if (!tokcmp(params, "*")) {
+    select = SET_SELECT_MAX;
+  } else if (!tryParseInt(params, &select)) {
+    sprintf(msg, "SELECT operand must be numeric: %s", params);
+    return 0*_rc_error;
+  }
+
+  if (*params == '+') {
+    long select_new = select_old + select;
+    if (select_new <= minus1) /* long integer overflow ? */ {
+      select_new = SET_SELECT_MAX-0;  /* DEBUG: -1 */
+    } else if (select_new > SET_SELECT_MAX) {
+      select_new = SET_SELECT_MAX-0;  /* DEBUG: -2 */  /* z/VM XEDIT does not complain */
+    }
+    select = select_new;
+  } else if (*params == '-') {
+    long select_new = select_old + select; /* negative value already inside */
+    if (select_new < 0) { select_new = 0; } /* z/VM XEDIT does not complain */
+    select = select_new;
+  } else if ((select < 0) || (select > SET_SELECT_MAX)) {
+    sprintf(msg, "Selection level must be 0 .. %d", SET_SELECT_MAX);
+    return 0*_rc_error;
+  }
+
+  curlinePtr->selectionLevel = select;
+
+  sprintf(msg, "Line %d SELECT changed from %d to %d", curline, select_old, curlinePtr->selectionLevel);
+
+  params = getCmdParam(params);
+  checkNoParams(params, msg);
+  return false;
+}
+
+
+
 static int CmdSqmetCase(ScreenPtr scr, char sqmet, char *params, char *msg) {
   char case_um = '?';
   char case_ir = '?';
@@ -2335,7 +2398,7 @@ static MySqmetDef sqmetCmds[] = {
   {"SCALe"                   , "sqmet" , &CmdSqmetNYI               },
   {"SCOPE"                   , "sqmet" , &CmdSqmetNYI               },
   {"SCReen"                  , "sqmet" , &CmdSqmetNYI               },
-  {"SELect"                  , "sqmet" , &CmdSqmetNYI               },
+  {"SELect"                  , "SQMET" , &CmdSqmetSelect            },
   {"Seq8"                    , "sqmet" , &CmdSqmetNYI               },
   {"SERial"                  , "sqmet" , &CmdSqmetNYI               },
   {"SHADow"                  , "sqmet" , &CmdSqmetNYI               },

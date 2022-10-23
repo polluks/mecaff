@@ -69,6 +69,7 @@ typedef struct _line {
   LinePtr prev;
   LinePtr next;
   unsigned long lineinfo; /* encodes line-length and the EditorPtr */
+  long selectionLevel;
   char text[0];           /* will have LRECL characters when formatted */
 } Line;
 
@@ -103,6 +104,11 @@ typedef struct _editor {
 
   bool isBinary;     /* are there any binary chars => forbid saving? */
   bool isModified;   /* were there changes since opening or last write? */
+
+  bool scopeAll;     /* SET SCOPE ALL in effect ? */
+  bool shadowOn;     /* SET SHADOW ON in effect ? */
+  long setDisplay1;  /* SET DISPLAY n1 .. */
+  long setDisplay2;  /* SET DISPLAY .. n2 */
 
     /* memory chunks for lines allocated to the editor */
   BufferpagePtr bufferFirst;
@@ -242,6 +248,7 @@ static LinePtr getFreeLine(EditorPtr ed) {
   }
   LinePtr line = ed->lineFirstFree;
   line->lineinfo = (unsigned long)ed << 8;
+  line->selectionLevel = 0;
   ed->lineFirstFree = line->next;
   return line;
 }

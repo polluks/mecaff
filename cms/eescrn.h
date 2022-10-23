@@ -24,27 +24,27 @@
 ** Written by Dr. Hans-Walter Latz, Berlin (Germany), 2011,2012,2013
 ** Released to the public domain.
 */
- 
+
 #ifndef _EESCRNimported
 #define _EESCRNimported
- 
+
 #include "bool.h"
 #include "eecore.h"
- 
+
 /* the only 3270 specific thing clients must know are the AID-keys that
    can be sent by the terminal
 */
 #include "aid3270.h"
- 
+
 /* EESCRN supports up to RESFIELDCOUNT modifiable line content lines */
 #define RESFIELDCOUNT 64
- 
+
 /* max. length of the command line text the user can enter */
 #define CMDLINELENGTH 120
- 
+
 /* max. length of the prefix commands */
 #define PREFIXLENGTH 5
- 
+
 /* structure representing a modification of a eecore-line on the screen */
 typedef struct _eescreen_lineinput {
     LinePtr line;               /* the eecore-line modified */
@@ -52,20 +52,20 @@ typedef struct _eescreen_lineinput {
     char *newText;              /* not null terminated, may not be changed! */
     unsigned int newTextLength; /* the length to use when updating the line */
 } LineInput;
- 
+
 /* structure representing a prefix command entered for an eecore-line */
 typedef struct _eescreen_prefixinput {
     LinePtr line;
     unsigned int lineNo;
     char prefixCmd[PREFIXLENGTH + 1]; /* null terminated */
 } PrefixInput;
- 
+
 /* pre-fill data for the prefix-zone for a eecore-line */
 typedef struct _eescreen_prefixmark {
     LinePtr forLine; /* ed-line, for which the prefix zone is marked */
     char prefixPrefill[PREFIXLENGTH + 1]; /* content of its prefix */
 } PrefixMark;
- 
+
 /* codes to specify the color resp. intensity attributes for screen elements.
    The codes DO_xxIntens specifify the intensified display is to be used on
    monochrome terminals
@@ -88,13 +88,13 @@ enum DisplayAttr {
   DA_White            = 14,
   DA_WhiteIntens      = 15
 };
- 
+
 /* the public part of a screen structure
    (the field names should be self-explaining, possible values are specified
    in field specific comments)
 */
 typedef struct _eescreen_public {
- 
+
     /* general directives for screen construction */
     char prefixMode; /* 0 = off, 1 = left, >1 right */
     bool prefixNumbered;
@@ -114,7 +114,7 @@ typedef struct _eescreen_public {
     short infoLinesPos; /* 0=off, < 0 top, > 0 bottom */
     short selectionColumn; /* which line column has selection mark, 0 = none */
     char selectionMark; /* val in 'selectionColumn' for a line to be selected */
- 
+
     /* display attributes for screen elements, must be a DisplayAttr value */
     unsigned char attrFile;
     unsigned char attrCurrLine;
@@ -128,12 +128,13 @@ typedef struct _eescreen_public {
     unsigned char attrFootLine;
     unsigned char attrScaleLine;
     unsigned char attrSelectedLine;
- 
+    unsigned char attrHighLight;
+
     /* screen characteristics -- filled from terminal info */
     bool screenCanColors;
     int screenRows;
     int screenColumns;
- 
+
     /* output data to fill the next screen i/o */
       /* cursor placement and the like */
     short cursorPlacement; /* 1/2=cursorLine-prefix/-fileline, else cmd */
@@ -153,7 +154,7 @@ typedef struct _eescreen_public {
     bool scaleMark; /* mark a zone on the scale? */
     short scaleMarkStart; /* start of the marked zone on the scale */
     short scaleMarkLength; /* length of the marked zone on the scale */
- 
+
     /* result of the last screen i/o */
     LinePtr firstLineVisible; /* first line in visible range */
     LinePtr lastLineVisible; /* last line in visible range */
@@ -174,33 +175,33 @@ typedef struct _eescreen_public {
     unsigned int cmdPrefixesAvail; /* prefix commands in cmdPrefixes */
     LineInput inputLines[RESFIELDCOUNT];
     PrefixInput cmdPrefixes[RESFIELDCOUNT];
- 
+
 } ScreenPublic;
- 
+
 #ifdef _eescrn_implementation
- 
+
 /* the implementation adds some private fields for roundtrip management */
 typedef struct _screen *ScreenPtr;
- 
+
 #else
- 
+
 /* the public usable part of a ee-screen */
 typedef ScreenPublic *ScreenPtr;
- 
+
 #endif
- 
+
 /* create a new screen, possibly copying a message to 'mbuf' if the console
    cannot be accessed in fullscreen mode.
    (the MECAFF session is initialized when the first screen is allocated)
 */
 #define allocateScreen(mbuf) _scrmk(mbuf)
 extern ScreenPtr _scrmk(char *msgBuffer);
- 
+
 /* free a screen
 */
 #define freeScreen(screen) _scrfr(screen)
 extern void _scrfr(ScreenPtr screen);
- 
+
 /* perform a terminal roundtrip for 'screen', returning the FSIO returncode
    from the __fswr() resp. __fsrd() calls.
    If the terminal was disconnected and reconnected since the last roundtrip or
@@ -210,22 +211,22 @@ extern void _scrfr(ScreenPtr screen);
 #define FS_SESSION_LOST (-512)
 #define writeReadScreen(screen) _scrio(screen)
 extern int _scrio(ScreenPtr screen);
- 
+
 /* are we connected with a MECAFF console?
 */
 extern bool ismfcons();
 #define connectedtoMecaffConsole() \
   ismfcons()
- 
+
 /* OBSOLETE... */
 #ifdef _NOCMS
 extern void simu3270(int simuRows, int simuCols);
 #else
 #define simu3270(simuRows, simuCols)
 #endif
- 
+
 /*#define _DEBUG*/
- 
+
 #ifdef _DEBUG
 #define Printf0(p1) \
   printf(p1)
@@ -247,5 +248,5 @@ extern void simu3270(int simuRows, int simuCols);
 #define Printf4(p1,p2,p3,p4,p5)
 #define Printf5(p1,p2,p3,p4,p5,p6)
 #endif
- 
+
 #endif

@@ -210,6 +210,7 @@ ScreenPtr _scrmk(char *msgBuffer) {
     pub->attrScaleLine = DA_Blue;
     pub->attrSelectedLine = DA_WhiteIntens;
     pub->attrCurrLine = DA_WhiteIntens;
+    pub->attrHighLight = DA_Yellow;
     pub->screenCanColors = true;
   }
   pub->screenRows = rows;
@@ -1199,6 +1200,7 @@ static void writeFileLine(
 
   /* start the file line text and remember position of input field */
   attr = (isCurrentLine) ? pub->attrCurrLine : pub->attrFile;
+  attr = (line->selectionLevel > 0) ? pub->attrHighLight : attr;
   if (isSelected) { attr = pub->attrSelectedLine; }
   startField(
     attr,
