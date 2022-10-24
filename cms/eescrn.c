@@ -211,6 +211,7 @@ ScreenPtr _scrmk(char *msgBuffer) {
     pub->attrSelectedLine = DA_WhiteIntens;
     pub->attrCurrLine = DA_WhiteIntens;
     pub->attrHighLight = DA_Yellow;
+    pub->attrShadow = DA_Pink;
     pub->screenCanColors = true;
   }
   pub->screenRows = rows;
@@ -569,7 +570,7 @@ static int _scrio_inner(ScreenPtr screen) {
 
   /* file lines above curr line */
   if (scrLineForFirstAboveCurr > 0 && uplinesCount > 0) {
-    int upCurrLineNo = firstUplineNo;
+    /***** int upCurrLineNo = firstUplineNo; *****/
     currRow = scrLineForFirstAboveCurr - 1;
     SBA(currRow, lastCol);
     currRow +=  scrLinesPerEdLine;
@@ -584,7 +585,7 @@ static int _scrio_inner(ScreenPtr screen) {
        pub,
        priv,
        uplines[i],
-       upCurrLineNo++,
+       getLineNumber(uplines[i]),  /***** was "upCurrLineNo++" *****/
        scrLinesPerEdLine,
        false,
        prefixPrefill);
@@ -636,7 +637,7 @@ static int _scrio_inner(ScreenPtr screen) {
 
   /* file lines below curr line */
   if (scrLineForFirstBelowCurr > 0 && downlinesCount > 0) {
-    int downCurrLineNo = currLineNo + 1;
+    /***** int downCurrLineNo = currLineNo + 1; *****/
     currRow = scrLineForFirstBelowCurr - 1;
     SBA(currRow, lastCol);
     currRow +=  scrLinesPerEdLine;
@@ -651,7 +652,7 @@ static int _scrio_inner(ScreenPtr screen) {
        pub,
        priv,
        downlines[i],
-       downCurrLineNo++,
+       getLineNumber(downlines[i]),  /***** was "downCurrLineNo++" *****/
        scrLinesPerEdLine,
        false,
        prefixPrefill);
@@ -1187,10 +1188,12 @@ static void writeFileLine(
   bool isSelected = (pub->selectionColumn
                     && line->text[pub->selectionColumn] == pub->selectionMark);
   char *pfixPrefill = (isSelected) ? "»»»»»" : prefixPrefill;
+  bool isExcluded = !(isInDisplayRange(line));
 
   lineInfo->edLine = line;
   lineInfo->edLineNo = lineNo;
   unsigned char attr = (isCurrentLine) ? pub->attrCurrLine : pub->attrPrefix;
+  if (isExcluded) { attr = pub->attrShadow; }
 
   /* prefix before file line text ? */
   if (pub->prefixMode == 1) {
@@ -1201,6 +1204,7 @@ static void writeFileLine(
   /* start the file line text and remember position of input field */
   attr = (isCurrentLine) ? pub->attrCurrLine : pub->attrFile;
   attr = (line->selectionLevel > 0) ? pub->attrHighLight : attr;
+  if (isExcluded) { attr = pub->attrShadow; }
   if (isSelected) { attr = pub->attrSelectedLine; }
   startField(
     attr,
@@ -1293,6 +1297,7 @@ static void writeFileLine(
   /* prefix after file line text ? */
   if (pub->prefixMode > 1) {
     attr = (isCurrentLine) ? pub->attrCurrLine : pub->attrPrefix;
+    if (isExcluded) { attr = pub->attrShadow; }
     SBA(endRow, lastLineCol);
     startField(attr, pub->prefixReadOnly || isLocked, false);
     writePrefix(pub, priv, lineInfo, lineNo, pfixPrefill);

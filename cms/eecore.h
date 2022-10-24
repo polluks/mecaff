@@ -339,6 +339,34 @@ extern int _gtabs(EditorPtr ed, int *tabs);
   _gtabs(ed, tabs)
 
 
+/* SET SCOPE ALL       -> true
+   SET SCOPE DISPLAY   -> false
+*/
+extern bool getScope(EditorPtr ed);
+extern void setScope(EditorPtr ed, bool scope);
+
+extern bool gtShadow(EditorPtr ed);
+extern void stShadow(EditorPtr ed, bool scope);
+
+#define SET_SELECT_MAX 2147483647   /* z/VM 6.4: (2**31)-1 */
+
+extern long getDisp1(EditorPtr ed);
+extern long getDisp2(EditorPtr ed);
+
+extern void _setDisp(EditorPtr ed, long display1, long display2);
+#define setDisplay(ed, display1, display2) \
+  _setDisp(ed, display1, display2)
+
+extern bool _isInDpR(LinePtr line);
+#define isInDisplayRange(line) \
+  _isInDpR(line)
+
+extern bool _isInScp(LinePtr line);
+#define isInScope(line) \
+  _isInScp(line)
+
+
+
 /*
 **
 ** ############################ file i/o operations
@@ -438,6 +466,16 @@ extern int gcno(EditorPtr ed);
 extern LinePtr glno(EditorPtr ed, int lineNo);
 #define getLineAbsNo(ed, lineNo) \
   glno(ed, lineNo)
+
+
+/* getlinum :
+   get the line number from given LinePtr
+   getLineNumber(line)
+*/
+extern int getlinum(LinePtr line);
+#define getLineNumber(line) \
+  getlinum(line)
+
 
 
 /* get the indentation (offset of the first non-blank character) of the first

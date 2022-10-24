@@ -129,6 +129,7 @@ typedef struct _eescreen_public {
     unsigned char attrScaleLine;
     unsigned char attrSelectedLine;
     unsigned char attrHighLight;
+    unsigned char attrShadow;
 
     /* screen characteristics -- filled from terminal info */
     bool screenCanColors;

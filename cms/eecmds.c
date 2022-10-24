@@ -48,8 +48,6 @@ static bool isInternalEE(EditorPtr ed);
 ** ****** global screen data
 */
 
-#define SET_SELECT_MAX 2147483647 /* DEBUG: 7->6 */  /* z/VM 6.4: (2**31)-1 */
-
 #define CMD_HISTORY_LEN 1024
 #define CMD_HISTORY_DUPE_CHECK 32
 static EditorPtr commandHistory;   /* eecore-editor with the command history */
@@ -1351,6 +1349,8 @@ static int CmdAttr(ScreenPtr scr, char *params, char *msg) {
     scr->attrScaleLine = attr;
   } else if (isAbbrev(whatName, "HIGHlight")) {
     scr->attrHighLight = attr;
+  } else if (isAbbrev(whatName, "SHadow")) {
+    scr->attrShadow = attr;
   } else {
     strcpy(msg, "Invalid screen object for ATTR");
   }
@@ -2238,6 +2238,72 @@ static int CmdSqmetSelect(ScreenPtr scr, char sqmet, char *params, char *msg) {
 
 
 
+static int CmdSqmetDisplay(ScreenPtr scr, char sqmet, char *params, char *msg) {
+
+  params =  getCmdParam(params);   /* skip 'DISPLAY' */
+  if (!scr->ed) { return false; }
+
+  EditorPtr ed = scr->ed;
+  if (sqmet == 'Q') {
+    sprintf(msg, "DISPLAY %d %d", getDisp1(ed), getDisp2(ed));
+    return 0*_rc_success;
+  }
+
+
+  long display1 = 0;
+
+  if (!tokcmp(params, "*")) {
+    setDisplay(ed, 0, SET_SELECT_MAX);
+    params = getCmdParam(params);
+    checkNoParams(params, msg);
+    return 0*_rc_success;
+  } else if (!tryParseInt(params, &display1)) {
+    sprintf(msg, "DISPLAY operands must be numeric: %s", params);
+    return 0*_rc_error;
+  }
+
+  if ((display1 < 0) || (display1 > SET_SELECT_MAX)) {
+    sprintf(msg, "DISPLAY operands must be 0 .. %d", SET_SELECT_MAX);
+    return 0*_rc_error;
+  }
+
+  long display2 = display1;
+  params = getCmdParam(params);
+
+  if (!tokcmp(params, "*")) {
+    setDisplay(ed, display1, SET_SELECT_MAX);
+    params = getCmdParam(params);
+    checkNoParams(params, msg);
+    return 0*_rc_success;
+  } else if (!tokcmp(params, "=")) {
+    setDisplay(ed, display1, display1);
+    params = getCmdParam(params);
+    checkNoParams(params, msg);
+    return 0*_rc_success;
+  } else if (!tryParseInt(params, &display2)) {
+    sprintf(msg, "DISPLAY operands must be numeric: %s", params);
+    return 0*_rc_error;
+  }
+
+  if ((display2 < 0) || (display2 > SET_SELECT_MAX)) {
+    sprintf(msg, "DISPLAY operands must be 0 .. %d", SET_SELECT_MAX);
+    return 0*_rc_error;
+  }
+
+
+  if (display1 > display2) {
+    sprintf(msg, "DISPLAY operand 1 (%d) must not be larger than operand 2 (%d)", display1, display2);
+    return 0*_rc_error;
+  }
+
+  setDisplay(ed, display1, display2);
+  params = getCmdParam(params);
+  checkNoParams(params, msg);
+  return false;
+}
+
+
+
 static int CmdSqmetCase(ScreenPtr scr, char sqmet, char *params, char *msg) {
   char case_um = '?';
   char case_ir = '?';
@@ -2345,7 +2411,7 @@ static MySqmetDef sqmetCmds[] = {
   {"CTLchar"                 , "sqmet" , &CmdSqmetNYI               },
   {"CURLine"                 , "sqmet" , &CmdSqmetNYI               },
   {"CURSor"                  , "sqmet" , &CmdSqmetNYI               },
-  {"DISPlay"                 , "sqmet" , &CmdSqmetNYI               },
+  {"DISPlay"                 , "SQMET" , &CmdSqmetDisplay           },
   {"EFMode"                  , "sqmet" , &CmdSqmetNYI               },
   {"EFName"                  , "sqmet" , &CmdSqmetNYI               },
   {"EFType"                  , "sqmet" , &CmdSqmetNYI               },

@@ -1266,6 +1266,29 @@ LinePtr glno(EditorPtr ed, int lineNo) {
   return NULL;
 }
 
+
+/* getlinum :
+
+   getLineNumber(line)
+*/
+int getlinum(LinePtr line) {
+  if (!line)    { return 0; }
+  /* if (!(line*)) { return 0; } */
+  /* W A R N I N G :  this breaks potential portability to AMODE 31 and VM/380 */
+  EditorPtr ed = (void*)((line->lineinfo)>>8);
+
+  int currNo = 1;
+  LinePtr curr  = ed->lineBOF->next;
+  LinePtr guard = ed->lineEOF;
+  while(curr != guard) {
+    if (curr == line) { return currNo; }
+    currNo++;
+    curr = curr->next;
+  }
+  return 0;
+}
+
+
 /* m2lno :
 
    moveToLineNo(ed, lineNo)
@@ -1357,13 +1380,15 @@ void glframe(
   /* get uplines */
   while(cnt < upLinesReq && curr != guard && curr->prev != guard) {
     curr = curr->prev;
-    cnt++;
+    if (isInDisplayRange(curr)) cnt++;
   }
   *upLinesCount = cnt;
   while(cnt > 0) {
-    *upLines++ = curr;
+    if (isInDisplayRange(curr)) {
+      *upLines++ = curr;
+      cnt--;
+    }
     curr = curr->next;
-    cnt--;
   }
 
   /* get downlines */
@@ -1371,9 +1396,11 @@ void glframe(
   curr = ed->lineCurrent->next;
   guard = ed->lineEOF;
   while(cnt < downLinesReq && curr != guard) {
-    *downLines++ = curr;
+    if (isInDisplayRange(curr)) {
+      *downLines++ = curr;
+      cnt++;
+    }
     curr = curr->next;
-    cnt++;
   }
   *downLinesCount = cnt;
 
@@ -2451,3 +2478,43 @@ int gclindt(EditorPtr ed, LinePtr forLine) {
   for (i = 0; i < indent && !(*s && *s == ' '); i++) { *s++ = ' '; }
   return indent;
 }
+
+
+/**
+*** selective line editing
+**/
+extern bool isInScope(LinePtr line) {
+  /* W A R N I N G :  this breaks potential portability to AMODE 31 and VM/380 */
+  EditorPtr ed = (void*)((line->lineinfo)>>8);
+
+  if (ed->scopeAll) return true;
+
+  return ((line->selectionLevel >= ed->setDisplay1) &&
+          (line->selectionLevel <= ed->setDisplay2));
+}
+
+extern bool isInDisplayRange(LinePtr line) {
+  /* W A R N I N G :  this breaks potential portability to AMODE 31 and VM/380 */
+  EditorPtr ed = (void*)((line->lineinfo)>>8);
+
+  if (line == ed->lineCurrent) return true;
+
+  return ((line->selectionLevel >= ed->setDisplay1) &&
+          (line->selectionLevel <= ed->setDisplay2));
+  /* DEBUG */  return false;
+
+  /* DEBUG */ if (line->selectionLevel > 1) return false;
+  /* DEBUG */ if (ed->setDisplay1      > 2) return false;
+  /* DEBUG */ if (ed->setDisplay2      > 3) return false;
+
+}
+
+extern void setDisplay(EditorPtr ed, long display1, long display2) {
+  ed->setDisplay1 = display1;
+  ed->setDisplay2 = display2;
+}
+
+extern long getDisp1 (EditorPtr ed) { return ed->setDisplay1; }
+extern long getDisp2 (EditorPtr ed) { return ed->setDisplay2; }
+
+
