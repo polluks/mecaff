@@ -1372,11 +1372,14 @@ static int CmdPf(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static int CmdAttr(ScreenPtr scr, char *params, char *msg) {
+static int CmdSqmetColor(ScreenPtr scr, char sqmet, char *params, char *msg) {
+  bool our_name_is_BE = isAbbrev(params, "COLOUr");  /* else use "COLOR" */
+  params = getCmdParam(params); /* skip COLOr/COLOUr/ATTRibute */
+
   char *whatName = params;
   char whatTokenLen = getToken(params, ' ');
   if (whatTokenLen == 0) {
-    strcpy(msg, "Missing screen object for ATTR");
+    sprintf(msg, "Missing screen object for SET %s",(our_name_is_BE ? "COLOUR" : "COLOR"));
     return false;
   }
   params =  getCmdParam(params);
@@ -1399,7 +1402,9 @@ static int CmdAttr(ScreenPtr scr, char *params, char *msg) {
   } else if (isAbbrev(params, "MOno")) {
     attr = DA_Mono;
   } else {
-    strcpy(msg, "Invalid/missing color parameter for ATTR");
+    sprintf(msg, "Invalid/missing %s parameter for SET %s",
+                     (our_name_is_BE ? "colour" : "color"),
+                     (our_name_is_BE ? "COLOUR" : "COLOR"));
     return false;
   }
   params =  getCmdParam(params);
@@ -1436,7 +1441,8 @@ static int CmdAttr(ScreenPtr scr, char *params, char *msg) {
   } else if (isAbbrev(whatName, "SHadow")) {
     scr->attrShadow = attr;
   } else {
-    strcpy(msg, "Invalid screen object for ATTR");
+    sprintf(msg, "Invalid screen object for SET %s",
+                   (our_name_is_BE ? "COLOUR" : "COLOR"));
   }
   return false;
 }
@@ -2516,12 +2522,14 @@ static MySqmetDef sqmetCmds[] = {
   {"ALT"                     , "sqmet" , &CmdSqmetNYI               },
   {"APL"                     , "sqmet" , &CmdSqmetNYI               },
   {"ARBchar"                 , "sqmet" , &CmdSqmetNYI               },
+  {"ATTRibute"               , "SQMET" , &CmdSqmetColor             },
   {"AUtosave"                , "sqmet" , &CmdSqmetNYI               },
   {"BASEft"                  , "sqmet" , &CmdSqmetNYI               },
   {"BRKkey"                  , "sqmet" , &CmdSqmetNYI               },
   {"CASe"                    , "SQMET" , &CmdSqmetCase              },
   {"CMDline"                 , "sqmet" , &CmdSqmetNYI               },
-  {"COLOR"                   , "sqmet" , &CmdSqmetNYI               },
+  {"COLOr"                   , "SQMET" , &CmdSqmetColor             },
+  {"COLOur"                  , "SQMET" , &CmdSqmetColor             },
   {"COLPtr"                  , "sqmet" , &CmdSqmetNYI               },
   {"COLumn"                  , "sqmet" , &CmdSqmetNYI               },
   {"CTLchar"                 , "sqmet" , &CmdSqmetNYI               },
@@ -2797,7 +2805,7 @@ static MyCmdDef eeCmds[] = {
   {"ALL"                     , &CmdAll                              },
   {"APL"                     , &CmdImpSet                           },
   {"ARBchar"                 , &CmdImpSet                           },
-  {"ATTR"                    , &CmdAttr                             },
+  {"ATTRibute"               , &CmdImpSet                           },
   {"AUtosave"                , &CmdImpSet                           },
   {"BASEft"                  , &CmdImpSet                           },
   {"BOTtom"                  , &CmdBottom                           },
@@ -2812,7 +2820,8 @@ static MyCmdDef eeCmds[] = {
 /*{"CMDline"                 , &CmdImpSet                           },*/
   {"CMS"                     , &CmdCms                              },
   {"CMSG"                    , &CmdCmsg                             },
-  {"COLOR"                   , &CmdImpSet                           },
+  {"COLOr"                   , &CmdImpSet                           },
+  {"COLOur"                  , &CmdImpSet                           },
   {"COLPtr"                  , &CmdImpSet                           },
   {"COLumn"                  , &CmdImpSet                           },
   {"CTLchar"                 , &CmdImpSet                           },
