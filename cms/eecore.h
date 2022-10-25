@@ -342,6 +342,9 @@ extern int _gtabs(EditorPtr ed, int *tabs);
 /* SET SCOPE ALL       -> true
    SET SCOPE DISPLAY   -> false
 */
+extern bool gParadox(EditorPtr ed);
+extern void sParadox(EditorPtr ed, bool scope);
+
 extern bool getScope(EditorPtr ed);
 extern void setScope(EditorPtr ed, bool scope);
 

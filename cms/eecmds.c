@@ -43,7 +43,7 @@ static const char *_FILE_NAME_ = "eecmds.c";
 /* forward declarations */
 static bool parseTabs(char *params, int *tabs, int *count);
 static bool isInternalEE(EditorPtr ed);
-
+static int CmdSqmetDisplay(ScreenPtr scr, char sqmet, char *params, char *msg);
 /*
 ** ****** global screen data
 */
@@ -912,6 +912,90 @@ static char *locNames[] = {
     "PATTERN(DOWN)",
     "PATTERN(UP)"
     };
+
+
+static int CmdAll(ScreenPtr scr, char *params, char *msg) {
+  if (!scr->ed) { return false; }
+  EditorPtr ed = scr->ed;
+  LinePtr oldCurrentLine = getCurrentLine(ed);
+  int oldCurrentLineNum = getLineNumber(oldCurrentLine);
+
+
+  int found = 0;
+  int rc = 0;
+  char msg2[255];
+  char param2[255];
+  msg2[0] = '\0';
+  rc = execCmd(scr, "SET SCOPE ALL"         , msg2, false);
+  msg2[0] = '\0';
+  rc = execCmd(scr, "SET DISPLAY 0 *"       , msg2, false);
+  msg2[0] = '\0';
+  rc = execCmd(scr, "TOP"                   , msg2, false);
+
+  LinePtr CurrentLine = getCurrentLine(ed);
+  int i = 0;
+  int j = getLineCount(ed);
+  while (i <= j) {
+    i++;
+    msg2[0] = '\0';
+    rc = execCmd(scr, "LOCATE 1", msg2, false);
+    LinePtr NextLine = getCurrentLine(ed);
+    if ( CurrentLine == NextLine ) break;  /* end of file ? */
+    CurrentLine = NextLine;
+    msg2[0] = '\0';
+    rc = execCmd(scr, "SET SELECT 0", msg2, false);
+    if (i > 999999999) break;
+  };
+
+  msg2[0] = '\0';
+  rc = execCmd(scr, "TOP"                   , msg2, false);
+
+  while (*params == ' ') params++;
+
+  sprintf(param2,"LOCATE %s", params);
+
+  CurrentLine = getCurrentLine(ed);
+  while (*params) {
+    msg2[0] = '\0';
+    rc = execCmd(scr, param2, msg2, false);
+    LinePtr NextLine = getCurrentLine(ed);
+    if ( CurrentLine == NextLine ) break;  /* target not found ? */
+    found++;
+    CurrentLine = NextLine;
+    msg2[0] = '\0';
+    rc = execCmd(scr, "SET SELECT 1"          , msg2, false);
+  }
+
+
+  if (found > 0) {
+    msg2[0] = '\0';
+    rc = execCmd(scr, "SET SCOPE DISPLAY"     , msg2, false);
+    msg2[0] = '\0';
+    rc = execCmd(scr, "SET DISPLAY 1 1"       , msg2, false);
+    msg2[0] = '\0';
+    rc = execCmd(scr, "TOP"                   , msg2, false);
+    return 0*_rc_success;
+  } else {
+    msg2[0] = '\0';
+    rc = execCmd(scr, "SET SCOPE DISPLAY"     , msg2, false);
+    msg2[0] = '\0';
+    rc = execCmd(scr, "SET DISPLAY 0 0"       , msg2, false);
+    msg2[0] = '\0';
+    sprintf(param2,"LOCATE :%d", oldCurrentLineNum);
+    rc = execCmd(scr, param2                  , msg2, false);
+    return 0*_rc_error;
+  }
+
+
+/*
+  sprintf(msg, "DEBUG 22:39 'ALL': %d %d %d %d", 966, rc, i, j);
+  return false;
+*/
+
+
+
+  return 0*rc;
+};
 
 
 static int CmdLocate(ScreenPtr scr, char *params, char *msg) {
@@ -2181,6 +2265,38 @@ static int CmdSqmetVersion(ScreenPtr scr, char sqmet, char *params, char *msg) {
 
 
 
+static int CmdSqmetScope(ScreenPtr scr, char sqmet, char *params, char *msg) {
+  params =  getCmdParam(params);   /* skip 'SCOPE' */
+  EditorPtr ed = scr->ed;
+
+  if (sqmet == 'Q') {
+    sprintf(msg, "SCOPE %s", (getScope(ed) ? "All" : "Display"));
+    return 0*_rc_success;
+  }
+
+  if (isAbbrev(params, "All")) {
+    setScope(ed, true);
+    sParadox(ed, false);
+  } else if (isAbbrev(params, "Display")) {
+    setScope(ed, false);;
+    sParadox(ed, false);
+  } else if (isAbbrev(params, "Paradox")) {
+    setScope(ed, false);
+    sParadox(ed, true);
+  } else {
+    strcpy(msg, "Invalid operand for SET SCOPE: 'All' or 'Display' expected");
+    return false;
+  }
+
+  params =  getCmdParam(params);   /* skip 'All/Display' */
+  checkNoParams(params, msg);
+
+  return false;
+}
+
+
+
+
 static int CmdSqmetSelect(ScreenPtr scr, char sqmet, char *params, char *msg) {
 /* This implementation only works on the current line.
    The optional target operand is not yet implemented. */
@@ -2462,7 +2578,7 @@ static MySqmetDef sqmetCmds[] = {
   {"RESERved"                , "sqmet" , &CmdSqmetNYI               },
   {"RING"                    , "sqmet" , &CmdSqmetNYI               },
   {"SCALe"                   , "sqmet" , &CmdSqmetNYI               },
-  {"SCOPE"                   , "sqmet" , &CmdSqmetNYI               },
+  {"SCOPE"                   , "SQMET" , &CmdSqmetScope             },
   {"SCReen"                  , "sqmet" , &CmdSqmetNYI               },
   {"SELect"                  , "SQMET" , &CmdSqmetSelect            },
   {"Seq8"                    , "sqmet" , &CmdSqmetNYI               },
@@ -2678,6 +2794,7 @@ typedef struct _mycmddef {
 static MyCmdDef eeCmds[] = {
   {"ACTion"                  , &CmdImpSet                           },
   {"ALT"                     , &CmdImpSet                           },
+  {"ALL"                     , &CmdAll                              },
   {"APL"                     , &CmdImpSet                           },
   {"ARBchar"                 , &CmdImpSet                           },
   {"ATTR"                    , &CmdAttr                             },
@@ -2925,7 +3042,7 @@ void setPF(int pfNo, char *cmdline) {
   }
 }
 
-int execCmd(
+extern int execCmd(
     ScreenPtr scr,
     char *cmd,
     char *msg,

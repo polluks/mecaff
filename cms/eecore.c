@@ -112,6 +112,7 @@ typedef struct _editor {
   bool isModified;   /* were there changes since opening or last write? */
 
   bool scopeAll;     /* SET SCOPE ALL in effect ? */
+  bool sParadox;     /* SET SCOPE PARADOX in effect ? */
   bool shadowOn;     /* SET SHADOW ON in effect ? */
   long setDisplay1;  /* SET DISPLAY n1 .. */
   long setDisplay2;  /* SET DISPLAY .. n2 */
@@ -1380,11 +1381,11 @@ void glframe(
   /* get uplines */
   while(cnt < upLinesReq && curr != guard && curr->prev != guard) {
     curr = curr->prev;
-    if (isInDisplayRange(curr)) cnt++;
+    if ((isInDisplayRange(curr)) || gParadox(ed)) cnt++;
   }
   *upLinesCount = cnt;
   while(cnt > 0) {
-    if (isInDisplayRange(curr)) {
+    if ((isInDisplayRange(curr)) || gParadox(ed)) {
       *upLines++ = curr;
       cnt--;
     }
@@ -1396,7 +1397,7 @@ void glframe(
   curr = ed->lineCurrent->next;
   guard = ed->lineEOF;
   while(cnt < downLinesReq && curr != guard) {
-    if (isInDisplayRange(curr)) {
+    if ((isInDisplayRange(curr)) || gParadox(ed)) {
       *downLines++ = curr;
       cnt++;
     }
@@ -2514,7 +2515,13 @@ extern void setDisplay(EditorPtr ed, long display1, long display2) {
   ed->setDisplay2 = display2;
 }
 
-extern long getDisp1 (EditorPtr ed) { return ed->setDisplay1; }
-extern long getDisp2 (EditorPtr ed) { return ed->setDisplay2; }
+extern long getDisp1(EditorPtr ed) { return ed->setDisplay1; }
+extern long getDisp2(EditorPtr ed) { return ed->setDisplay2; }
+
+extern bool getScope(EditorPtr ed) { return ed->scopeAll; }   ;
+extern void setScope(EditorPtr ed, bool scope) { ed->scopeAll = scope; }
+
+extern bool gParadox(EditorPtr ed) { return ed->sParadox; }   ;
+extern void sParadox(EditorPtr ed, bool scope) { ed->sParadox = scope; }
 
 
