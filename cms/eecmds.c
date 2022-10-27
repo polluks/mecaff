@@ -27,6 +27,7 @@
 
 #include "eecore.h"
 #include "eeutil.h"
+#include "fs3270.h"
 #include "eescrn.h"
 #include "eemain.h"
 
@@ -1375,76 +1376,226 @@ static int CmdPf(ScreenPtr scr, char *params, char *msg) {
 static int CmdSqmetColor(ScreenPtr scr, char sqmet, char *params, char *msg) {
   bool our_name_is_BE = isAbbrev(params, "COLOUr");  /* else use "COLOR" */
   params = getCmdParam(params); /* skip COLOr/COLOUr/ATTRibute */
+  int set_attr    = 0;
+  int set_HiLit   = 0;
+  int set_intens  = 0;
+  unsigned char attr  = DA_Mono;
+  unsigned char HiLit = HiLit_None;
 
   char *whatName = params;
   char whatTokenLen = getToken(params, ' ');
   if (whatTokenLen == 0) {
     sprintf(msg, "Missing screen object for SET %s",(our_name_is_BE ? "COLOUR" : "COLOR"));
-    return false;
+    return 0*_rc_error;
   }
-  params =  getCmdParam(params);
 
-  unsigned char attr = DA_Mono;
-  if (isAbbrev(params, "BLUe")) {
-    attr = DA_Blue;
-  } else if (isAbbrev(params, "REd")) {
-    attr = DA_Red;
-  } else if (isAbbrev(params, "PInk")) {
-    attr = DA_Pink;
-  } else if (isAbbrev(params, "GREen")) {
-    attr = DA_Green;
-  } else if (isAbbrev(params, "TURquoise")) {
-    attr = DA_Turquoise;
-  } else if (isAbbrev(params, "YELlow")) {
-    attr = DA_Yellow;
-  } else if (isAbbrev(params, "WHIte")) {
-    attr = DA_White;
-  } else if (isAbbrev(params, "MOno")) {
-    attr = DA_Mono;
-  } else {
-    sprintf(msg, "Invalid/missing %s parameter for SET %s",
-                     (our_name_is_BE ? "colour" : "color"),
-                     (our_name_is_BE ? "COLOUR" : "COLOR"));
-    return false;
-  }
-  params =  getCmdParam(params);
-  if (isAbbrev(params, "HIlight")) {
-    attr |= (unsigned char)0x01;
+  int i = 0;
+  while (i++ < 4) {
     params =  getCmdParam(params);
+    whatTokenLen = getToken(params, ' ');
+    if (whatTokenLen == 0) {
+      if (i > 1) break;
+      sprintf(msg, "Missing %s/highlight parameter for SET %s",
+                       (our_name_is_BE ? "colour" : "color"),
+                       (our_name_is_BE ? "COLOUR" : "COLOR"));
+      return 0*_rc_error;
+    }
+    if        (isAbbrev(params, "Blue")) {
+      set_attr++; attr = DA_Blue;
+    } else if (isAbbrev(params, "Red")) {
+      set_attr++; attr = DA_Red;
+    } else if (isAbbrev(params, "Pink")) {
+      set_attr++; attr = DA_Pink;
+    } else if (isAbbrev(params, "Green")) {
+      set_attr++; attr = DA_Green;
+    } else if (isAbbrev(params, "Turquoise")) {
+      set_attr++; attr = DA_Turquoise;
+    } else if (isAbbrev(params, "Yellow")) {
+      set_attr++; attr = DA_Yellow;
+    } else if (isAbbrev(params, "White")) {
+      set_attr++; attr = DA_White;
+    } else if (isAbbrev(params, "Mono")) {
+      set_attr++; attr = DA_Mono;
+    } else if (isAbbrev(params, "None")) {
+      set_HiLit++; HiLit = HiLit_None;
+    } else if (isAbbrev(params, "BLInk")) {
+      set_HiLit++; HiLit = HiLit_Blink;
+    } else if (isAbbrev(params, "REVvideo")) {      /* IBM wording from LCM+L's VM/SP 5 */
+      set_HiLit++; HiLit = HiLit_Reverse;
+    } else if (isAbbrev(params, "REVerse")) {
+      set_HiLit++; HiLit = HiLit_Reverse;
+    } else if (isAbbrev(params, "Underscore")) {
+      set_HiLit++; HiLit = HiLit_Underscore;
+    } else if (isAbbrev(params, "Underline")) {     /* IBM wording from LCM+L's VM/SP 5 */
+      set_HiLit++; HiLit = HiLit_Underscore;
+    } else if (isAbbrev(params, "High")) {          /* IBM wording from LCM+L's VM/SP 5 */
+      set_intens++;
+    } else if (isAbbrev(params, "HIlight")) {
+      set_intens++;
+    } else if (isAbbrev(params, "Nohigh")) {        /* IBM wording from LCM+L's VM/SP 5 */
+      ;
+    } else if (isAbbrev(params, "PS0")) {           /* IBM wording from LCM+L's VM/SP 5 */
+      ;
+    } else {
+      sprintf(msg, "Invalid %s/highlight parameter for SET %s : %s",
+                       (our_name_is_BE ? "colour" : "color"),
+                       (our_name_is_BE ? "COLOUR" : "COLOR"), params);
+      return 0*_rc_error;
+    }
   }
-  checkNoParams(params, msg);
 
-  if (isAbbrev(whatName, "FILe")) {
-    scr->attrFile = attr;
-  } else if (isAbbrev(whatName, "CURRline")) {
-    scr->attrCurrLine = attr;
-  } else if (isAbbrev(whatName, "PREFix")) {
-    scr->attrPrefix = attr;
-  } else if (isAbbrev(whatName, "GAPFill")) {
-    scr->attrFileToPrefix = attr;
-  } else if (isAbbrev(whatName, "CMDline")) {
-    scr->attrCmd = attr;
-  } else if (isAbbrev(whatName, "CMDARRow")) {
-    scr->attrCmdArrow = attr;
-  } else if (isAbbrev(whatName, "MSGlines")) {
-    scr->attrMsg = attr;
+  if (set_attr > 1) {
+    sprintf(msg, "%s parameter specified %d times",
+                     (our_name_is_BE ? "Colour" : "Color"), set_attr);
+    return 0*_rc_error;
+  }
+  if (set_HiLit > 1) {
+    sprintf(msg, "Extended highlighting parameter specified %d times", set_HiLit);
+    return 0*_rc_error;
+  }
+  if (set_intens > 1) {
+    sprintf(msg, "Intensity parameter specified %d times", set_intens);
+    return 0*_rc_error;
+  } else if (set_intens == 1) {
+    set_attr = 1;
+    attr |= (unsigned char)0x01;
+  }
+
+
+  if ( (isAbbrev(whatName, "ALL")) || ((whatName[0] == '*') && (whatName[1] == ' ')) ) {
+    if (set_attr  == 1) {  scr->attrArrow = attr         ; }
+    if (set_HiLit == 1) { scr->HiLitArrow = HiLit        ; }
+    if (set_attr  == 1) {  scr->attrBlock = attr         ; }
+    if (set_HiLit == 1) { scr->HiLitBlock = HiLit        ; }
+    if (set_attr  == 1) {  scr->attrCBlock = attr        ; }
+    if (set_HiLit == 1) { scr->HiLitCBlock = HiLit       ; }
+    if (set_attr  == 1) {  scr->attrCHighLight = attr    ; }
+    if (set_HiLit == 1) { scr->HiLitCHighLight = HiLit   ; }
+    if (set_attr  == 1) {  scr->attrCmd = attr           ; }
+    if (set_HiLit == 1) { scr->HiLitCmd = HiLit          ; }
+    if (set_attr  == 1) {  scr->attrCPrefix = attr       ; }
+    if (set_HiLit == 1) { scr->HiLitCPrefix = HiLit      ; }
+    if (set_attr  == 1) {  scr->attrCTofeof = attr       ; }
+    if (set_HiLit == 1) { scr->HiLitCTofeof = HiLit      ; }
+    if (set_attr  == 1) {  scr->attrCurLine = attr       ; }
+    if (set_HiLit == 1) { scr->HiLitCurLine = HiLit      ; }
+    if (set_attr  == 1) {  scr->attrEMPTY = attr         ; }
+    if (set_HiLit == 1) { scr->HiLitEMPTY = HiLit        ; }
+    if (set_attr  == 1) {  scr->attrFilearea = attr      ; }
+    if (set_HiLit == 1) { scr->HiLitFilearea = HiLit     ; }
+    if (set_attr  == 1) {  scr->attrFileToPrefix = attr  ; }
+    if (set_HiLit == 1) { scr->HiLitFileToPrefix = HiLit ; }
+    if (set_attr  == 1) {  scr->attrFootLine = attr      ; }
+    if (set_HiLit == 1) { scr->HiLitFootLine = HiLit     ; }
+    if (set_attr  == 1) {  scr->attrHeadLine = attr      ; }
+    if (set_HiLit == 1) { scr->HiLitHeadLine = HiLit     ; }
+    if (set_attr  == 1) {  scr->attrHighLight = attr     ; }
+    if (set_HiLit == 1) { scr->HiLitHighLight = HiLit    ; }
+    if (set_attr  == 1) {  scr->attrInfoLines = attr     ; }
+    if (set_HiLit == 1) { scr->HiLitInfoLines = HiLit    ; }
+    if (set_attr  == 1) {  scr->attrMsg = attr           ; }
+    if (set_HiLit == 1) { scr->HiLitMsg = HiLit          ; }
+    if (set_attr  == 1) {  scr->attrPending = attr       ; }
+    if (set_HiLit == 1) { scr->HiLitPending = HiLit      ; }
+    if (set_attr  == 1) {  scr->attrPrefix = attr        ; }
+    if (set_HiLit == 1) { scr->HiLitPrefix = HiLit       ; }
+    if (set_attr  == 1) {  scr->attrScaleLine = attr     ; }
+    if (set_HiLit == 1) { scr->HiLitScaleLine = HiLit    ; }
+    if (set_attr  == 1) {  scr->attrSelectedLine = attr  ; }
+    if (set_HiLit == 1) { scr->HiLitSelectedLine = HiLit ; }
+    if (set_attr  == 1) {  scr->attrShadow = attr        ; }
+    if (set_HiLit == 1) { scr->HiLitShadow = HiLit       ; }
+    if (set_attr  == 1) {  scr->attrTabline = attr       ; }
+    if (set_HiLit == 1) { scr->HiLitTabline = HiLit      ; }
+    if (set_attr  == 1) {  scr->attrTofeof = attr        ; }
+    if (set_HiLit == 1) { scr->HiLitTofeof = HiLit       ; }
+  } else if (isAbbrev(whatName, "Filearea")) {
+    if (set_attr  == 1) {  scr->attrFilearea = attr      ; }
+    if (set_HiLit == 1) { scr->HiLitFilearea = HiLit     ; }
+  } else if ((isAbbrev(whatName, "CUrline")) || (isAbbrev(whatName, "CUrrline"))) {
+    if (set_attr  == 1) {  scr->attrCurLine = attr       ; }
+    if (set_HiLit == 1) { scr->HiLitCurLine = HiLit      ; }
+    if (set_attr  == 1) {  scr->attrCBlock = attr        ; }
+    if (set_HiLit == 1) { scr->HiLitCBlock = HiLit       ; }
+    if (set_attr  == 1) {  scr->attrCTofeof = attr       ; }
+    if (set_HiLit == 1) { scr->HiLitCTofeof = HiLit      ; }
+    if (set_attr  == 1) {  scr->attrCHighLight = attr    ; }
+    if (set_HiLit == 1) { scr->HiLitCHighLight = HiLit   ; }
+    if (set_attr  == 1) {  scr->attrCPrefix = attr       ; }
+    if (set_HiLit == 1) { scr->HiLitCPrefix = HiLit      ; }
+  } else if (isAbbrev(whatName, "PRefix")) {
+    if (set_attr  == 1) {  scr->attrPrefix = attr        ; }
+    if (set_HiLit == 1) { scr->HiLitPrefix = HiLit       ; }
+  } else if (isAbbrev(whatName, "GAPfill")) {
+    if (set_attr  == 1) {  scr->attrFileToPrefix = attr  ; }
+    if (set_HiLit == 1) { scr->HiLitFileToPrefix = HiLit ; }
+  } else if (isAbbrev(whatName, "Cmdline")) {
+    if (set_attr  == 1) {  scr->attrCmd = attr           ; }
+    if (set_HiLit == 1) { scr->HiLitCmd = HiLit          ; }
+  } else if ((isAbbrev(whatName, "Arrow")) || (isAbbrev(whatName, "CMDARRow"))) {
+    if (set_attr  == 1) {  scr->attrArrow = attr         ; }
+    if (set_HiLit == 1) { scr->HiLitArrow = HiLit        ; }
+  } else if (isAbbrev(whatName, "Msglines")) {
+    if (set_attr  == 1) {  scr->attrMsg = attr           ; }
+    if (set_HiLit == 1) { scr->HiLitMsg = HiLit          ; }
   } else if (isAbbrev(whatName, "INFOlines")) {
-    scr->attrInfoLines = attr;
-  } else if (isAbbrev(whatName, "HEADline")) {
-    scr->attrHeadLine = attr;
-  } else if (isAbbrev(whatName, "FOOTline")) {
-    scr->attrFootLine = attr;
-  } else if (isAbbrev(whatName, "SCALEline")) {
-    scr->attrScaleLine = attr;
+    if (set_attr  == 1) {  scr->attrInfoLines = attr     ; }
+    if (set_HiLit == 1) { scr->HiLitInfoLines = HiLit    ; }
+  } else if ((isAbbrev(whatName, "Idline")) || (isAbbrev(whatName, "HEADline"))) {
+    if (set_attr  == 1) {  scr->attrHeadLine = attr      ; }
+    if (set_HiLit == 1) { scr->HiLitHeadLine = HiLit     ; }
+  } else if ((isAbbrev(whatName, "STatarea")) || (isAbbrev(whatName, "FOOTline"))) {
+    if (set_attr  == 1) {  scr->attrFootLine = attr      ; }
+    if (set_HiLit == 1) { scr->HiLitFootLine = HiLit     ; }
+  } else if (isAbbrev(whatName, "Scaleline")) {
+    if (set_attr  == 1) {  scr->attrScaleLine = attr     ; }
+    if (set_HiLit == 1) { scr->HiLitScaleLine = HiLit    ; }
   } else if (isAbbrev(whatName, "HIGHlight")) {
-    scr->attrHighLight = attr;
+    if (set_attr  == 1) {  scr->attrHighLight = attr     ; }
+    if (set_HiLit == 1) { scr->HiLitHighLight = HiLit    ; }
   } else if (isAbbrev(whatName, "SHadow")) {
-    scr->attrShadow = attr;
+    if (set_attr  == 1) {  scr->attrShadow = attr        ; }
+    if (set_HiLit == 1) { scr->HiLitShadow = HiLit       ; }
+  } else if (isAbbrev(whatName, "SELECTEDLINE")) {
+    if (set_attr  == 1) {  scr->attrSelectedLine = attr  ; }
+    if (set_HiLit == 1) { scr->HiLitSelectedLine = HiLit ; }
+  } else if (isAbbrev(whatName, "Pending")) {
+    if (set_attr  == 1) {  scr->attrPending = attr       ; }
+    if (set_HiLit == 1) { scr->HiLitPending = HiLit      ; }
+  } else if (isAbbrev(whatName, "Tabline")) {
+    if (set_attr  == 1) {  scr->attrTabline = attr       ; }
+    if (set_HiLit == 1) { scr->HiLitTabline = HiLit      ; }
+  } else if (isAbbrev(whatName, "TOfeof")) {
+    if (set_attr  == 1) {  scr->attrTofeof = attr        ; }
+    if (set_HiLit == 1) { scr->HiLitTofeof = HiLit       ; }
+  } else if (isAbbrev(whatName, "Block")) {
+    if (set_attr  == 1) {  scr->attrBlock = attr         ; }
+    if (set_HiLit == 1) { scr->HiLitBlock = HiLit        ; }
+    if (set_attr  == 1) {  scr->attrCBlock = attr        ; }
+    if (set_HiLit == 1) { scr->HiLitCBlock = HiLit       ; }
+  } else if (isAbbrev(whatName, "CBlock")) {
+    if (set_attr  == 1) {  scr->attrCBlock = attr        ; }
+    if (set_HiLit == 1) { scr->HiLitCBlock = HiLit       ; }
+  } else if (isAbbrev(whatName, "CTOfeof")) {
+    if (set_attr  == 1) {  scr->attrCTofeof = attr       ; }
+    if (set_HiLit == 1) { scr->HiLitCTofeof = HiLit      ; }
+  } else if (isAbbrev(whatName, "CHIGHlight")) {
+    if (set_attr  == 1) {  scr->attrCHighLight = attr    ; }
+    if (set_HiLit == 1) { scr->HiLitCHighLight = HiLit   ; }
+  } else if (isAbbrev(whatName, "CPRefix")) {
+    if (set_attr  == 1) {  scr->attrCPrefix = attr       ; }
+    if (set_HiLit == 1) { scr->HiLitCPrefix = HiLit      ; }
+  } else if (isAbbrev(whatName, "EMPTY")) {
+    if (set_attr  == 1) {  scr->attrEMPTY = attr         ; }
+    if (set_HiLit == 1) { scr->HiLitEMPTY = HiLit        ; }
   } else {
     sprintf(msg, "Invalid screen object for SET %s",
                    (our_name_is_BE ? "COLOUR" : "COLOR"));
+    return 0*_rc_error;
   }
-  return false;
+  params =  getCmdParam(params);
+  checkNoParams(params, msg);
+  return 0*_rc_success;
 }
 
 static int CmdRecfm(ScreenPtr scr, char *params, char *msg) {

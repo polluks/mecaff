@@ -116,20 +116,52 @@ typedef struct _eescreen_public {
     char selectionMark; /* val in 'selectionColumn' for a line to be selected */
 
     /* display attributes for screen elements, must be a DisplayAttr value */
-    unsigned char attrFile;
-    unsigned char attrCurrLine;
-    unsigned char attrPrefix;
-    unsigned char attrFileToPrefix;
-    unsigned char attrCmd;
-    unsigned char attrCmdArrow;
-    unsigned char attrMsg;
-    unsigned char attrInfoLines;
-    unsigned char attrHeadLine;
-    unsigned char attrFootLine;
-    unsigned char attrScaleLine;
-    unsigned char attrSelectedLine;
-    unsigned char attrHighLight;
-    unsigned char attrShadow;
+    unsigned char  attrArrow          ;
+    unsigned char HiLitArrow          ;
+    unsigned char  attrBlock          ;
+    unsigned char HiLitBlock          ;
+    unsigned char  attrCBlock         ;
+    unsigned char HiLitCBlock         ;
+    unsigned char  attrCHighLight     ;
+    unsigned char HiLitCHighLight     ;
+    unsigned char  attrCmd            ;
+    unsigned char HiLitCmd            ;
+    unsigned char  attrCPrefix        ;
+    unsigned char HiLitCPrefix        ;
+    unsigned char  attrCTofeof        ;
+    unsigned char HiLitCTofeof        ;
+    unsigned char  attrCurLine        ;
+    unsigned char HiLitCurLine        ;
+    unsigned char  attrEMPTY          ;
+    unsigned char HiLitEMPTY          ;
+    unsigned char  attrFilearea       ;
+    unsigned char HiLitFilearea       ;
+    unsigned char  attrFileToPrefix   ;
+    unsigned char HiLitFileToPrefix   ;
+    unsigned char  attrFootLine       ;
+    unsigned char HiLitFootLine       ;
+    unsigned char  attrHeadLine       ;
+    unsigned char HiLitHeadLine       ;
+    unsigned char  attrHighLight      ;
+    unsigned char HiLitHighLight      ;
+    unsigned char  attrInfoLines      ;
+    unsigned char HiLitInfoLines      ;
+    unsigned char  attrMsg            ;
+    unsigned char HiLitMsg            ;
+    unsigned char  attrPending        ;
+    unsigned char HiLitPending        ;
+    unsigned char  attrPrefix         ;
+    unsigned char HiLitPrefix         ;
+    unsigned char  attrScaleLine      ;
+    unsigned char HiLitScaleLine      ;
+    unsigned char  attrSelectedLine   ;
+    unsigned char HiLitSelectedLine   ;
+    unsigned char  attrShadow         ;
+    unsigned char HiLitShadow         ;
+    unsigned char  attrTabline        ;
+    unsigned char HiLitTabline        ;
+    unsigned char  attrTofeof         ;
+    unsigned char HiLitTofeof         ;
 
     /* screen characteristics -- filled from terminal info */
     bool screenCanColors;

@@ -671,14 +671,14 @@ void tmpInfShow(
   ScreenPtr scr = allocateScreen(msg);
   if (scr == NULL) { return; }
 
-  scr->attrFile = tmpl->attrFile;
+  scr->attrFilearea = tmpl->attrFilearea;
   scr->attrCmd = tmpl->attrCmd;
-  scr->attrCmdArrow = tmpl->attrCmdArrow;
+  scr->attrArrow = tmpl->attrArrow;
   scr->attrMsg = tmpl->attrMsg;
   scr->attrHeadLine = tmpl->attrHeadLine;
   scr->attrFootLine = tmpl->attrFootLine;
 
-  scr->attrCurrLine = scr->attrFile;
+  scr->attrCurLine = scr->attrFilearea;
   scr->readOnly = true;
   scr->wrapOverflow = false;
   scr->cmdLinePos = 1; /* at bottom */

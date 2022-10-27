@@ -116,8 +116,8 @@ static char colorsFor3270[16] = {
 
 /* some UI text constants */
 static char *cmdArrow = "====>";
-static char *topOfFileText = "* * * Top of file * * *";
-static char *bottomOfFileText = "* * * End of file * * *";
+static char *topOfFileText    = "* * * Top of File * * *";
+static char *bottomOfFileText = "* * * End of File * * *";
 static char *prefixLocked = ".....";
 
 #ifdef _NOCMS
@@ -145,6 +145,7 @@ static int countMsgLines(
 static void addWidenedLine(ScreenPublPtr scr, char *line);
 
 static void startField(unsigned char pubAttr, bool readonly, bool autoSkip);
+static void startField2(unsigned char pubAttr, unsigned char pubHiLit, bool readonly, bool autoSkip);
 
 static void writeScale(ScreenPublPtr scr);
 
@@ -195,21 +196,21 @@ ScreenPtr _scrmk(char *msgBuffer) {
   pub->showTofBof = true;
   if (!canColors) {
     pub->attrMsg = DA_MonoIntens;
-    pub->attrCurrLine = DA_MonoIntens;
+    pub->attrCurLine = DA_MonoIntens;
     pub->screenCanColors = false;
   } else {
-    pub->attrFile = DA_Green;
+    pub->attrFilearea = DA_Green;
     pub->attrPrefix = DA_Green;
     pub->attrFileToPrefix = DA_Blue;
     pub->attrCmd = DA_Turquoise;
-    pub->attrCmdArrow = DA_Green;
+    pub->attrArrow = DA_Green;
     pub->attrMsg = DA_Red;
     pub->attrHeadLine = DA_Blue;
     pub->attrFootLine = DA_Blue;
     pub->attrInfoLines = DA_Blue;
     pub->attrScaleLine = DA_Blue;
     pub->attrSelectedLine = DA_WhiteIntens;
-    pub->attrCurrLine = DA_WhiteIntens;
+    pub->attrCurLine = DA_WhiteIntens;
     pub->attrHighLight = DA_Yellow;
     pub->attrShadow = DA_Pink;
     pub->screenCanColors = true;
@@ -497,9 +498,9 @@ static int _scrio_inner(ScreenPtr screen) {
 
   /* headline */
   SBA(lastRow, lastCol);
-  startField(pub->attrHeadLine, true, false);
+  startField2(pub->attrHeadLine, pub->HiLitHeadLine, true, false);
   addWidenedLine(pub, pub->headLine);
-
+  startField2(pub->attrEMPTY, pub->HiLitEMPTY, true, false);
   Printf0(" -- headline written\n");
 
   int currRow = 0;
@@ -508,18 +509,18 @@ static int _scrio_inner(ScreenPtr screen) {
   /* infolines on top ? */
   if (pub->infoLinesPos < 0) {
     for (i = 0; i < infoLineCount; i++) {
-      startField(pub->attrInfoLines, true, false);
+      startField2(pub->attrInfoLines, pub->HiLitInfoLines, true, false);
       appendStringWithLength(
         infoLines[i], maxInt(strlen(infoLines[i]), lastCol), (char)0x00);
       SBA(currRow++, lastCol);
     }
   }
-
+  startField2(pub->attrEMPTY, pub->HiLitEMPTY, true, false);
   /* commandline on top ? */
   if (pub->cmdLinePos <= 0) {
-    startField(pub->attrCmdArrow, true, false);
+    startField2(pub->attrArrow, pub->HiLitArrow, true, false);
     appendString(cmdArrow);
-    startField(pub->attrCmd + cmdLineModifier, pub->cmdLineReadOnly, false);
+    startField2(pub->attrCmd + cmdLineModifier, pub->HiLitCmd, pub->cmdLineReadOnly, false);
     GBA(&priv->cmdRow, &priv->cmdCol); /* remember position of command field */
     if (pub->cursorOffset == 0
         && (pub->cursorPlacement < 1 || pub->cursorPlacement > 2)) {
@@ -537,13 +538,15 @@ static int _scrio_inner(ScreenPtr screen) {
       doIC();
     }
     SBA(currRow++, lastCol);
+    startField2(pub->attrEMPTY, pub->HiLitEMPTY, true, false);
   }
 
   /* message line(s) on top ? */
   if (pub->msgLinePos <= 0) {
     for(i = 0; i < msgLineCount; i++) {
-      startField(pub->attrMsg, true, false);
+      startField2(pub->attrMsg, pub->HiLitMsg, true, false);
       appendStringWithLength(lineStarts[i], lineLengths[i], (char)0x00);
+      startField2(pub->attrEMPTY, pub->HiLitEMPTY, true, false);
       SBA(currRow++, lastCol);
     }
   }
@@ -553,6 +556,7 @@ static int _scrio_inner(ScreenPtr screen) {
   if (pub->scaleLinePos < 0 && scrLineForScale > 0)  {
     SBA(scrLineForScale - 1, lastCol);
     writeScale(pub);
+    startField2(pub->attrEMPTY, pub->HiLitEMPTY, true, false);
   }
 
   /* top of file marker visible above curr line ? */
@@ -673,10 +677,10 @@ static int _scrio_inner(ScreenPtr screen) {
        pub,
        priv,
        bottomOfFileText,
-       0,
+       getLineCount(pub->ed)+1,
        scrLinesPerEdLine,
        false,
-       false);
+       true /* was "false" */);
   }
 
   /* footlines */
@@ -686,7 +690,7 @@ static int _scrio_inner(ScreenPtr screen) {
   /* message line(s) at bottom ? */
   if (pub->msgLinePos > 0) {
     for(i = 0; i < msgLineCount; i++) {
-      startField(pub->attrMsg, true, false);
+      startField2(pub->attrMsg, pub->HiLitMsg, true, false);
       appendStringWithLength(lineStarts[i], lineLengths[i], (char)0x00);
       SBA(currRow++, lastCol);
     }
@@ -694,9 +698,9 @@ static int _scrio_inner(ScreenPtr screen) {
 
   /* commandline at bottom ? */
   if (pub->cmdLinePos > 0) {
-    startField(pub->attrCmdArrow, true, false);
+    startField2(pub->attrArrow, pub->HiLitArrow, true, false);
     appendString(cmdArrow);
-    startField(pub->attrCmd + cmdLineModifier, pub->cmdLineReadOnly, false);
+    startField2(pub->attrCmd + cmdLineModifier, pub->HiLitCmd, pub->cmdLineReadOnly, false);
     GBA(&priv->cmdRow, &priv->cmdCol); /* remember position of command field */
     if (pub->cursorOffset == 0
         && (pub->cursorPlacement < 1 || pub->cursorPlacement > 2)) {
@@ -718,7 +722,7 @@ static int _scrio_inner(ScreenPtr screen) {
   /* infolines on bottom ? */
   if (pub->infoLinesPos > 0) {
     for (i = 0; i < infoLineCount; i++) {
-      startField(pub->attrInfoLines, true, false);
+      startField2(pub->attrInfoLines, pub->HiLitInfoLines, true, false);
       appendStringWithLength(
         infoLines[i], maxInt(strlen(infoLines[i]), lastCol), (char)0x00);
       SBA(currRow++, lastCol);
@@ -726,7 +730,7 @@ static int _scrio_inner(ScreenPtr screen) {
   }
 
   /* final footline */
-  startField(pub->attrFootLine, true, false);
+  startField2(pub->attrFootLine, pub->HiLitFootLine, true, false);
   addWidenedLine(pub, pub->footLine);
 
   /* force cursor place in command line if targeted place was not found */
@@ -1036,7 +1040,7 @@ static void addWidenedLine(ScreenPublPtr scr, char *line) {
   }
 }
 
-static void startField(unsigned char pubAttr, bool readonly, bool autoSkip) {
+static void startField2(unsigned char pubAttr, unsigned char pubHiLit, bool readonly, bool autoSkip) {
   char attr3270 = (!readonly && pubAttr >= 64)
          ? FldAttr_Modified
          : FldAttr_None;
@@ -1050,11 +1054,16 @@ static void startField(unsigned char pubAttr, bool readonly, bool autoSkip) {
   }
 
   if (canColors) {
-    SFE(attr3270, HiLit_None, colorsFor3270[pubAttr]);
+    SFE(attr3270, pubHiLit, colorsFor3270[pubAttr]);
   } else {
     SF(attr3270);
   }
 }
+static void startField(unsigned char pubAttr, bool readonly, bool autoSkip) {
+  /* DEBUG: HiLit_None -> HiLit_Underscore, HiLit_Blink */
+  startField2(pubAttr, HiLit_Blink, readonly, autoSkip);
+}
+
 
 static char *digits = "0123456789";
 
@@ -1078,7 +1087,7 @@ static void writeScale(ScreenPublPtr scr) {
     scr->scaleMarkLength = -1;
   }
 
-  startField(scr->attrScaleLine, true, false);
+  startField2(scr->attrScaleLine, scr->HiLitScaleLine, true, false);
 
   if (scr->prefixMode == 1) {
     for (i = 0; i < inset; i++) {
@@ -1192,22 +1201,28 @@ static void writeFileLine(
 
   lineInfo->edLine = line;
   lineInfo->edLineNo = lineNo;
-  unsigned char attr = (isCurrentLine) ? pub->attrCurrLine : pub->attrPrefix;
-  if (isExcluded) { attr = pub->attrShadow; }
+  unsigned char attr  = (isCurrentLine) ?  pub->attrCPrefix :  pub->attrPrefix;
+  unsigned char HiLit = (isCurrentLine) ? pub->HiLitCPrefix : pub->HiLitPrefix;
+  if (isExcluded) { attr = pub->attrShadow; HiLit = pub->HiLitShadow; }
 
   /* prefix before file line text ? */
   if (pub->prefixMode == 1) {
-    startField(attr, pub->prefixReadOnly || isLocked, false);
+    startField2(attr, HiLit, pub->prefixReadOnly || isLocked, false);
     writePrefix(pub, priv, lineInfo, lineNo, pfixPrefill);
   }
 
   /* start the file line text and remember position of input field */
-  attr = (isCurrentLine) ? pub->attrCurrLine : pub->attrFile;
-  attr = (line->selectionLevel > 0) ? pub->attrHighLight : attr;
-  if (isExcluded) { attr = pub->attrShadow; }
-  if (isSelected) { attr = pub->attrSelectedLine; }
-  startField(
+  attr = (isCurrentLine) ? pub->attrCurLine : pub->attrFilearea;
+  HiLit = (isCurrentLine) ? pub->HiLitCurLine : pub->HiLitFilearea;
+  if (line->selectionLevel > 0) /* assume "SET HIGHLIGHT SELECT 1 *" */                       {
+    attr  = (isCurrentLine) ? pub->attrCHighLight : pub->attrHighLight;
+    HiLit = (isCurrentLine) ? pub->HiLitCHighLight : pub->HiLitHighLight;
+  }
+  if (isExcluded) { attr = pub->attrShadow; HiLit = pub->HiLitShadow; }
+  if (isSelected) { attr = pub->attrSelectedLine; HiLit = pub->HiLitSelectedLine; }
+  startField2(
     attr,
+    HiLit,
     pub->readOnly || isLocked,
     pub->readOnly);
   GBA(&lineInfo->txtRow, &lineInfo->txtCol);
@@ -1273,7 +1288,7 @@ static void writeFileLine(
     if (fileLineEndCol < lastLineCol) {
       int lengthBetween = lastLineCol - fileLineEndCol;
       SBA(endRow, fileLineEndCol);
-      startField(pub->attrFileToPrefix, true, false);
+      startField2(pub->attrFileToPrefix, pub->HiLitFileToPrefix, true, false);
       /* show filler char if requested */
       if (pub->fileToPrefixFiller) {
         while (lengthBetween > 0) {
@@ -1296,10 +1311,11 @@ static void writeFileLine(
 
   /* prefix after file line text ? */
   if (pub->prefixMode > 1) {
-    attr = (isCurrentLine) ? pub->attrCurrLine : pub->attrPrefix;
-    if (isExcluded) { attr = pub->attrShadow; }
+    attr  = (isCurrentLine) ?  pub->attrCurLine :  pub->attrPrefix;
+    HiLit = (isCurrentLine) ? pub->HiLitCurLine : pub->HiLitPrefix;
+    if (isExcluded) { attr = pub->attrShadow; HiLit = pub->HiLitShadow; }
     SBA(endRow, lastLineCol);
-    startField(attr, pub->prefixReadOnly || isLocked, false);
+    startField2(attr, HiLit, pub->prefixReadOnly || isLocked, false);
     writePrefix(pub, priv, lineInfo, lineNo, pfixPrefill);
   }
 }
@@ -1318,10 +1334,15 @@ static void writeTextAsFileMarker(
 
   lineInfo->edLine = NULL;
   lineInfo->edLineNo = lineNo;
+  unsigned char  attrPrefix   = ((isCurrentLine) ?  pub->attrCPrefix :  pub->attrPrefix) ;
+  unsigned char HiLitPrefix   = ((isCurrentLine) ? pub->HiLitCPrefix : pub->HiLitPrefix) ;
+  unsigned char  attrFilearea = ((isCurrentLine) ?  pub->attrCTofeof :  pub->attrTofeof) ;
+  unsigned char HiLitFilearea = ((isCurrentLine) ? pub->HiLitCTofeof : pub->HiLitTofeof) ;
+
 
   if (pub->prefixMode == 1) {
     if (allowPrefix) {
-      startField(pub->attrPrefix, pub->prefixReadOnly, false);
+      startField2(attrPrefix, HiLitPrefix, pub->prefixReadOnly, false);
       writePrefix(pub, priv, lineInfo, lineNo, NULL);
       hadPrefix = true;
     } else {
@@ -1329,7 +1350,7 @@ static void writeTextAsFileMarker(
     }
   }
 
-  startField((isCurrentLine) ? pub->attrCurrLine : pub->attrFile, true, false);
+  startField2(attrFilearea, HiLitFilearea, true, false);
   GBA(&lineInfo->txtRow, &lineInfo->txtCol);
 
   int lastLineCol
@@ -1344,10 +1365,12 @@ static void writeTextAsFileMarker(
 
   if (pub->prefixMode > 1 && allowPrefix) {
     SBA(endRow, lastLineCol);
-    startField(pub->attrPrefix, pub->prefixReadOnly, false);
+    startField2(attrPrefix, HiLitPrefix, pub->prefixReadOnly, false);
     writePrefix(pub, priv, lineInfo, lineNo, NULL);
     hadPrefix = true;
   }
+
+  startField2(pub->attrEMPTY, pub->HiLitEMPTY, true, false);
 
   if (!hadPrefix) {
     priv->edLinesUsed--; /* no input-able field => forget field infos */
