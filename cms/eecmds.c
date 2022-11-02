@@ -2419,6 +2419,151 @@ static int CmdSqmetVersion(ScreenPtr scr, char sqmet, char *params, char *msg) {
   return false;
 }
 
+extern void EE_DIRTY();
+
+extern int sc_hndl2(/* void *p  *//* pointer to caller's save area */)  {
+/*
+  void *v = &EE_DIRTY;
+  unsigned long *l = v;
+  unsigned long R0 = *l++;
+  unsigned long R1 = *l++;
+  unsigned long R2 = *l++;
+  fprintf(stderr,"EE_DIRTY: R0=X'%-8x'  R1=X'%-8x'  R2=X'%-8x'", R0, R1, R2);
+*/
+  /* if (++p) return 123456789;  */
+  /* add debugging/diagnostic code here */
+  return 5317; /* was 4711, 4812, 4913, 5014, 5115, 5216 ;-) */
+}
+
+
+extern int sc_hndlr( /* void *p  *//* pointer to caller's save area */)  {
+/*
+  void *v = &EE_DIRTY;
+  unsigned long *l = v;
+  unsigned long R0 = *l++;
+  unsigned long R1 = *l++;
+  unsigned long R2 = *l++;
+  fprintf(stderr,"EE_DIRTY: R0=X'%-8x'  R1=X'%-8x'  R2=X'%-8x'", R0, R1, R2);
+*/
+  return 4813 /* sc_hndl2() */ ;
+}
+
+
+
+
+
+
+static int CmdSqmetSubcom(ScreenPtr scr, char sqmet, char *params, char *msg) {
+  typedef struct t_subcom_plist {
+    char subcom[8]     ;
+    char xedit[8]      ;
+    long SUBCPSW       ;
+    long ENTRY_ADDRESS ;
+    long USER_WORD     ;
+
+  } t_subcom_plist;
+
+  t_subcom_plist subcom_plist = { "SUBCOM  ", "XEDIT   ",0 ,&sc_entry, 0x12345678 } ;
+  t_subcom_plist eplist_dummy ;
+
+  int rc_subcom = __SVC202(&subcom_plist, &eplist_dummy,0);
+  sprintf(msg, "SUBCOM XEDIT : RC from SVC202 = %d", rc_subcom);
+  return false;
+}
+
+static void dump_mem(char *msg_temp, unsigned long r)  {
+  unsigned long r_local = r;
+
+  unsigned char msg_temp1[4096];
+  unsigned char msg_temp2[4096];
+  unsigned char msg_temp3[4096];
+  msg_temp1[0] = '\0';
+  msg_temp2[0] = '\0';
+  msg_temp3[0] = '\0';
+  char *p1 = &msg_temp1[0];
+  char *p2 = &msg_temp2[0];
+  char *p3 = &msg_temp3[0];
+
+
+
+
+  int i = 0;
+  unsigned char *pc =  /* (char*) */ r_local;
+  if ((r > 0) && (r <= 0x00FFFFF0)) while (++i <= (13)) {
+    unsigned char c = *pc++;
+      sprintf(p1," %02x",c); p1++; p1++; p1++;
+    if ((c >= 0x40) && (c < 0xFF)) {
+      *p2++ = c;
+    } else {
+      *p2++ = '.';
+    }
+   if (!(i&3))  /* 4,8,12 */ {
+       *p1++ = ' ';
+       *p2++ = ' ';
+   }
+  }
+       *p1++ = '\0';
+       *p2++ = '\0';
+    sprintf(msg_temp,"%s\n%08x : %s ------ %s",msg_temp,r_local,msg_temp1,msg_temp2);
+}
+
+
+static int CmdDebug(ScreenPtr scr, char *params, char *msg) {
+
+  char msg_temp[2048];
+  msg_temp[0] = '\0';
+
+  void *v = &EE_DIRTY;
+  unsigned long *l = v;
+  unsigned long R0 = *l++;
+  unsigned long R1 = *l++;
+  unsigned long R2 = *l++;
+  unsigned char R1_flag = R1>>24;
+  R1 = R1 & 0x00FFFFFF;
+  sprintf(msg_temp,"EE_DIRTY:  R1_flag=X'%02x'  R0=X'%08x'  R1=X'%08x'  R2=X'%08x' ", R1_flag, R0, R1, R2);
+
+  unsigned long *R0p = R0;
+ if (R0p) {
+  unsigned long R0a = *(R0p++);
+  unsigned long R0b = *(R0p++);
+  unsigned long R0c = *(R0p++);
+  unsigned long R0d = *(R0p++);
+  sprintf(msg_temp,"%s\nEE_DIRTY:  R0a=X'%08x'  R0b=X'%08x'  R0c=X'%08x'  R0d=X'%08x' ", msg_temp, R0a, R0b, R0c, R0d);
+  dump_mem(msg_temp, R0a);
+  dump_mem(msg_temp, R0b);
+  dump_mem(msg_temp, R0c);
+  dump_mem(msg_temp, R0d);
+/*
+*/
+ }
+
+
+
+  unsigned long *R1p = R1;
+  /* R1p = R0;     */   /* QUICK AND DIRTY - we want to see the EPLIST */
+  /* R1p = *R1p;   */   /* QUICK AND DIRTY - we want to see the EPLIST */
+ if (R1p) {
+  unsigned long R1a = *(R1p++);
+  unsigned long R1b = *(R1p++);
+  unsigned long R1c = *(R1p++);
+  unsigned long R1d = *(R1p++);
+  sprintf(msg_temp,"%s\nEE_DIRTY:  R1a=X'%08x'  R1b=X'%08x'  R1c=X'%08x'  R1d=X'%08x' ", msg_temp, R1a, R1b, R1c, R1d);
+  dump_mem(msg_temp, R1a);
+  dump_mem(msg_temp, R1b);
+  dump_mem(msg_temp, R1c);
+  dump_mem(msg_temp, R1d);
+/*
+*/
+ }
+
+
+  sprintf(msg,"CmdDebug 2022-11-02-0908 \n%s",msg_temp);
+
+  return false;
+
+
+}
+
 
 
 
@@ -2749,6 +2894,7 @@ static MySqmetDef sqmetCmds[] = {
   {"SPILL"                   , "sqmet" , &CmdSqmetNYI               },
   {"STAY"                    , "sqmet" , &CmdSqmetNYI               },
   {"STReam"                  , "sqmet" , &CmdSqmetNYI               },
+  {"SUBCOM"                  , "SQMET" , &CmdSqmetSubcom            },
   {"SYNonym"                 , "sqmet" , &CmdSqmetNYI               },
   {"TABLine"                 , "sqmet" , &CmdSqmetNYI               },
   {"TABS"                    , "sqmet" , &CmdSqmetNYI               },
@@ -2993,6 +3139,7 @@ static MyCmdDef eeCmds[] = {
   {"CURSor"                  , &CmdImpSet                           },
   {"DELete"                  , &CmdDelete                           },
   {"DISPlay"                 , &CmdImpSet                           },
+  {"DEBUG"                   , &CmdDebug                            },
   {"Eedit"                   , &CmdEditFile                         },
   {"EFMode"                  , &CmdImpSet                           },
   {"EFName"                  , &CmdImpSet                           },
@@ -3119,6 +3266,7 @@ static MyCmdDef eeCmds[] = {
   {"SSave"                   , &CmdSSave                            },
   {"STAY"                    , &CmdImpSet                           },
   {"STReam"                  , &CmdImpSet                           },
+  {"SUBCOM"                  , &CmdImpSet                           },
   {"SYNonym"                 , &CmdImpSet                           },
   {"TABBackward"             , &CmdTabBackward                      },
   {"TABforward"              , &CmdTabForward                       },
@@ -3189,6 +3337,7 @@ EditorPtr initCmds() {
   searchPattern[0] = '\0';
   searchUp = false;
   return macroLibrary;
+
 }
 
 

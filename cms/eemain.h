@@ -23,6 +23,13 @@
 /* the version information for the tools, displayed in header/footer lines */
 #define VERSION "V1.3.0_221027-0259" /* branch AGPLv3_WIP */
 
+
+/*
+** -- SUBCOM interface
+*/
+extern int sc_hndlr(/* void *p */ )  ;
+extern int sc_entry()  ;
+
 /*
 ** -- user interface
 */

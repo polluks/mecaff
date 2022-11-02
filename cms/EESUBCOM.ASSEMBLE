@@ -1,0 +1,30 @@
+EESUBCOM CSECT
+         ENTRY SC@ENTRY
+SC@ENTRY DS    0H
+         USING *,12
+         STM 14,12,12(13)
+         STM 0,15,EE@DIRTY   /* our 'personal' copy */
+*
+         L     15,=V(SC@HNDLR)
+         LR    10,14        backup
+         LR    9,13         backup
+         L     13,DIRTY
+         BALR  14,15
+CONT     LR    14,10
+         LM    0,12,20(13) restore the registers
+         BR 14
+*
+DIRTY    DC 24F'0'          used by callee "under the hood"
+*
+         ENTRY EE@DIRTY     make it accessible externally
+EE@DIRTY DS 0H
+         DC XL4'01020304'
+         DC XL4'11121314'
+         DC XL4'21222324'
+*
+*
+         DC 24F'0'          copies of the registers we receive from CMS
+*
+         LTORG
+         DC 16F'0'
+         END
