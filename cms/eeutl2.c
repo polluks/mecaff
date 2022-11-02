@@ -16,15 +16,15 @@
 ** Written by Dr. Hans-Walter Latz, Berlin (Germany), 2011,2012,2013
 ** Released to the public domain.
 */
- 
+
 #include "glblpre.h"
- 
+
 #include <stdio.h>
- 
+
 #include "eeutil.h"
- 
+
 #include "glblpost.h"
- 
+
 /* check if a commandline starts with an abbreviatable command
 */
 bool isAbbrev(char *s, char *cmd) {
@@ -37,7 +37,7 @@ bool isAbbrev(char *s, char *cmd) {
   /* true if: 1. token ended and a lowercase char (or end) of cmd is reached */
   return ((*s == '\0' || c_isnonalpha(*s)) && c_lower(*cmd) == *cmd);
 }
- 
+
 /* get text after the command token
 */
 char* gcmdp(char *s) {
@@ -51,17 +51,17 @@ char* gcmdp(char *s) {
   }
   return NULL;
 }
- 
-/* parse the next token for an int value, retirning if successful
+
+/* parse the next token for an int value, returning "true" if successful
 */
 bool tryParseInt(char *arg, int *value) {
   int val = 0;
   bool isNegative = false;
   int startOffset = 0;
- 
+
   int tokLen = getToken(arg, ' ');
   if (!arg || !*arg || tokLen == 0) { return false; }
- 
+
   if (arg[0] == '+') {
     startOffset = 1;
   } else if (arg[0] == '-') {
@@ -69,10 +69,10 @@ bool tryParseInt(char *arg, int *value) {
     startOffset = 1;
   }
   if (startOffset >= tokLen) { return false; }
- 
+
   int i;
   for(i = startOffset; i < tokLen; i++) {
-    if (arg[i] >= '0' && arg[i] <= '9') {
+    if (arg[i] >= '0' && arg[i] <= '9')  /* EBCDIC F0..F9 */       {
       val = (val * 10) + (arg[i] - '0');
     } else {
       return false;
@@ -85,13 +85,35 @@ bool tryParseInt(char *arg, int *value) {
   }
   return true;
 }
- 
+/* parse the next token for a hexadicimal value, returning "true" if successful
+*/
+bool tryParseHex(char *arg, int *value) {
+  int val = 0;
+  int tokLen = getToken(arg, ' ');
+  if (!arg || !*arg || tokLen == 0) { return false; }
+
+  int i;
+  for(i = 0; i < tokLen; i++) {
+    if (arg[i] >= '0' && arg[i] <= '9')  /* EBCDIC F0..F9 */       {
+      val = (val * 16) + (arg[i] - '0');
+    } else if (arg[i] >= 'A' && arg[i] <= 'F')  /* EBCDIC C1..C6 */       {
+      val = (val * 16) + (arg[i] - 'A' +10);
+    } else if (arg[i] >= 'a' && arg[i] <= 'f')  /* EBCDIC 81..86 */       {
+      val = (val * 16) + (arg[i] - 'a' +10);
+    } else {
+      return false;
+    }
+  }
+  *value = val;
+  return true;
+}
+
 /* find a command in the command list
 */
 CmdDef* fndcmd(char *cand, CmdDef *cmdList, unsigned int cmdCount) {
   if (!cand || !*cand) { return NULL; }
   if (cmdCount == 0) { return NULL; }
- 
+
   /* binary search does not work, as 'cand' may be an abbreviation
   ** that could break the sort order:
   **   cand: i
@@ -114,17 +136,17 @@ CmdDef* fndcmd(char *cand, CmdDef *cmdList, unsigned int cmdCount) {
     return &cmdList[middle];
   }
   */
- 
+
   /* instead -> simple impl. == a simple loop */
   unsigned int i;
   for (i = 0; i < cmdCount; i++) {
     if (isAbbrev(cand, cmdList->commandName)) { return cmdList; }
     cmdList++;
   }
- 
+
   return NULL;
 }
- 
+
 /* read a profile '<fn> EE *' and invoke 'handler' for each command line
    found, stopping at the first 'false' returned from 'handler'.
 */
@@ -132,23 +154,23 @@ bool doCmdFil(CmdLineHandler handler, void *userdata, char *fn, int *rc) {
   char buffer[256];
   char msg[512];
   char fspec[32];
- 
+
   char mergedLines[513];
   int mergedRest = 0;
   char *merged = NULL;
- 
+
   memcpy(buffer, '\0', sizeof(buffer));
- 
+
   memcpy(buffer, '\0', sizeof(buffer));
   strncpy(buffer, fn, 8);
   sprintf(fspec, "%s EE * V 255", buffer);
- 
+
   *rc = 1; /* file not found */
   if (!f_exists(buffer, "EE", "*")) { return false; }
   FILE *cmdfile = fopen(fspec, "r");
   if (!cmdfile) { return false; }
   *rc = 0; /* ok */
- 
+
   bool doneWithFile = false;
   char *line = fgets(buffer, sizeof(buffer), cmdfile);
   while(!feof(cmdfile)) {
@@ -158,7 +180,7 @@ bool doCmdFil(CmdLineHandler handler, void *userdata, char *fn, int *rc) {
       len--;
     }
     while(*line == ' ' || *line == '\t') { line++; len--; }
- 
+
     if (len > 0 && line[len-1] == '\\') {
       if (!merged) {
         merged = mergedLines;
@@ -169,11 +191,11 @@ bool doCmdFil(CmdLineHandler handler, void *userdata, char *fn, int *rc) {
       memcpy(merged, line, len);
       merged += len;
       mergedRest -= len;
- 
+
       line = fgets(buffer, sizeof(buffer), cmdfile);
       continue;
     }
- 
+
     if (merged) {
       len = minInt(len, mergedRest);
       if (len > 0) {
@@ -182,7 +204,7 @@ bool doCmdFil(CmdLineHandler handler, void *userdata, char *fn, int *rc) {
       line = mergedLines;
       len = 1;
     }
- 
+
     if (len > 0 && *line != '*') {
       msg[0] = '\0';
       doneWithFile |= handler(userdata, line, msg);
@@ -196,10 +218,10 @@ bool doCmdFil(CmdLineHandler handler, void *userdata, char *fn, int *rc) {
     line = fgets(buffer, sizeof(buffer), cmdfile);
   }
   fclose(cmdfile);
- 
+
   return doneWithFile;
 }
- 
+
 /* c_isalnum
 */
 bool c_isanm(char c) {
@@ -209,7 +231,7 @@ bool c_isanm(char c) {
                 || (c >= '0' && c <= '9'))
            );
 }
- 
+
 /* c_isalpha
 */
 bool c_isalf(char c) {
@@ -218,13 +240,13 @@ bool c_isalf(char c) {
                 || c_lower(c) != c)
            );
 }
- 
+
 /* c_isnonalpha
 */
 bool c_isnal(char c) {
     return (c_upper(c) == c_lower(c));
 }
- 
+
 /* returns the length of the token delimited by 'separator' or whitespace
 */
 int gtok(char *args, char separator) {
@@ -239,7 +261,7 @@ int gtok(char *args, char separator) {
     }
     return len;
 }
- 
+
 /* parse the next location token in '*argsPtr' returning the location type
    and its parameter value in 'intVal' or 'buffer'.
 */
@@ -247,14 +269,14 @@ int prsloc(char **argsPtr, int *intval, char *buffer) {
     int locType = LOC_NONE;
     bool isNegative = false;
     int val = 0;
- 
+
     if (!argsPtr) { return locType; }
     char *args = *argsPtr;
- 
+
     /* skip whitespace */
     while(*args && (*args == ' ' || *args == '\t')) { args++; }
     if (!*args) { return LOC_NONE; }
- 
+
     /* analyse first token char */
     if (*args >= '0' && *args <= '9') {
         locType = LOC_RELATIVE;
@@ -271,11 +293,11 @@ int prsloc(char **argsPtr, int *intval, char *buffer) {
         locType = LOC_ABSOLUTE;
         args++;
     }
- 
+
     if (locType == LOC_RELATIVE || locType == LOC_ABSOLUTE) {
         int tokLen = getToken(args, ' ');
         if (tokLen == 0) { return locType + LOC_ERROR; }
- 
+
         int i;
         for(i = 0; i < tokLen; i++) {
             if (args[i] >= '0' && args[i] <= '9') {
@@ -290,13 +312,13 @@ int prsloc(char **argsPtr, int *intval, char *buffer) {
     } else if (*args == '.') {
         locType = LOC_MARK;
         args++;
- 
+
         int tokLen = getToken(args, ' ');
         if (tokLen == 0) { return locType + LOC_ERROR; }
- 
+
         /* (temporarily) limit mark-names to 1 char ! */
         if (tokLen > 1) { return locType + LOC_ERROR; }
- 
+
         int i;
         for(i = 0; i < tokLen; i++) {
             if (c_isalnum(args[i])) {
@@ -307,14 +329,14 @@ int prsloc(char **argsPtr, int *intval, char *buffer) {
         }
         buffer[tokLen] = '\0';
         args += tokLen;
- 
+
     } else if (*args > ' ' && c_upper(*args) == c_lower(*args)) {
         locType = (isNegative) ? LOC_PATTERNUP : LOC_PATTERN;
         char separator = *args++;
- 
+
         int tokLen = getToken(args, separator);
         if (tokLen == 0) { return locType + LOC_ERROR; }
- 
+
         int i;
         for(i = 0; i < tokLen; i++) {
             buffer[i] = args[i];
@@ -328,11 +350,11 @@ int prsloc(char **argsPtr, int *intval, char *buffer) {
     } else {
         locType = LOC_ERROR;
     }
- 
+
     *argsPtr = args;
     return locType;
 }
- 
+
 /* parse a change parameter part like: /xxx/yyy[/]
 */
 bool prscpat(
@@ -343,35 +365,35 @@ bool prscpat(
   int *p2Len,
   char *sep) {
     bool isOk = false;
- 
+
     *p1 = NULL;
     *p2 = NULL;
     *p1Len = 0;
     *p2Len = 0;
- 
+
     if (!argsPtr) { return false; }
     char *args = *argsPtr;
- 
+
     /* skip whitespace */
     while(*args && (*args == ' ' || *args == '\t')) { args++; }
     if (!*args) { return false; }
- 
+
     if (c_upper(*args) == c_lower(*args)) {
         char separator = *args++;
- 
+
         int tokLen = getToken(args, separator);
         if (!args[tokLen]) { return false; }
- 
+
         *p1 = args;
         *p1Len = tokLen;
         args += tokLen + 1;
- 
+
         *p2 = args;
         tokLen = getToken(args, separator);
- 
+
         *p2Len = tokLen;
         args += tokLen;
- 
+
         /* getToken stops at second separator or at string end */
         if (*args) {
             args++;
@@ -379,10 +401,10 @@ bool prscpat(
         } else {
             isOk = (tokLen > 0);
         }
- 
+
         *argsPtr = args;
         *sep = separator;
     }
- 
+
     return isOk;
 }
