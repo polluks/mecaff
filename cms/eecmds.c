@@ -2722,6 +2722,19 @@ static int CmdSqmetDisplay(ScreenPtr scr, char sqmet, char *params, char *msg) {
 
 
 
+static int CmdSqmetHighlight(ScreenPtr scr, char sqmet, char *params, char *msg) {
+  char mode = 'O';
+  long select1 = 1;
+  long select2 = SET_SELECT_MAX;
+
+
+  params = getCmdParam(params);
+  checkNoParams(params, msg);
+  return false;
+}
+
+
+
 static int CmdSqmetCase(ScreenPtr scr, char sqmet, char *params, char *msg) {
   char case_um = '?';
   char case_ir = '?';
@@ -2848,6 +2861,7 @@ static MySqmetDef sqmetCmds[] = {
   {"FType"                   , "sqmet" , &CmdSqmetNYI               },
   {"FULLread"                , "sqmet" , &CmdSqmetNYI               },
   {"HEX"                     , "sqmet" , &CmdSqmetNYI               },
+  {"HIGHlight"               , "SQMET" , &CmdSqmetHighlight         },
   {"IMage"                   , "sqmet" , &CmdSqmetNYI               },
   {"IMPcmscp"                , "sqmet" , &CmdSqmetNYI               },
   {"INPmode"                 , "sqmet" , &CmdSqmetNYI               },
@@ -3168,6 +3182,7 @@ static MyCmdDef eeCmds[] = {
   {"GETD"                    , &CmdGetD                             },
   {"Help"                    , &CmdHelp                             },
   {"HEX"                     , &CmdImpSet                           },
+  {"HIGHlight"               , &CmdImpSet                           },
   {"IMage"                   , &CmdImpSet                           },
   {"IMPcmscp"                , &CmdImpSet                           },
   {"INFOLines"               , &CmdInfolines                        },

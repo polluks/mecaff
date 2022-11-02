@@ -114,6 +114,9 @@ typedef struct _editor {
   bool scopeAll;     /* SET SCOPE ALL in effect ? */
   bool sParadox;     /* SET SCOPE PARADOX in effect ? */
   bool shadowOn;     /* SET SHADOW ON in effect ? */
+  char highLight;    /* SET HIGHLIGHT mode ... ...*/
+  long highSelect1;  /* SET HIGHLIGHT SELECT n1 .. */
+  long highSelect2;  /* SET HIGHLIGHT SELECT .. n2 */
   long setDisplay1;  /* SET DISPLAY n1 .. */
   long setDisplay2;  /* SET DISPLAY .. n2 */
 
