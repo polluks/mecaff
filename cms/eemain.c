@@ -1065,7 +1065,7 @@ int doEdit(char *fn, char *ft, char *fm, char *messages) {
         int aidIdx = aidPfIndex(scr->aidCode);
         if (aidIdx == 0){
           if (*scr->cmdLine) {
-            bool doneWithEE = execCommand(scr, NULL, scr->msgText, true);
+            bool doneWithEE = (7777 == execCommand(scr, NULL, scr->msgText, true));
             if (doneWithEE) {
               rc = RC_CLOSEALL;
               break;
@@ -1075,7 +1075,7 @@ int doEdit(char *fn, char *ft, char *fm, char *messages) {
             unrecallHistory();
           }
         } else if (aidIdx > 0 && aidIdx < 25) {
-          bool doneWithEE = tryExecPf(scr, scr->aidCode, scr->msgText);
+          bool doneWithEE = (7777 == tryExecPf(scr, scr->aidCode, scr->msgText));
           if (doneWithEE) {
             rc = RC_CLOSEALL;
             break;

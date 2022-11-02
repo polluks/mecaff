@@ -2945,12 +2945,24 @@ static int CmdCancel(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
+
+static int CmdAbort(ScreenPtr scr, char *params, char *msg) {
+  return 7777;
+}
+
+static int CmdSetReturnCode(ScreenPtr scr, char *params, char *msg) {
+  int rc = 0;
+  tryParseInt(params, &rc);
+  return rc;
+}
+
 typedef struct _mycmddef {
   char *commandName;
   CmdImpl impl;
 } MyCmdDef;
 
 static MyCmdDef eeCmds[] = {
+  {"ABORT"                   , &CmdAbort                            },
   {"ACTion"                  , &CmdImpSet                           },
   {"ALT"                     , &CmdImpSet                           },
   {"ALL"                     , &CmdAll                              },
@@ -3067,11 +3079,13 @@ static MyCmdDef eeCmds[] = {
   {"Query"                   , &CmdQuery                            },
   {"QUIt"                    , &CmdQuit                             },
   {"RANge"                   , &CmdImpSet                           },
+  {"RC"                      , &CmdSetReturnCode                    },
 /*{"RECFm"                   , &CmdImpSet                           },*/
   {"RECFM"                   , &CmdRecfm                            },
   {"REMOte"                  , &CmdImpSet                           },
   {"RESERved"                , &CmdImpSet                           },
   {"RESet"                   , &CmdReset                            },
+  {"RETURNCode"              , &CmdSetReturnCode                    },
   {"REVSEArchnext"           , &CmdReverseSearchNext                },
   {"RING"                    , &CmdImpSet                           },
   {"RINGList"                , &CmdRingList                         },
@@ -3092,6 +3106,8 @@ static MyCmdDef eeCmds[] = {
   {"Seq8"                    , &CmdImpSet                           },
   {"SERial"                  , &CmdImpSet                           },
   {"SET"                     , &CmdSet                              },
+  {"SETRC"                   , &CmdSetReturnCode                    },
+  {"SETRETURNCode"           , &CmdSetReturnCode                    },
   {"SHADow"                  , &CmdImpSet                           },
   {"SHIFT"                   , &CmdShift                            },
   {"SHIFTCONFig"             , &CmdShiftConfig                      },
@@ -3135,8 +3151,6 @@ static MyCmdDef eeCmds[] = {
   {"Xedit"                   , &CmdEditFile                         },
   {"Zone"                    , &CmdImpSet                           }
 };
-
-
 
 
 /*
@@ -3271,13 +3285,18 @@ extern int execCmd(
   };
   while(*params && *params == ' ') { params++; }
 
-  int result;
+  int rc;
   _try {
-    result = (*impl)(scr, params, msg);
+    rc = (*impl)(scr, params, msg);
   } _catchall() {
-    result = false;
+    rc = false;
   } _endtry;
-  return result;
+
+  if (rc != 0) {
+    if (!*msg) strcpy(msg, "Non-zero return code issued");
+    sprintf(msg,"%s\n(RC=%d)", msg, rc);
+  }
+  return rc;
 }
 
 char* gPfCmd(char aidCode) {
