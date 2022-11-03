@@ -21,7 +21,7 @@
 #define _EEMAINimported
 
 /* the version information for the tools, displayed in header/footer lines */
-#define VERSION "V1.3.0_221102-0908" /* branch AGPLv3_WIP */
+#define VERSION "V1.3.0_221102-2340" /* branch AGPLv3_WIP */
 
 
 /*
