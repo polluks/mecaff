@@ -2490,7 +2490,7 @@ static void dump_mem(char *msg_temp, unsigned long r)  {
 
   int i = 0;
   unsigned char *pc =  /* (char*) */ r_local;
-  if ((r > 0) && (r <= 0x00FFFFF0)) while (++i <= (13)) {
+  if ((r >= 0) && (r <= 0x00FFFFF0)) while (++i <= (16)) {
     unsigned char c = *pc++;
       sprintf(p1," %02x",c); p1++; p1++; p1++;
     if ((c >= 0x40) && (c < 0xFF)) {
@@ -2505,7 +2505,20 @@ static void dump_mem(char *msg_temp, unsigned long r)  {
   }
        *p1++ = '\0';
        *p2++ = '\0';
-    sprintf(msg_temp,"%s\n%08x : %s ------ %s",msg_temp,r_local,msg_temp1,msg_temp2);
+    sprintf(msg_temp,"%s\n%08x : %s   %s",msg_temp,r_local,msg_temp1,msg_temp2);
+}
+
+
+static int CmdMemoryDump(ScreenPtr scr, char *params, char *msg) {
+  int loc = 0;
+  if (!tryParseHex(params, &loc)) return _rc_error;
+  sprintf(msg, "Memory dump at %08x:", loc);
+  int i=0;
+  while (++i <= 8) {
+    dump_mem(msg, loc);
+    loc = loc +16;
+  }
+  return _rc_success;
 }
 
 
@@ -3204,6 +3217,10 @@ static MyCmdDef eeCmds[] = {
   {"MACRO"                   , &CmdMacro                            },
   {"MARK"                    , &CmdMark                             },
   {"MASK"                    , &CmdImpSet                           },
+  {"MDump"                   , &CmdMemoryDump                       },
+  {"MDisplay"                , &CmdMemoryDump                       },
+  {"MEMOrydump"              , &CmdMemoryDump                       },
+  {"MEMOrydisplay"           , &CmdMemoryDump                       },
   {"MEMber"                  , &CmdImpSet                           },
 #if 0
   {"MEMLOCK"                 , &CmdMemLock                          }, /* consume all memory to test EE's behaviour */
