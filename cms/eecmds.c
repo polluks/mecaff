@@ -2422,6 +2422,8 @@ static int CmdSqmetVersion(ScreenPtr scr, char sqmet, char *params, char *msg) {
 
 extern void EE_DIRTY();
 
+extern void EE_PLIST();
+
 extern int sc_hndl2(/* void *p  *//* pointer to caller's save area */)  {
 /*
   void *v = &EE_DIRTY;
@@ -2528,6 +2530,7 @@ static int CmdDebug(ScreenPtr scr, char *params, char *msg) {
   msg_temp[0] = '\0';
 
   void *v = &EE_DIRTY;
+  void *p = &EE_PLIST;
   unsigned long *l = v;
   unsigned long R0 = *l++;
   unsigned long R1 = *l++;
@@ -2571,7 +2574,7 @@ static int CmdDebug(ScreenPtr scr, char *params, char *msg) {
  }
 
 
-  sprintf(msg,"CmdDebug 2022-11-02-0908 \n%s",msg_temp);
+  sprintf(msg,"CmdDebug 2022-11-02-2340 : &EE_DIRTY = X'%08x'   &EE_PLIST = X'%08x'\n%s",v,p,msg_temp);
 
   return false;
 
