@@ -850,7 +850,7 @@ int main(int argc, char *argv[], char *argstrng) {
       return 4;
     }
 
-    char messages[512];
+    char messages[4096];  /* was 512 */
 
     char fn[9];
     char ft[9];
