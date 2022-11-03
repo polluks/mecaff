@@ -34,8 +34,9 @@
 #include "glblpost.h"
 
 #define _rc_success    0
-#define _rc_unspecific 1
+#define _rc_limit      1
 #define _rc_error      2
+#define _rc_unspecific 3
 #define _rc_failure   -1
 
 /* set the filename for error messages from memory protection in EEUTIL */
@@ -630,11 +631,11 @@ static int CmdRingNext(ScreenPtr scr, char *params, char *msg) {
         params = getCmdParam(params);
       } else {
         sprintf(msg, "Ring index is not numeric: %s", params);
-        return 0*_rc_error;
+        return _rc_error;
       }
       if ((count < 1) || (count >= fileCount)) {
         sprintf(msg, "Ring index number must be 1 .. %d",fileCount-1);
-        return 0*_rc_error;
+        return _rc_error;
       }
     }
     for (i = 1; i <= count; i++)  { switchToEditor(scr, getNextEd(scr->ed)); }
@@ -975,7 +976,7 @@ static int CmdAll(ScreenPtr scr, char *params, char *msg) {
     rc = execCmd(scr, "SET DISPLAY 1 1"       , msg2, false);
     msg2[0] = '\0';
     rc = execCmd(scr, "TOP"                   , msg2, false);
-    return 0*_rc_success;
+    return _rc_success;
   } else {
     msg2[0] = '\0';
     rc = execCmd(scr, "SET SCOPE DISPLAY"     , msg2, false);
@@ -984,7 +985,7 @@ static int CmdAll(ScreenPtr scr, char *params, char *msg) {
     msg2[0] = '\0';
     sprintf(param2,"LOCATE :%d", oldCurrentLineNum);
     rc = execCmd(scr, param2                  , msg2, false);
-    return 0*_rc_error;
+    return _rc_error;
   }
 
 
@@ -1386,7 +1387,7 @@ static int CmdSqmetColor(ScreenPtr scr, char sqmet, char *params, char *msg) {
   char whatTokenLen = getToken(params, ' ');
   if (whatTokenLen == 0) {
     sprintf(msg, "Missing screen object for SET %s",(our_name_is_BE ? "COLOUR" : "COLOR"));
-    return 0*_rc_error;
+    return _rc_error;
   }
 
   int i = 0;
@@ -1398,7 +1399,7 @@ static int CmdSqmetColor(ScreenPtr scr, char sqmet, char *params, char *msg) {
       sprintf(msg, "Missing %s/highlight parameter for SET %s",
                        (our_name_is_BE ? "colour" : "color"),
                        (our_name_is_BE ? "COLOUR" : "COLOR"));
-      return 0*_rc_error;
+      return _rc_error;
     }
     if        (isAbbrev(params, "Blue")) {
       set_attr++; attr = DA_Blue;
@@ -1440,22 +1441,22 @@ static int CmdSqmetColor(ScreenPtr scr, char sqmet, char *params, char *msg) {
       sprintf(msg, "Invalid %s/highlight parameter for SET %s : %s",
                        (our_name_is_BE ? "colour" : "color"),
                        (our_name_is_BE ? "COLOUR" : "COLOR"), params);
-      return 0*_rc_error;
+      return _rc_error;
     }
   }
 
   if (set_attr > 1) {
     sprintf(msg, "%s parameter specified %d times",
                      (our_name_is_BE ? "Colour" : "Color"), set_attr);
-    return 0*_rc_error;
+    return _rc_error;
   }
   if (set_HiLit > 1) {
     sprintf(msg, "Extended highlighting parameter specified %d times", set_HiLit);
-    return 0*_rc_error;
+    return _rc_error;
   }
   if (set_intens > 1) {
     sprintf(msg, "Intensity parameter specified %d times", set_intens);
-    return 0*_rc_error;
+    return _rc_error;
   } else if (set_intens == 1) {
     set_attr = 1;
     attr |= (unsigned char)0x01;
@@ -1591,11 +1592,11 @@ static int CmdSqmetColor(ScreenPtr scr, char sqmet, char *params, char *msg) {
   } else {
     sprintf(msg, "Invalid screen object for SET %s",
                    (our_name_is_BE ? "COLOUR" : "COLOR"));
-    return 0*_rc_error;
+    return _rc_error;
   }
   params =  getCmdParam(params);
   checkNoParams(params, msg);
-  return 0*_rc_success;
+  return _rc_success;
 }
 
 static int CmdRecfm(ScreenPtr scr, char *params, char *msg) {
@@ -1642,11 +1643,11 @@ static int CmdLrecl(ScreenPtr scr, char *params, char *msg) {
     params =  getCmdParam(params);
   } else {
     sprintf(msg, "LRECL operand must be numeric: %s", params);
-    return 0*_rc_error;
+    return _rc_error;
   }
   if (lrecl < 1 || lrecl > 255) {
     strcpy(msg, "LRECL must be 1 .. 255");
-    return 0*_rc_error;
+    return _rc_error;
   }
   bool truncated = setLrecl(scr->ed, lrecl);
   sprintf(msg, "LRECL changed to %d%s",
@@ -1665,11 +1666,11 @@ static int CmdWorkLrecl(ScreenPtr scr, char *params, char *msg) {
     params =  getCmdParam(params);
   } else {
     sprintf(msg, "WORKLRECL operand must be numeric: %s", params);
-    return 0*_rc_error;
+    return _rc_error;
   }
   if (lrecl < 1 || lrecl > 255) {
     strcpy(msg, "WORKLRECL must be 1 .. 255");
-    return 0*_rc_error;
+    return _rc_error;
   }
   setWorkLrecl(scr->ed, lrecl);
   sprintf(msg, "Working LRECL changed to %d", getWorkLrecl(scr->ed));
@@ -2573,7 +2574,7 @@ static int CmdSqmetScope(ScreenPtr scr, char sqmet, char *params, char *msg) {
 
   if (sqmet == 'Q') {
     sprintf(msg, "SCOPE %s", (getScope(ed) ? "All" : "Display"));
-    return 0*_rc_success;
+    return _rc_success;
   }
 
   if (isAbbrev(params, "All")) {
@@ -2613,7 +2614,7 @@ static int CmdSqmetSelect(ScreenPtr scr, char sqmet, char *params, char *msg) {
 
   if (sqmet == 'Q') {
     sprintf(msg, "SELECT %d %d", select_old, 0);
-    return 0*_rc_success;
+    return _rc_success;
   }
 
 
@@ -2625,7 +2626,7 @@ static int CmdSqmetSelect(ScreenPtr scr, char sqmet, char *params, char *msg) {
     select = SET_SELECT_MAX;
   } else if (!tryParseInt(params, &select)) {
     sprintf(msg, "SELECT operand must be numeric: %s", params);
-    return 0*_rc_error;
+    return _rc_error;
   }
 
   if (*params == '+') {
@@ -2642,7 +2643,7 @@ static int CmdSqmetSelect(ScreenPtr scr, char sqmet, char *params, char *msg) {
     select = select_new;
   } else if ((select < 0) || (select > SET_SELECT_MAX)) {
     sprintf(msg, "Selection level must be 0 .. %d", SET_SELECT_MAX);
-    return 0*_rc_error;
+    return _rc_error;
   }
 
   curlinePtr->selectionLevel = select;
@@ -2664,7 +2665,7 @@ static int CmdSqmetDisplay(ScreenPtr scr, char sqmet, char *params, char *msg) {
   EditorPtr ed = scr->ed;
   if (sqmet == 'Q') {
     sprintf(msg, "DISPLAY %d %d", getDisp1(ed), getDisp2(ed));
-    return 0*_rc_success;
+    return _rc_success;
   }
 
 
@@ -2674,15 +2675,15 @@ static int CmdSqmetDisplay(ScreenPtr scr, char sqmet, char *params, char *msg) {
     setDisplay(ed, 0, SET_SELECT_MAX);
     params = getCmdParam(params);
     checkNoParams(params, msg);
-    return 0*_rc_success;
+    return _rc_success;
   } else if (!tryParseInt(params, &display1)) {
     sprintf(msg, "DISPLAY operands must be numeric: %s", params);
-    return 0*_rc_error;
+    return _rc_error;
   }
 
   if ((display1 < 0) || (display1 > SET_SELECT_MAX)) {
     sprintf(msg, "DISPLAY operands must be 0 .. %d", SET_SELECT_MAX);
-    return 0*_rc_error;
+    return _rc_error;
   }
 
   long display2 = display1;
@@ -2692,26 +2693,26 @@ static int CmdSqmetDisplay(ScreenPtr scr, char sqmet, char *params, char *msg) {
     setDisplay(ed, display1, SET_SELECT_MAX);
     params = getCmdParam(params);
     checkNoParams(params, msg);
-    return 0*_rc_success;
+    return _rc_success;
   } else if (!tokcmp(params, "=")) {
     setDisplay(ed, display1, display1);
     params = getCmdParam(params);
     checkNoParams(params, msg);
-    return 0*_rc_success;
+    return _rc_success;
   } else if (!tryParseInt(params, &display2)) {
     sprintf(msg, "DISPLAY operands must be numeric: %s", params);
-    return 0*_rc_error;
+    return _rc_error;
   }
 
   if ((display2 < 0) || (display2 > SET_SELECT_MAX)) {
     sprintf(msg, "DISPLAY operands must be 0 .. %d", SET_SELECT_MAX);
-    return 0*_rc_error;
+    return _rc_error;
   }
 
 
   if (display1 > display2) {
     sprintf(msg, "DISPLAY operand 1 (%d) must not be larger than operand 2 (%d)", display1, display2);
-    return 0*_rc_error;
+    return _rc_error;
   }
 
   setDisplay(ed, display1, display2);
@@ -2816,13 +2817,13 @@ static int CmdSqmetCase(ScreenPtr scr, char sqmet, char *params, char *msg) {
 
 
 
-    return 0*_rc_success;
+    return _rc_success;
 }
 
 
 static int CmdSqmetNYI(ScreenPtr scr, char sqmet, char *params, char *msg) {
     sprintf(msg, "%s\nSET/QUERY/MODIFY/EXTRACT/TRANSFER subcommand not yet implemented:  * * * Work In Progress * * *\n%s", msg, params);
-    return 0*_rc_failure;
+    return _rc_failure;
 }
 static MySqmetDef sqmetCmds[] = {
   {"AAaa"                    , "SQMET" , &CmdSqmetNYI               },
@@ -2946,7 +2947,7 @@ MySqmetDef* fndsqmet(char *cand, MySqmetDef *cmdList, unsigned int cmdCount) {
 
 static int CmdCmsg(ScreenPtr scr, char *params, char *msg) {
   scr->cmdLinePrefill = params;
-  return 0*_rc_success;
+  return _rc_success;
 }
 
 static int CmdSqmetDispatch(ScreenPtr scr, char sqmet, char *params, char *msg) {
@@ -2982,11 +2983,11 @@ static int CmdSqmetDispatch(ScreenPtr scr, char sqmet, char *params, char *msg) 
       if (c_upper(c_temp) == sqmet)
       /* if (c_temp == 's') */ /* p_s_temp[1]  */  {
         sprintf(msg, "%c sqmet subcommand not yet implemented: '%s'", sqmet, sqmetDef->sqmetName);
-        return 0*_rc_failure;
+        return _rc_failure;
       }
       if (c_temp == '*' /* p_s_temp[10] */ ) {
         sprintf(msg, "VM/SP XEDIT feature not implemented: 'SET %s'", sqmetDef->sqmetName);
-        return 0*_rc_failure;
+        return _rc_failure;
       }
       if (c_temp == 'S' /* p_s_temp[0]  */ ) {
         sprintf(msg, "SET subcommand found: '%s - %s'", sqmetDef->sqmetName, sqmetDef->sqmetFlag);
@@ -2994,7 +2995,7 @@ static int CmdSqmetDispatch(ScreenPtr scr, char sqmet, char *params, char *msg) 
       }
     }
     sprintf(msg, "SET subcommand not found: '%s - %x - %x'", params, *p_i_temp, c_temp);
-    return 0*_rc_failure;
+    return _rc_failure;
 }
 static int CmdSet(ScreenPtr scr, char *params, char *msg) {
   return CmdSqmetDispatch(scr, 'S', params, msg);
