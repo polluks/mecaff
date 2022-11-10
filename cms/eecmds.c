@@ -65,6 +65,9 @@ static int fileCount = 0; /* number of open files */
 static char searchPattern[CMDLINELENGTH + 1]; /* last search pattern */
 static bool searchUp;                         /* was last search upwards ? */
 
+static ScreenPtr saveScreenPtr;               /* debugging SUBCOM */
+static long versionCount;                     /* debugging SUBCOM */
+
 /*
 ** ****** utilities ******
 */
@@ -2416,7 +2419,7 @@ static int CmdMemUnLock(ScreenPtr scr, char *params, char *msg) {
 }
 
 static int CmdSqmetVersion(ScreenPtr scr, char sqmet, char *params, char *msg) {
-  sprintf(msg, "version " VERSION);
+  sprintf(msg, "version --- %d --- " VERSION, versionCount);
   return false;
 }
 
@@ -2424,31 +2427,24 @@ extern void EE_DIRTY();
 
 extern void EE_PLIST();
 
-extern int sc_hndl2(/* void *p  *//* pointer to caller's save area */)  {
+extern int sc_hndl2()  {
 /*
-  void *v = &EE_DIRTY;
-  unsigned long *l = v;
-  unsigned long R0 = *l++;
-  unsigned long R1 = *l++;
-  unsigned long R2 = *l++;
-  fprintf(stderr,"EE_DIRTY: R0=X'%-8x'  R1=X'%-8x'  R2=X'%-8x'", R0, R1, R2);
+  char dummy_msg[4096];
+  dummy_msg[0] = '\0';
 */
-  /* if (++p) return 123456789;  */
-  /* add debugging/diagnostic code here */
-  return 5317; /* was 4711, 4812, 4913, 5014, 5115, 5216 ;-) */
+
+  return (++versionCount)+1000;
+  /* return execCmd(saveScreenPtr, "TOP",dummy_msg, false) ;  */                 ;
+  /* return execCmd(saveScreenPtr, "INPUT INPUT sc_hndlr : void *v = &EE_DIRTY",dummy_msg, false) ; */                 ;
 }
 
 
-extern int sc_hndlr( /* void *p  *//* pointer to caller's save area */)  {
-/*
-  void *v = &EE_DIRTY;
-  unsigned long *l = v;
-  unsigned long R0 = *l++;
-  unsigned long R1 = *l++;
-  unsigned long R2 = *l++;
-  fprintf(stderr,"EE_DIRTY: R0=X'%-8x'  R1=X'%-8x'  R2=X'%-8x'", R0, R1, R2);
-*/
-  return 4813 /* sc_hndl2() */ ;
+extern int sc_hndlr()  {
+  char dummy_msg[4096];
+  dummy_msg[0] = '\0';
+  return execCmd(saveScreenPtr, "TOP",dummy_msg, false) ;
+  return ++versionCount;
+  /* return sc_hndl2();  */
 }
 
 
@@ -3409,6 +3405,8 @@ extern int execCmd(
   if (!cmd) { cmd = scr->cmdLine; }
   while(*cmd == ' ') { cmd++; }
   if (!*cmd) { return false; }
+
+/* preliminary */  saveScreenPtr = scr;
 
   while (addToHistory) {
     moveToBOF(commandHistory);
