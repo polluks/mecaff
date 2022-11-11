@@ -1,61 +1,37 @@
 EESUBCOM CSECT
          ENTRY SC@ENTRY
-SC@ENTRY DS    0H
+SC@ENTRY DS    0D
          USING *,12
-         STM 14,12,12(13)
-         STM 0,15,EE@DIRTY   /* our 'personal' copy */
+         STM   14,12,12(13) save area supplied by caller (=bREXX)
 *
-         LR    8,0
-         L     7,EE@PLIST
-         LM    3,6,0(0)
-         STM   3,6,EE@PLIST
+         L     3,4(,2)     SCBLOCK user word : had been set to ...
+*                          ... t_PGMB *PGMB_loc = CMSGetPG();
 *
-         LM    8,8,0(4)
-         STM   8,8,EE@PLIST+16
-         LM    8,8,4(4)
-         STM   8,8,EE@PLIST+20
-         LM    8,8,8(4)
-         STM   8,8,EE@PLIST+24
-         LM    8,8,12(4)
-         STM   8,8,EE@PLIST+28
-         LM    8,8,16(4)
-         STM   8,8,EE@PLIST+32
-         LM    8,8,20(4)
-         STM   8,8,EE@PLIST+36
-         LM    8,8,24(4)
-         STM   8,8,EE@PLIST+40
+         STM   0,15,0(3)   save ALL GP registers to PGMB, R3 invalid
+         L     9,32(13)    retrieve first saved copy of R2
+         ST    9,12(,3)    update second copy of R3
 *
 *
-         L     15,=V(SC@HNDLR)
-         LR    10,14        backup
-         LR    9,13         backup
-         L     13,DIRTY
-         BALR  14,15
-CONT     LR    14,10
-         LM    0,12,20(13) restore the registers
-         BR 14
-*
-DIRTY    DC 24F'0'          used by callee "under the hood"
-*
-         ENTRY EE@DIRTY     make it accessible externally
-EE@DIRTY DS 0H
-         DC XL4'01020304'
-         DC XL4'11121314'
-         DC XL4'21222324'
-         DC XL4'31323334'
 *
 *
-         DC 24F'0'          copies of the registers we receive from CMS
 *
-         ENTRY EE@PLIST     make it accessible externally
-EE@PLIST DS 0H
-         DC XL4'01020304'
-         DC XL4'11121314'
-         DC XL4'21222324'
-         DC XL4'31323334'
+         LR    6,0         called C routine 'sc_hndlr()' will ...
+         LR    7,1         ... take register contents ...
+         LR    8,2         ... via ___asm___
 *
+         L     15,=V(SC@HNDLR)  subcommand handler implemented in C
+         LR    9,13
+         L     13,64(,3)   CMScrab is stored here in PGMB
+         LR    10,14       backup register 14 to R10
 *
-         DC 24F'0'
+         LR 12,15  "Martin, das könnte der 'Golden Touch' gewesen sein"
+         ENTRY SC@ENTR2
+SC@ENTR2 BALR  14,15       next stage of subcommand handler
+*
+         LR    14,10       restore register 14 from R10
+         LR    13,9
+         LM    0,12,20(13) restore the registers 0-12 ...
+         BR 14             ... from caller's save area
 *
          LTORG
          DC 16F'0'

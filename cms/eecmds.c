@@ -2423,9 +2423,6 @@ static int CmdSqmetVersion(ScreenPtr scr, char sqmet, char *params, char *msg) {
   return false;
 }
 
-extern void EE_DIRTY();
-
-extern void EE_PLIST();
 
 extern int sc_hndl2()  {
 /*
@@ -2525,6 +2522,7 @@ static int CmdDebug(ScreenPtr scr, char *params, char *msg) {
   char msg_temp[2048];
   msg_temp[0] = '\0';
 
+/*
   void *v = &EE_DIRTY;
   void *p = &EE_PLIST;
   unsigned long *l = v;
@@ -2534,7 +2532,9 @@ static int CmdDebug(ScreenPtr scr, char *params, char *msg) {
   unsigned char R1_flag = R1>>24;
   R1 = R1 & 0x00FFFFFF;
   sprintf(msg_temp,"EE_DIRTY:  R1_flag=X'%02x'  R0=X'%08x'  R1=X'%08x'  R2=X'%08x' ", R1_flag, R0, R1, R2);
+*/
 
+/*
   unsigned long *R0p = R0;
  if (R0p) {
   unsigned long R0a = *(R0p++);
@@ -2546,15 +2546,15 @@ static int CmdDebug(ScreenPtr scr, char *params, char *msg) {
   dump_mem(msg_temp, R0b);
   dump_mem(msg_temp, R0c);
   dump_mem(msg_temp, R0d);
-/*
-*/
  }
+*/
 
 
 
+/*
   unsigned long *R1p = R1;
-  /* R1p = R0;     */   /* QUICK AND DIRTY - we want to see the EPLIST */
-  /* R1p = *R1p;   */   /* QUICK AND DIRTY - we want to see the EPLIST */
+  /* R1p = R0;     * /   /* QUICK AND DIRTY - we want to see the EPLIST * /
+  /* R1p = *R1p;   * /   /* QUICK AND DIRTY - we want to see the EPLIST * /
  if (R1p) {
   unsigned long R1a = *(R1p++);
   unsigned long R1b = *(R1p++);
@@ -2565,12 +2565,13 @@ static int CmdDebug(ScreenPtr scr, char *params, char *msg) {
   dump_mem(msg_temp, R1b);
   dump_mem(msg_temp, R1c);
   dump_mem(msg_temp, R1d);
-/*
-*/
  }
+*/
 
 
-  sprintf(msg,"CmdDebug 2022-11-02-2340 : &EE_DIRTY = X'%08x'   &EE_PLIST = X'%08x'\n%s",v,p,msg_temp);
+/*
+  sprintf(msg,"CmdDebug 2022-11-11-0321 : &EE_DIRTY = X'%08x'   &EE_PLIST = X'%08x'\n%s",v,p,msg_temp);
+*/
 
   return false;
 
