@@ -23,6 +23,27 @@
 /* the version information for the tools, displayed in header/footer lines */
 #define VERSION "V1.3.0_221102-2340" /* branch AGPLv3_WIP */
 
+/**************************************************************************************************/
+/* Two functions to help C programs avoid having any non-const static or global                   */
+/* variables. For programs planning to be run from a shared segment the program they will be      */
+/* running in read-only memory and the CMS linker does not allow global variables to be placed in */
+/* another segment.                                                                               */
+/*                                                                                                */
+/* IBM calls these programs (ones that don't write to their TEXT segment) reentrant programs.     */
+/* I have coined this memory - Process Global Memory.                                             */
+/*                                                                                                */
+/* void* CMSPGAll(size_t size) - Allocate / Reallocate Process Global Memory Block                */
+/* void* CMSGetPG(void) - Get the address of the Process Global Memory Block                      */
+/*                                                                                                */
+/* Note: that this area is freed automatically on normal program termination.                     */
+/*                                                                                                */
+/**************************************************************************************************/
+
+#define PGMB_size 16384; /* 2**14 */
+typedef struct t_PGMB {
+  unsigned long GPR_SUBCOM[16] ;
+  unsigned long cmscrab        ;
+} t_PGMB;
 
 /*
 ** -- SUBCOM interface

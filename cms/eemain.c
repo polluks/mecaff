@@ -747,6 +747,12 @@ void tmpInfShow(
 
 int main(int argc, char *argv[], char *argstrng) {
 
+      int long size = PGMB_size;
+      t_PGMB *PGMB_loc = CMSPGAll(size);
+    /*
+      t_PGMB *PGMB_loc = CMSGetPG();
+    */
+
     /* work-around for bug in GCCLIB runtime startup code:
        -> if called from an EXEC, the PLIST is copied to 'argv', but
           sometimes there is an additional character appended to parameters
