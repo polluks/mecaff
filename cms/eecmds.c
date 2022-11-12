@@ -66,6 +66,7 @@ static char searchPattern[CMDLINELENGTH + 1]; /* last search pattern */
 static bool searchUp;                         /* was last search upwards ? */
 
 static ScreenPtr saveScreenPtr;               /* debugging SUBCOM */
+static t_PGMB *savePGMB_loc;               /* debugging SUBCOM */
 static long versionCount;                     /* debugging SUBCOM */
 
 /*
@@ -2424,32 +2425,40 @@ static int CmdSqmetVersion(ScreenPtr scr, char sqmet, char *params, char *msg) {
 }
 
 
-extern int sc_hndl2()  {
-/*
-  char dummy_msg[4096];
-  dummy_msg[0] = '\0';
-*/
-
-  return (++versionCount)+1000;
-  /* return execCmd(saveScreenPtr, "TOP",dummy_msg, false) ;  */                 ;
-  /* return execCmd(saveScreenPtr, "INPUT INPUT sc_hndlr : void *v = &EE_DIRTY",dummy_msg, false) ; */                 ;
-}
 
 
 extern int sc_hndlr()  {
+  ++versionCount;
   char dummy_msg[4096];
+  char command_line[256];
   dummy_msg[0] = '\0';
-  return execCmd(saveScreenPtr, "TOP",dummy_msg, false) ;
-  return ++versionCount;
-  /* return sc_hndl2();  */
+  command_line[0] = '\0';
+  t_PGMB *PGMB_loc = CMSGetPG();  /* does not work - why ? */
+  PGMB_loc = savePGMB_loc;
+
+  unsigned long *p_R0 = PGMB_loc->GPR_SUBCOM[0];
+  unsigned char *q1 = *++p_R0;
+  unsigned char *q2 = *++p_R0;
+  unsigned long qq = q2-q1;
+
+  if (qq > 255) {qq = 255 ;}
+  int i=0;
+  while (i < qq) {command_line[i++] = *q1++ ;}
+  command_line[i] = '\0';
+
+
+  return execCmd(saveScreenPtr, command_line, dummy_msg, true) ;
+/*
+  sprintf(command_line,"input PGMB_loc = %08x   p_R0 =  %08x    q1 = %08x    q2 = %08x    qq = %d   versionCount = %d  ",
+                              PGMB_loc    ,     p_R0     ,      q1      ,    q2       ,   qq      , versionCount    );
+  return qq;
+  return PGMB_loc;
+  return versionCount;
+*/
 }
 
-
-
-
-
-
 static int CmdSqmetSubcom(ScreenPtr scr, char sqmet, char *params, char *msg) {
+  int rc_subcom;
   typedef struct t_subcom_plist {
     char subcom[8]     ;
     char xedit[8]      ;
@@ -2459,13 +2468,40 @@ static int CmdSqmetSubcom(ScreenPtr scr, char sqmet, char *params, char *msg) {
 
   } t_subcom_plist;
 
-  t_subcom_plist subcom_plist = { "SUBCOM  ", "XEDIT   ",0 ,&sc_entry, 0x12345678 } ;
+  t_PGMB *PGMB_loc = savePGMB_loc = CMSGetPG();
+  unsigned long R13;
+  __asm__("LR %0,13"    : "=d" (R13));
+  PGMB_loc->cmscrab = R13;
+
+  t_subcom_plist subcom_plist = { "SUBCOM  ", SUBCOM_name_8,0 ,&sc_entry, PGMB_loc } ;
   t_subcom_plist eplist_dummy ;
 
-  int rc_subcom = __SVC202(&subcom_plist, &eplist_dummy,0);
-  sprintf(msg, "SUBCOM XEDIT : RC from SVC202 = %d", rc_subcom);
-  return false;
+  /* SUBCOM delete */
+  subcom_plist.SUBCPSW = subcom_plist.ENTRY_ADDRESS = 0;
+  __SVC202(&subcom_plist, &eplist_dummy,0);
+
+  /* SUBCOM Set */
+  subcom_plist.SUBCPSW = 0;
+  subcom_plist.ENTRY_ADDRESS = &sc_entry;
+  rc_subcom = __SVC202(&subcom_plist, &eplist_dummy,0);
+
+  /* SUBCOM query */
+  subcom_plist.SUBCPSW = 0;
+  subcom_plist.ENTRY_ADDRESS = 0xFFffFFff;
+  __SVC202(&subcom_plist, &eplist_dummy,0);
+  PGMB_loc->sc_block = subcom_plist.SUBCPSW ;
+
+  sprintf(msg, "SUBCOM: PGMB_loc = %08x     SCBLOCK = %08x", PGMB_loc, PGMB_loc->sc_block);
+
+  return rc_subcom;
 }
+
+
+
+
+
+
+
 
 static void dump_mem(char *msg_temp, unsigned long r)  {
   unsigned long r_local = r;

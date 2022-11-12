@@ -43,12 +43,16 @@
 typedef struct t_PGMB {
   unsigned long GPR_SUBCOM[16] ;
   unsigned long cmscrab        ;
+  unsigned long sc_block       ;
 } t_PGMB;
 
 /*
 ** -- SUBCOM interface
 */
-extern int sc_hndlr(/* void *p */ )  ;
+
+#define SUBCOM_name_S "XEDIT"
+#define SUBCOM_name_8 "XEDIT   "
+extern int sc_hndlr()  ;
 extern int sc_entry()  ;
 
 /*
