@@ -1782,7 +1782,7 @@ static int CmdGapFill(ScreenPtr scr, char *params, char *msg) {
 static CmdDef allowedCmsCommands[] = {
   {"ACcess", NULL}, {"CLOSE", NULL},
   {"CP", NULL},
-  {"DETACH", NULL}, {"ERASE", NULL},
+  {"DETACH", NULL}, {"ERASE", NULL},    {"EXEC", NULL},
   {"LINK", NULL},   {"Listfile", NULL}, {"PRint", NULL},   {"PUnch", NULL},
   {"Query", NULL},  {"READcard", NULL}, {"RELease", NULL}, {"Rename", NULL},
   {"SET", NULL},    {"STATEw", NULL},   {"TAPE", NULL},    {"Type", NULL}
