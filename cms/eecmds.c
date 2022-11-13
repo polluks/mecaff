@@ -406,6 +406,77 @@ typedef struct _mysqmetdef {
   CmdSqmetImpl sqmetImpl;
 } MySqmetDef;
 
+
+
+int ExecCommSet(char *msg, char *var_name, char *value) {
+
+  /* from z/VM 6.4 Help MACROS SHVBLOCK
+  *        ***  LAYOUT OF SHARED-VARIABLE ACCESS CONTROL BLOCK  ***
+  *
+  *   THE CONTROL BLOCKS FOR ACCESSING SHARED VARIABLES ARE CHAINED
+  *   AS A LIST TERMINATED BY A NULL POINTER.  THE LIST IS ADDRESSED
+  *   VIA THE 'PRIVATE INTERFACE' PLIST IN A SUBCOMMAND CALL TO A
+  *   PUBLIC VARIABLE-SHARING ENVIRONMENT (E.G. AS SET UP BY THE
+  *   EXEC 2 OR REXX/VM).
+  *
+  SHVBLOCK DSECT ,
+  SHVNEXT  DS    A        (+0)  CHAIN POINTER (0 IF LAST)
+  SHVUSER  DS    A        (+4)  NOT USED, AVAILABLE FOR PRIVATE
+  *                       use EXCEPT DURING 'FETCH NEXT'
+  SHVCODE  DS    CL1      (+8)  INDIVIDUAL FUNCTION CODE
+  SHVRET   DS    XL1      (+9)  INDIVIDUAL RETURN CODE FLAG
+           DS    H'0'           RESERVED, SHOULD BE ZERO
+  SHVBUFL  DS    F       (+12)  LENGTH OF 'FETCH' VALUE BUFFER
+  SHVNAMA  DS    A       (+16)  ADDR OF PUBLIC VARIABLE NAME
+  SHVNAML  DS    F       (+20)  LENGTH OF PUBLIC VARIABLE NAME
+  SHVVALA  DS    A       (+24)  ADDR OF VALUE BUFFER (0 IF NONE)
+  SHVVALL  DS    F       (+28)  LENGTH OF VALUE (SET BY 'FETCH')
+  SHVBLEN  EQU   *-SHVBLOCK     (LENGTH OF THIS BLOCK = 32)
+  */
+
+
+  typedef struct t_shv_block {
+    void          *shv_next ;
+    unsigned long shv_user  ;
+    char          shv_code  ;
+    char          shv_ret   ;
+    short         shv_zero  ;
+    unsigned long shv_bufl  ;
+    unsigned long shv_nama  ;
+    unsigned long shv_naml  ;
+    unsigned long shv_vala  ;
+    unsigned long shv_vall  ;
+  } t_shv_block;
+
+  int rc_execcomm;
+  typedef struct t_execcomm_plist {
+    char execcomm[8] ;   /* = EXECCOMM (always) */
+  } t_execcomm_plist;
+
+  typedef struct t_execcomm_eplist {
+    unsigned long R1_pure;
+    unsigned long blank1;
+    unsigned long blank2;
+    t_shv_block *p_shv_block;
+  } t_execcomm_eplist;
+
+
+  int l1=0; while(var_name[l1]) {l1++;}
+  int l2=0; while(   value[l2]) {l2++;}
+  t_shv_block  shv_block = { 0, 0, 'S', 0, 0, 0, &var_name[0], l1, &value[0], l2} ;    /* test */
+  t_execcomm_plist  execcomm_plist  = { "EXECCOMM" } ;
+  t_execcomm_eplist execcomm_eplist = { &execcomm_plist, 0, 0, &shv_block } ;
+
+  rc_execcomm = __SVC202(&execcomm_plist, &execcomm_eplist, 0x02);
+  if (rc_execcomm) {
+    sprintf(msg,"EXTRACT command valid only when issued from a macro: RC = %d", rc_execcomm);
+    return rc_execcomm;
+  }
+}
+
+
+
+
 /*
 ** ****** commands ******
 */
@@ -2785,6 +2856,7 @@ static int CmdSqmetHighlight(ScreenPtr scr, char sqmet, char *params, char *msg)
 
 
 
+
 static int CmdSqmetCase(ScreenPtr scr, char sqmet, char *params, char *msg) {
   char case_um = '?';
   char case_ir = '?';
@@ -2856,16 +2928,22 @@ static int CmdSqmetCase(ScreenPtr scr, char sqmet, char *params, char *msg) {
     }
 
     if (sqmet == 'E') {
+      /*
       strcpy(msg, "case.0 = 2");
       if (case_um == 'U') sprintf(msg, "%s\ncase.1 = UPPER", msg)    ;
       if (case_um == 'M') sprintf(msg, "%s\ncase.1 = MIXED", msg)    ;
       if (case_ir == 'I') sprintf(msg, "%s\ncase.2 = IGNORE", msg)   ;
       if (case_ir == 'R') sprintf(msg, "%s\ncase.2 = RESPECT", msg)  ;
-    }
+      */
 
-
-
-
+      int rc = ExecCommSet(msg,"CASE.0","2"); /* the string "2", not the single char '2' */
+      if (rc) return rc;
+      if (case_um == 'U') ExecCommSet(msg,"CASE.1","UPPER");
+      if (case_um == 'M') ExecCommSet(msg,"CASE.1","MIXED");
+      if (case_ir == 'I') ExecCommSet(msg,"CASE.2","IGNORE");
+      if (case_ir == 'R') ExecCommSet(msg,"CASE.2","RESPECT");
+      return rc;
+    } /* if (sqmet == 'E') */
     return _rc_success;
 }
 
