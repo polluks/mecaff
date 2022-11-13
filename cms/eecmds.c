@@ -2863,6 +2863,28 @@ static int CmdSqmetHighlight(ScreenPtr scr, char sqmet, char *params, char *msg)
 
 
 
+static int CmdSqmetCURLine(ScreenPtr scr, char sqmet, char *params, char *msg) {
+  if (sqmet == 'E') {
+    LinePtr curLine = getCurrentLine(scr->ed);
+    int rc = ExecCommSet(msg,"CURLINE.0", "5", 0);
+    if (rc) return rc;
+    ExecCommSet(msg,"CURLINE.1", "-1", 0);
+    ExecCommSet(msg,"CURLINE.2", "-1", 0);
+    ExecCommSet(msg,"CURLINE.3", curLine->text, lineLength(scr->ed, curLine));
+    ExecCommSet(msg,"CURLINE.4", "-1", 0);
+    ExecCommSet(msg,"CURLINE.5", "-1", 0);
+    return rc;
+  }
+
+
+  params = getCmdParam(params);
+  checkNoParams(params, msg);
+  return false;
+}
+
+
+
+
 static int CmdSqmetCase(ScreenPtr scr, char sqmet, char *params, char *msg) {
   char case_um = '?';
   char case_ir = '?';
@@ -2976,7 +2998,7 @@ static MySqmetDef sqmetCmds[] = {
   {"COLPtr"                  , "sqmet" , &CmdSqmetNYI               },
   {"COLumn"                  , "sqmet" , &CmdSqmetNYI               },
   {"CTLchar"                 , "sqmet" , &CmdSqmetNYI               },
-  {"CURLine"                 , "sqmet" , &CmdSqmetNYI               },
+  {"CURLine"                 , "SQMET" , &CmdSqmetCURLine           },
   {"CURSor"                  , "sqmet" , &CmdSqmetNYI               },
   {"DISPlay"                 , "SQMET" , &CmdSqmetDisplay           },
   {"EFMode"                  , "sqmet" , &CmdSqmetNYI               },
