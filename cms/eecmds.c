@@ -408,7 +408,7 @@ typedef struct _mysqmetdef {
 
 
 
-int ExecCommSet(char *msg, char *var_name, char *value) {
+int ExecCommSet(char *msg, char *var_name, char *value, unsigned long len) {
 
   /* from z/VM 6.4 Help MACROS SHVBLOCK
   *        ***  LAYOUT OF SHARED-VARIABLE ACCESS CONTROL BLOCK  ***
@@ -462,8 +462,14 @@ int ExecCommSet(char *msg, char *var_name, char *value) {
 
 
   int l1=0; while(var_name[l1]) {l1++;}
-  int l2=0; while(   value[l2]) {l2++;}
-  t_shv_block  shv_block = { 0, 0, 'S', 0, 0, 0, &var_name[0], l1, &value[0], l2} ;    /* test */
+  int l2=0;
+
+  if (len) {
+    l2 = len;  /* length given: terminating null byte might not be present */
+  } else {
+    l2=0; while(value[l2]) {l2++;}
+  }
+  t_shv_block  shv_block = { 0, 0, 'S', 0, 0, 0, &var_name[0], l1, &value[0], l2} ;
   t_execcomm_plist  execcomm_plist  = { "EXECCOMM" } ;
   t_execcomm_eplist execcomm_eplist = { &execcomm_plist, 0, 0, &shv_block } ;
 
@@ -2936,12 +2942,12 @@ static int CmdSqmetCase(ScreenPtr scr, char sqmet, char *params, char *msg) {
       if (case_ir == 'R') sprintf(msg, "%s\ncase.2 = RESPECT", msg)  ;
       */
 
-      int rc = ExecCommSet(msg,"CASE.0","2"); /* the string "2", not the single char '2' */
+      int rc = ExecCommSet(msg,"CASE.0","2", 0); /* the string "2", not the single char '2' */
       if (rc) return rc;
-      if (case_um == 'U') ExecCommSet(msg,"CASE.1","UPPER");
-      if (case_um == 'M') ExecCommSet(msg,"CASE.1","MIXED");
-      if (case_ir == 'I') ExecCommSet(msg,"CASE.2","IGNORE");
-      if (case_ir == 'R') ExecCommSet(msg,"CASE.2","RESPECT");
+      if (case_um == 'U') ExecCommSet(msg,"CASE.1","UPPER", 0);
+      if (case_um == 'M') ExecCommSet(msg,"CASE.1","MIXED", 0);
+      if (case_ir == 'I') ExecCommSet(msg,"CASE.2","IGNORE", 0);
+      if (case_ir == 'R') ExecCommSet(msg,"CASE.2","RESPECT", 0);
       return rc;
     } /* if (sqmet == 'E') */
     return _rc_success;
