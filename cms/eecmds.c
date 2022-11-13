@@ -2518,7 +2518,7 @@ extern int sc_hndlr()  {
   command_line[i] = '\0';
 
 
-  return execCmd(saveScreenPtr, command_line, dummy_msg, true) ;
+  return execCmd(saveScreenPtr, command_line, dummy_msg, false) ;
 /*
   sprintf(command_line,"input PGMB_loc = %08x   p_R0 =  %08x    q1 = %08x    q2 = %08x    qq = %d   versionCount = %d  ",
                               PGMB_loc    ,     p_R0     ,      q1      ,    q2       ,   qq      , versionCount    );
