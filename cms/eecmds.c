@@ -35,8 +35,11 @@
 
 #define _rc_success    0
 #define _rc_limit      1
+#define _rc_tof_eof    1
 #define _rc_error      2
+#define _rc_not_found  2
 #define _rc_unspecific 3
+#define _rc_invalid    5
 #define _rc_failure   -1
 
 /* set the filename for error messages from memory protection in EEUTIL */
@@ -1090,6 +1093,7 @@ static int CmdLocate(ScreenPtr scr, char *params, char *msg) {
   char tmpSearchPattern[CMDLINELENGTH + 1];
   int patternCount = 0;
   int othersCount = 0;
+  int rc = 0;
 
   char buffer[2048];
   int val;
@@ -1122,6 +1126,7 @@ static int CmdLocate(ScreenPtr scr, char *params, char *msg) {
       if (!findString(ed, buffer, false, NULL)) {
         sprintf(msg, "Pattern \"%s\" not found (downwards)", buffer);
         moveToLine(ed, oldCurrentLine);
+        rc = _rc_not_found;
         break;
       }
     } else if (locType == LOC_PATTERNUP) {
@@ -1132,6 +1137,7 @@ static int CmdLocate(ScreenPtr scr, char *params, char *msg) {
       if (!findString(ed, buffer, true, NULL)) {
         sprintf(msg, "Pattern \"%s\" not found (upwards)", buffer);
         moveToLine(ed, oldCurrentLine);
+        rc = _rc_not_found;
         break;
       }
     }
@@ -1153,7 +1159,7 @@ static int CmdLocate(ScreenPtr scr, char *params, char *msg) {
     searchPattern[0] = '\0';
   }
 
-  return false;
+  return rc;
 }
 
 static int CmdSearchNext(ScreenPtr scr, char *params, char *msg) {
@@ -1170,13 +1176,15 @@ static int CmdSearchNext(ScreenPtr scr, char *params, char *msg) {
            : "Pattern \"%s\" not found (downwards)",
         searchPattern);
       moveToLine(ed, oldCurrentLine);
+      return _rc_not_found;
     }
   }
-  return false;
+  return _rc_success;
+;
 }
 
 static int CmdReverseSearchNext(ScreenPtr scr, char *params, char *msg) {
-  if (!scr->ed) { return false; }
+  if (!scr->ed) { return _rc_failure; }
   searchUp = !searchUp;
   return CmdSearchNext(scr, params, msg);
 }
