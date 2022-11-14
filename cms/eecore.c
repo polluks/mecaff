@@ -1341,9 +1341,10 @@ LinePtr moveUp(EditorPtr ed, unsigned int by) {
   LinePtr curr = ed->lineCurrent;
   int currNo = ed->lineCurrentNo;
   LinePtr guard = ed->lineBOF;
-  while(by-- > 0 && curr != guard) {
+  while(by > 0 && curr != guard) {
     curr = curr->prev;
     currNo--;
+    if (isInScope(curr)) by--;
   }
   ed->lineCurrent = curr;
   ed->lineCurrentNo = currNo;
@@ -1354,9 +1355,10 @@ LinePtr moveDown(EditorPtr ed, unsigned int by) {
   LinePtr curr = ed->lineCurrent;
   int currNo = ed->lineCurrentNo;
   LinePtr guard = ed->lineEOF->prev;
-  while(by-- > 0 && curr != guard) {
+  while(by > 0 && curr != guard) {
     curr = curr->next;
     currNo++;
+    if (isInScope(curr)) by--;
   }
   ed->lineCurrent = curr;
   ed->lineCurrentNo = currNo;
