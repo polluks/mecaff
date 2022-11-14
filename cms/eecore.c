@@ -1869,12 +1869,14 @@ bool edFind(EditorPtr ed, char *what, bool upwards, LinePtr toLine) {
   int newCurrNo = (upwards) ? ed->lineCurrentNo - 1 : ed->lineCurrentNo + 1;
   LinePtr _guard = (upwards) ? ed->lineBOF : ed->lineEOF;
   while(newCurr != _guard) {
-    int whatOffset = findStringInLine(ed, what, newCurr, 0);
-    if (whatOffset >= 0) {
-      /* found 'what' in 'newCurr' => move current line and return success */
-      ed->lineCurrent = newCurr;
-      ed->lineCurrentNo = newCurrNo;
-      return true;
+    if (isInScope(newCurr)) /* obey SET SELECT, SET DISPLAY, SET SCOPE */ {
+      int whatOffset = findStringInLine(ed, what, newCurr, 0);
+      if (whatOffset >= 0) {
+        /* found 'what' in 'newCurr' => move current line and return success */
+        ed->lineCurrent = newCurr;
+        ed->lineCurrentNo = newCurrNo;
+        return true;
+      }
     }
     if (upwards) {
       newCurr = newCurr->prev;
