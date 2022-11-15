@@ -1110,7 +1110,12 @@ static int CmdLocate(ScreenPtr scr, char *params, char *msg) {
     } else if (locType == LOC_ABSOLUTE) {
       othersCount++;
       /* printf("--> ABSOLUTE %d\n", val); */
-      moveToLineNo(ed, val);
+      if (!isInScope(moveToLineNo(ed, val))) {
+        sprintf(msg, "Absolute line target not in scope: %d", val);
+        moveToLine(ed, oldCurrentLine);
+        rc = _rc_not_found;
+        break;
+      }
     } else if (locType == LOC_MARK) {
       othersCount++;
       /* printf("--> MARK '%s'\n", buffer); */
