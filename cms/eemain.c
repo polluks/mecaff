@@ -638,7 +638,7 @@ void tmpInfAppend(char *line) {
 
 int tmpInfWrite(char *fn, char *ft, char *fm, bool overwrite, char *msg) {
   if (!tmpInf) { return -2; }
-  return writeFile(tmpInf, fn, ft, fm, overwrite, msg);
+  return writeFile(tmpInf, fn, ft, fm, overwrite, false, msg);
 }
 
 bool tmpInfLoad(char *fn, char *ft, char *fm) {

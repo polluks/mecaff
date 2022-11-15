@@ -415,9 +415,10 @@ extern int edWrFil(
     char *ft,
     char *fm,
     char forceOverwrite,
+    char selectiveEditing,
     char *msg);
-#define writeFile(ed, fn, ft, fm, forceOverwrite, msg) \
-  edWrFil(ed, fn, ft, fm, forceOverwrite, msg)
+#define writeFile(ed, fn, ft, fm, forceOverwrite, selectiveEditing, msg) \
+  edWrFil(ed, fn, ft, fm, forceOverwrite, selectiveEditing, msg)
 
 
 /* write the range of lines 'firstLine' .. 'lastLine' (order not relevant) to
@@ -436,11 +437,12 @@ extern int edWrRng(
     char *ft,
     char *fm,
     char forceOverwrite,
+    char selectiveEditing,
     LinePtr firstLine,
     LinePtr lastLine,
     char *msg);
-#define writeFileRange(ed, fn, ft, fm, force, firstLine, lastLine, msg) \
-  edWrRng(ed, fn, ft, fm, force, firstLine, lastLine, msg)
+#define writeFileRange(ed, fn, ft, fm, force, selective, firstLine, lastLine, msg) \
+  edWrRng(ed, fn, ft, fm, force, selective, firstLine, lastLine, msg)
 
 
 /*

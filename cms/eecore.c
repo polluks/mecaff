@@ -381,6 +381,7 @@ static int writeToFile(
     char *ft,
     char *fm,
     char forceOverwrite,
+    char selectiveEditing,
     LinePtr firstLine,
     LinePtr lastLine,
     char *msg) {
@@ -489,6 +490,7 @@ static int writeToFile(
     _curr = firstLine;
     LinePtr _guard2 = lastLine->next;
     int recordNum = 1;
+    recordNum = 0;  /* behave like XEDIT: do not overwrite, always append */
     rc = 0;
 
     bool fixedLen = (ed->recfm == 'F');
@@ -507,7 +509,7 @@ static int writeToFile(
         buffer[0] = ' '; /* ...work-around: write a single blank */
         reclen = 1;
       }
-      rc = CMSfileWrite(f, recordNum, reclen);
+      if ((!selectiveEditing) || (isInScope(_curr))) { rc = CMSfileWrite(f, recordNum, reclen); }
       /*printf("   CMSfileWrite(f, %d, %d) -> rc = %d\n",
              recordNum, reclen, rc);*/
       _curr = _curr->next;
@@ -1020,7 +1022,7 @@ int _gtabs(EditorPtr ed, int *tabs) {
 int edSave(EditorPtr ed, char *msg) {
   *msg = '\0';
 #ifndef _NOCMS
-  int state = writeToFile(ed, ed->fn, ed->ft, ed->fm, true, NULL, NULL, msg);
+  int state = writeToFile(ed, ed->fn, ed->ft, ed->fm, true, false, NULL, NULL, msg);
 #else
   int state = -1;
 #endif
@@ -1042,10 +1044,11 @@ int edWrFil(
     char *ft,
     char *fm,
     char forceOverwrite,
+    char selectiveEditing,
     char *msg) {
   *msg = '\0';
 #ifndef _NOCMS
-  int state = writeToFile(ed, fn, ft, fm, forceOverwrite, NULL, NULL, msg);
+  int state = writeToFile(ed, fn, ft, fm, forceOverwrite, selectiveEditing, NULL, NULL, msg);
 #else
   int state = -1;
 #endif
@@ -1058,7 +1061,7 @@ int edWrFil(
 
 /* edWrRng :
 
-   (state) <- writeFileRange(ed, fn, ft, fm, force, firstLine, lastLine, msg)
+   (state) <- writeFileRange(ed, fn, ft, fm, force, selective, firstLine, lastLine, msg)
 */
 int edWrRng(
     EditorPtr ed,
@@ -1066,12 +1069,13 @@ int edWrRng(
     char *ft,
     char *fm,
     char forceOverwrite,
+    char selectiveEditing,
     LinePtr firstLine,
     LinePtr lastLine,
     char *msg) {
   *msg = '\0';
 #ifndef _NOCMS
-  int state = writeToFile(ed, fn, ft, fm, forceOverwrite,
+  int state = writeToFile(ed, fn, ft, fm, forceOverwrite, selectiveEditing,
                           firstLine, lastLine, msg);
 #else
   int state = -1;

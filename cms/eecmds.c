@@ -642,7 +642,7 @@ static int CmdSaveInner(
   msg = &msg[strlen(msg)];
   int result;
   if (fFound) {
-    result = writeFile(scr->ed, fn, ft, fm, force, msg);
+    result = writeFile(scr->ed, fn, ft, fm, force, false, msg);
   } else {
     result = saveFile(scr->ed, msg);
   }
@@ -2017,6 +2017,7 @@ static int CmdPutInner(
         ed,
         fn, ft, fm,
         forceOvr,
+        true,     /* selectiveEditing */
         fromLine, toLine,
         msg);
 
