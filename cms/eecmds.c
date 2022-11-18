@@ -2562,7 +2562,7 @@ static int CmdMemUnLock(ScreenPtr scr, char *params, char *msg) {
 }
 
 static int CmdSqmetVersion(ScreenPtr scr, char sqmet, char *params, char *msg) {
-  sprintf(msg, "version --- 2022-11-15 05:38 %d --- " VERSION, versionCount);
+  sprintf(msg, "version --- 2022-11-18 10:53 %d --- " VERSION, versionCount);
   return false;
 }
 
