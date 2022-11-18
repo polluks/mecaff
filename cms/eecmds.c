@@ -2928,6 +2928,27 @@ static int CmdSqmetHighlight(ScreenPtr scr, char sqmet, char *params, char *msg)
 
 
 
+static int CmdSqmetLine(ScreenPtr scr, char sqmet, char *params, char *msg) {
+  if (sqmet == 'E') {
+    char buffer[10];
+    sprintf(buffer, "%d\0",getCurrLineNo(scr->ed));
+    int rc = ExecCommSet(msg,"LINE.0", "1", 0);
+    if (rc) return rc;
+    ExecCommSet(msg,"LINE.1", buffer, 0);
+  }
+
+  if (sqmet == 'Q') {
+    sprintf(msg, "LINE %d\0",getCurrLineNo(scr->ed));
+  }
+
+  params = getCmdParam(params);
+  checkNoParams(params, msg);
+  return _rc_success;
+}
+
+
+
+
 static int CmdSqmetCURLine(ScreenPtr scr, char sqmet, char *params, char *msg) {
   if (sqmet == 'E') {
     LinePtr curLine = getCurrentLine(scr->ed);
@@ -3091,7 +3112,7 @@ static MySqmetDef sqmetCmds[] = {
   {"LENgth"                  , "sqmet" , &CmdSqmetNYI               },
   {"LIBName"                 , "sqmet" , &CmdSqmetNYI               },
   {"LIBType"                 , "sqmet" , &CmdSqmetNYI               },
-  {"LIne"                    , "-qmet" , &CmdSqmetNYI               },
+  {"LIne"                    , "SQMET" , &CmdSqmetLine              },
   {"LINENd"                  , "sqmet" , &CmdSqmetNYI               },
   {"LRecl"                   , "sqmet" , &CmdSqmetNYI               },
   {"LScreen"                 , "sqmet" , &CmdSqmetNYI               },
