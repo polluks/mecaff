@@ -1982,17 +1982,23 @@ static bool getLineRange(
   return (fromLine != NULL && toLine != NULL);
 }
 
+
+
 static int CmdPutInner(
     ScreenPtr scr,
     char *params,
     char *msg,
     bool forceOvr,
     bool deleteLines) {
-  if (!scr->ed) { return false; }
+  if (!scr->ed) { return _rc_failure; }
 
   char fn[9];
   char ft[9];
   char fm[3];
+  char target[256];
+
+/* XEDIT expects a target here, not just a line count */
+/*
   int lineCount = 1;
 
   int tokLen = getToken(params, ' ');
@@ -2008,15 +2014,60 @@ static int CmdPutInner(
     strcpy(msg, "Linecount = 0 specified, no action taken");
     return false;
   }
-  forceOvr |= getEEBufName(&params, fn, ft, fm);
+*/
 
   EditorPtr ed = scr->ed;
-  LinePtr fromLine;
-  LinePtr toLine;
-  if (!getLineRange(scr, lineCount, &fromLine, &toLine)) {
-    strcpy(msg, "PUT of Top of File not possible, no action taken");
-    return false;
+
+  /* we need to separate 'target' from 'fn ft fm' */
+  int val;
+  char buffer[2048];
+  char *params2 = params;
+  char *params1 = params;
+  int locType = parseLocation(&params2, &val, buffer);
+  /* val,buffer ignored here */
+  if (IS_LOC_ERROR(locType)) {
+    /* let the 'locate' command display the error message */
+    return CmdLocate(scr, params, msg);
   }
+
+  buffer[0] = '\0';
+  int i = 0;
+  if (params != params2) {
+    /* valid 'target', not yet searched for */
+    while (params < params2) {
+      buffer[i++] = *params++;
+    }
+    buffer[i] = '\0';
+  }
+
+/*
+  sprintf(msg,"Debug STOP PUT: params1=%08x params2=%08x params2-params1=%d i=%d locType=%d buffer=%s\n",
+                               params1,     params2,     params2-params1,   i,   locType,   buffer );
+  return 777;
+*/
+
+  int fromLineNo = getCurrLineNo(ed);  /* where are we now ? */
+  LinePtr fromLine = getLineAbsNo(ed, fromLineNo);
+
+  int rc = CmdLocate(scr, buffer, msg);
+  if ((rc > 1) || (rc < 0)) return rc;
+
+  int   toLineNo = getCurrLineNo(ed);  /* where do we go ? */
+  LinePtr   toLine = getLineAbsNo(ed,   toLineNo);
+
+
+  /* PUT writes lines up to, but not including the target line */
+  if ( toLineNo < fromLineNo) {
+    /* backward target */
+    toLine = moveDown(ed, 1);      /* one line towards EOF */
+    toLineNo = getCurrLineNo(ed);
+  } else if ( toLineNo > fromLineNo) {
+    /* forward target */
+    toLine = moveUp(ed, 1);        /* one line towards TOF */
+    toLineNo = getCurrLineNo(ed);
+  }
+
+  forceOvr |= getEEBufName(&params, fn, ft, fm);
 
   int outcome = writeFileRange(
         ed,
