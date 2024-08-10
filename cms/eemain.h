@@ -50,8 +50,8 @@ typedef struct t_PGMB {
 ** -- SUBCOM interface
 */
 
-#define SUBCOM_name_S "XEDIT"
-#define SUBCOM_name_8 "XEDIT   "
+#define SUBCOM_name_S "EE"
+#define SUBCOM_name_8 "EE      "
 extern int sc_hndlr()  ;
 extern int sc_entry()  ;
 
