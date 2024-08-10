@@ -1,0 +1,170 @@
+EE-FILES                                         EE file management subcommands
+
+The following subcommands for EE allow to manage the files being edited.
+
++----------+------------------------------------------------------------------+
+| CASe     | U | M | R                                                        |
++----------+------------------------------------------------------------------+
+
+Set the case handling for the file, with the following options:
+
+U   : Uppercase
+      convert all input to the file in upper case, string searches (commands
+      Locate, Change) are case insensitive.
+
+M   : Mixed case
+      do not convert case for text entered to the file, but do case
+      insensitive searches.
+
+R   : Mixed case, respect case for searches
+      do not convert case for text entered to the file, doing exact (case
+      sensitive) searches.
+
+
++----------+------------------------------------------------------------------+
+| EEdit    | fn [ ft [ fm ] ]                                                 |
+|          | fn[.ft[.fm]]                                                     |
++----------+------------------------------------------------------------------+
+
+Start editing another file in EE. If ft or fm are omitted, the filetype resp.
+filemode of the current file are used.
+
+The specified file edited becomes the current file edited. If the file
+specified is already loaded in EE, this file becomes the current file without
+re-loading the file content from disk.
+
+
++----------+------------------------------------------------------------------+
+| EXIt     |                                                                  |
++----------+------------------------------------------------------------------+
+
+Save all modified files (see SAVE) and terminate EE, returning control
+directly to CMS, even if editing was started from FSLIST or FSVIEW.
+
+
++----------+------------------------------------------------------------------+
+| FILe     | [ fn [ ft [ fm ] ] ]                                             |
+|          | [ fn[.ft[.fm]] ]                                                 |
+| FFILe    | [ fn [ ft [ fm ] ] ]                                             |
+|          | [ fn[.ft[.fm]] ]                                                 |
++----------+------------------------------------------------------------------+
+
+Save the file and terminate editing it (removing from the ring) if the file
+was successfully saved. If no filename is given, the file is saved with
+filename originally loaded resp. the last filename previously given to a
+SAVE/SSAVE command.
+
+If a filename is given and a file with this name exists, using FILE will not
+save the file, but FFILE will force overwriting the file with the editors
+content.
+
+If the current file is the last file edited, the EE session itself is
+terminated, returning control to the environment from where the EE session was
+started, i.e. returning to FSLIST if editing was started from a FSLIST (or
+FSVIEW) screen or else to CMS.
+
+Writing the file is done in the following steps:
+-> Write the new file with the filetype EE$TMP.
+-> If present, rename the current file to the filetype EE$OLD.
+-> Rename the new file from the filetype EE$TMP to the intended filetype.
+-> Delete the old file with the file type EE$OLD.
+(should the editor crash, there are chances to find one of the files mentioned
+to retrieve at least one of the file states)
+
+
++----------+------------------------------------------------------------------+
+| FSLIST   | [ pattern ]                                                      |
++----------+------------------------------------------------------------------+
+
+Open a FSLIST view to browse and view files, allowing to select a file for
+editing in EE (see: FSLIST).
+
+
++----------+------------------------------------------------------------------+
+| LRECL    | lrecl                                                            |
++----------+------------------------------------------------------------------+
+
+Change the logical record length of the file to lrecl, but limited to 255,
+values lower than 1 will be ignored. If the file currently has a larger record
+length, the file content may be truncated.
+
+
++----------+------------------------------------------------------------------+
+| Quit     |                                                                  |
+| QQuit    | [ ALL ]                                                          |
++----------+------------------------------------------------------------------+
+
+If prefix commands are present on the current screen or are currently pending
+from a previous screen:
+
+  Cancel these prefix commands.
+  In this case [Q]Quit works as the command RESet.
+
+In the normal case with no prefix commands on the screen or pending:
+
+  Terminate editing the current file without writing the file content back to
+  disk.
+  If the file was modified, Quit will not be executed. In this case, terminate
+  editing without saving the file can be forced with QQuit.
+
+  If the current file is the last file edited, the EE session itself is
+  terminated, returning control to the environment from where the EE session
+  was started, i.e. returning to FSLIST if editing was started from a FSLIST
+  (or FSVIEW) screen or else to CMS.
+
+If the parameter ALL is given to QQuit, all files currently edited are closed
+without saving and control returns directly to CMS, even if editing was
+started from FSLIST or FSVIEW.
+
+
++----------+------------------------------------------------------------------+
+| RECFM    | V | F                                                            |
++----------+------------------------------------------------------------------+
+
+Change the record format to variable (V) or fixed (F) line length.
+
+
++----------+------------------------------------------------------------------+
+| RINGNext |                                                                  |
+| RN       |                                                                  |
++----------+------------------------------------------------------------------+
+
+Switch to the next file in the ring as current edited file. This command has
+no effect if only one file currently loaded in EE.
+
+
++----------+------------------------------------------------------------------+
+| RINGPrev |                                                                  |
+| RP       |                                                                  |
++----------+------------------------------------------------------------------+
+
+Switch to the previous file in the ring as current edited file. This command
+has no effect if only one file currently loaded in EE.
+
+
++----------+------------------------------------------------------------------+
+| SAVe     | [ fn [ ft [ fm ] ] ]                                             |
+|          | [ fn[.ft[.fm]] ]                                                 |
+| SSAVe    | [ fn [ ft [ fm ] ] ]                                             |
+|          | [ fn[.ft[.fm]] ]                                                 |
++----------+------------------------------------------------------------------+
+
+Save the current file (but do not terminate editing this file). If no filename
+is given, the file is saved with filename originally loaded resp. the last
+filename previously given to a SAVE/SSAVE command.
+
+If a filename is given and a file with this name exists, using SAVE will not
+save the file, but SSAVE will force overwriting the file with the editor's
+content.
+(see the command File on how the file new file content is created)
+
+
++----------+------------------------------------------------------------------+
+| UNBINARY |                                                                  |
++----------+------------------------------------------------------------------+
+
+When loading the file, non-printable characters (code 0xFF and codes lower
+than 0x40 = blank) are replaced by a dot character and the file is supposed to
+be a binary file, preventing it from being saved to avoid data loss.
+
+This command resets the internal binary flag, allowing to overwrite the file.

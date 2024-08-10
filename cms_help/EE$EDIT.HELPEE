@@ -1,0 +1,437 @@
+EE-EDIT                                       EE edit and scrolling subcommands
+
+The following subcommands for EE allow to change the content of an edited file
+and to navigate in the documents.
+
++----------+------------------------------------------------------------------+
+| BOTtom   |                                                                  |
++----------+------------------------------------------------------------------+
+
+Move the current line to be the last line of the file.
+
+
++----------+------------------------------------------------------------------+
+| Change   | /string1/string2/ [ count1|* [ count2|* ] ]                      |
++----------+------------------------------------------------------------------+
+
+Replace occurrences of 'string1' by 'string2'.
+
+The parameter count1 specifies how many occurrences in each line are to be
+replaced. If count1 is omitted, the value 1 is assumed, i.e. only the first
+occurrence of string1 is replaced. Specifying * as count1 replaces all
+occurrences on string1.
+
+The parameter count2 specifies how many lines from (and including) the current
+line are to be processed. If count2 is omitted, the value 1 is assumed, i.e.
+only the current line is processed. Specifying * as count2 processes the
+current and all remaining lines of the file.
+
+As separator character for 'string1' and 'string2', any non-alphanumeric and
+non-blank character may be used (with / being the traditional separator
+character).
+
+If the optional parameter CONFirm is given, each match found is displayed
+and the substitution must be accepted or denied. For each match:
+- the screen changes into read-only mode with the scale and the current line
+  centered
+- the cursor is placed on the start of the matched string,
+- the position of the match on the current line is marked on the scale by a
+  sequence of #-characters
+- the action to be taken for each match is given with one of the following
+  PF keys:
+  -> PF12: execute the substitution and search for the next match
+  -> PF04: skip this match and search for the next match
+  -> PF03: terminate the change operation prematurely at this point
+
+
++----------+------------------------------------------------------------------+
+| DELete   | [ count ]                                                        |
++----------+------------------------------------------------------------------+
+
+Delete  count lines beginning with the current line. If count is omitted, 1
+line is deleted.
+
+
++----------+------------------------------------------------------------------+
+| GET      | [ fn [ ft [ fm ] ] ]                                             |
+|          | [fn[.ft[.fm]]]                                                   |
++----------+------------------------------------------------------------------+
+
+Read the specified file and insert its lines after the current line. If the
+file inserted contains binary characters (codes 0x00 to 0x3F or 0xFF), these
+characters are replaced with a dot ('.') in the file buffer, the current file
+is marked as binary and EE will prevent all write operations of the edited
+file to the original disk file.  If necessary, this protection can be removed
+(see UNBINARY in: EE-FILES).
+
+The default filetype is EE$BUF. If fm is omitted, the first minidisk currently
+accessed in writable mode will be used, so an omitted fm will typically be
+assumed as A.
+When no fileid is given, the file  PUT EE$BUF A  is read.
+
+
++----------+------------------------------------------------------------------+
+| GETD     | [ fn [ ft [ fm ] ] ]                                             |
+|          | [fn[.ft[.fm]]]                                                   |
++----------+------------------------------------------------------------------+
+
+GETD works like the GET command, but additionally deletes the file after
+inserting its content.
+
+
++----------+------------------------------------------------------------------+
+| Input    | [ line-text ]                                                    |
++----------+------------------------------------------------------------------+
+
+If a line-text is given, a new line with line-text is inserted after current
+line and this new line becomes the new current line.
+
+If no text is given after the command, EE enters input-mode, allowing multiple
+lines to be entered after current line by displaying a free space below the
+current line. When pressing ENTER after entering lines, EE makes the last
+entered line to the new current and stays in input-mode, allowing for more
+lines to be entered.
+
+The input-mode is terminated either by pressing the ENTER key without a change
+of the file content or by pressing the PF03 key.
+
+The input-mode has the following fixed command assignments to PF keys:
+
+PF01    :   TABFORWARD
+PF03    :   QUIT (leave input-mode)
+
+PF13    :   TABBACKWARD
+PF15    :   QUIT (leave input-mode)
+
+Except for changes in the file zone of the editor, no further operations are
+possible while in input-mode (no commands, no PF keys others than described
+above, no prefix commands).
+
+
++----------+------------------------------------------------------------------+
+| Locate   | target1 [ target2 [ ... ] ]                                      |
++----------+------------------------------------------------------------------+
+
+Move the current line to be the line specified by the sequence of targets. In
+most cases, only one target will be used, but several targets may be used
+instead of consecutive Locate commands. Relative and absolute moves are bounded
+to the begin resp. the end of the file. The current line is only moved if the
+whole target sequence can be executed, i.e. if given line-marks exist and the
+given search strings are found.
+
+The following move targets are supported:
+n, +n, -n   relative move of the current line by the specified number of lines,
+            giving a positive value (without sign or explicitly with a +
+            character) moves toward the file end, giving a negative value moves
+            to the file begin.
+
+:n          absolute move to line n.
+
+.c          move to line mark c.
+
+/string/    move to the next line in direction to the file end containing the
+            given string. Instead of /, any non-alphanumeric character
+            different from blank and the target-introducing characters
+            (+  -  :  .) can be used as separator for the search string.
+
+-/string/   move to the next line in direction to the file start containing the
+            given string. Instead of /, any non-alphanumeric character
+            different from blank and the target-introducing characters
+            (+  -  :  .) can be used as separator for the search string.
+
+
++----------+------------------------------------------------------------------+
+| MARK     | .c                                                               |
+|          | CLear .c | * | ALL                                               |
++----------+------------------------------------------------------------------+
+
+Set (or replace) the specified line-mark 'c' resp. remove the specified
+line-mark or all line-mark(s).
+
+
++----------+------------------------------------------------------------------+
+| MOVEHere |                                                                  |
++----------+------------------------------------------------------------------+
+
+If the cursor is in the file area, the line under the cursor will be made the
+current line, with the cursor being moved with this line and staying at the
+position inside the line.
+
+
++----------+------------------------------------------------------------------+
+| Next     | [ count ]                                                        |
++----------+------------------------------------------------------------------+
+
+Move the current line down by count lines (in direction to the file end) if
+count is positive, or up (to file start) if count is negative. If no count is
+given, the current line is moved by 1 line.
+
+
++----------+------------------------------------------------------------------+
+| PGDOwn   | [ pct | lesscount ]                                              |
++----------+------------------------------------------------------------------+
+
+Move the current line one page height down (in direction to the file end). The
+page height is the number of the visible file lines on the screen.
+
+If a pct in the value range 33..100 is given, scrolling will occur for this
+percentage of the visible file line count.
+
+If a negative value lesscount is given, the number of lines scrolled will be
+the visible file line count minus the number of lines specified (absolute
+value of lesscount). However, scrolling will be done at least by a 1/3 screen
+height.
+
+If the optional parameter MOVEhere is specified and the cursor is in the file
+area when the command is issued, the line under the cursor will be made the
+current line, with the cursor being moved with this line and staying at the
+position inside the line.
+
+
++----------+------------------------------------------------------------------+
+| PInput   |                                                                  |
++----------+------------------------------------------------------------------+
+
+Enter programmers-input-mode. If the cursor is currently in the file area or
+the prefix area, the cursors line is made the current line before the
+programmers-input-mode is entered. The PInput command is assigned to PF10 per
+default, allowing to start programmers-input-mode directly from the file area.
+
+In programmers-input-mode, a single empty line is inserted after the current
+line and this line is made current. All file lines on the screen are editable
+and the SPLTJOIN functionality is available through PF06/PF18.
+
+A new input line is automatically inserted with the ENTER key when text was
+entered on the input line or when the cursor is on the input line. When
+inserting the new input line, the cursor is placed at the indentation of the
+(first non-empty) line preceding the input line, allowing to enter program text
+in a natural way when working with nested blocks.
+
+Pressing ENTER when no text was entered on the input line and the cursor was
+moved away from this line simply places the cursor back to the input line at
+the indentation column without creating a new input line.
+
+The programmers-input-mode can be left with the PF03 or PF15 keys. If the
+current input line was left unchanged, it is removed when programmers-input-
+mode ends.  If possible, the cursor will be placed in the file area,
+preferably leaving the cursor at the current position or if this not in the
+file area by placing it on the same or the last inserted line at the first
+non-blank column.
+
+The programmers-input-mode has the following fixed command assignments to PF
+keys:
+
+PF01    :   TABFORWARD
+PF03    :   QUIT (leave programmers-input-mode)
+PF06    :   SPLTJOIN
+PF10    :   PINPUT (move programmers-input-mode to the line after the cursor's
+            line)
+
+PF13    :   TABBACKWARD
+PF15    :   QUIT (leave programmers-input-mode)
+PF18    :   SPLTJOIN FORCE
+
+Except for changes in the file zone of the editor, no further operations are
+possible while in programmers-input-mode (no commands, no PF keys others than
+described above, no prefix commands).
+
+
++----------+------------------------------------------------------------------+
+| PGUP     | [ pct | lesscount ]                                              |
++----------+------------------------------------------------------------------+
+
+Move the current line one page height up (in direction to the file start). The
+page height is the number of the visible file lines on the screen.
+
+If a pct in the value range 33..100 is given, scrolling will occur for this
+percentage of the visible file line count.
+
+If a negative value lesscount is given, the number of lines scrolled will be
+the visible file line count minus the number of lines specified (absolute
+value of lesscount). However, scrolling will be done at least by a 1/3 screen
+height.
+
+If the optional parameter MOVEhere is specified and the cursor is in the file
+area when the command is issued, the line under the cursor will be made the
+current line, with the cursor being moved with this line and staying at the
+position inside the line.
+
+
++----------+------------------------------------------------------------------+
+| Previous | [ count ]                                                        |
++----------+------------------------------------------------------------------+
+
+Move the current line up by count lines (in direction to the file start) if
+count is positive, or down (to file end) if count is negative. If no count is
+given, the current line is moved by 1 line.
+
+
++----------+------------------------------------------------------------------+
+| PUT      | [ count [ fn [ ft [ fm ] ] ] ]                                   |
+|          | [ count [ fn[.ft[.fm]]] ]                                        |
+| PPUT     | [ count [ fn [ ft [ fm ] ] ] ]                                   |
+|          | [ count [ fn[.ft[.fm]]] ]                                        |
++----------+------------------------------------------------------------------+
+
+Write count lines beginning with the current line to the specified file. If no
+count is given, one line is written.
+
+The default filetype is EE$BUF.
+
+If fm is omitted, the first minidisk currently accessed in writable mode will
+be used, so an omitted fm will typically be assumed as A1. When no fileid is
+given, the file PUT EE$BUF A1 is written.
+
+When using PUT for an existing target file, it will be only be overwritten
+when the filetype and the filemode are defaulted (or the default values
+EE$BUF A1 are explicitly given).
+Overwriting an existing file with arbitrary filetype or filemode is forced by
+using the command PPUT.
+
+
++----------+------------------------------------------------------------------+
+| PUTD     | [ count [ fn [ ft [ fm ] ] ] ]                                   |
+|          | [ count [ fn[.ft[.fm]] ] ]                                       |
+| PPUTD    | [ count [ fn [ ft [ fm ] ] ] ]                                   |
+|          | [ count [ fn[.ft[.fm]] ] ]                                       |
++----------+------------------------------------------------------------------+
+
+The PUTD and PPUTD work like the PUT resp. PPUT commands, but the lines written
+are additionally deleted from the file edited if writing the target file was
+successful.
+
+
++----------+------------------------------------------------------------------+
+| RESet    |                                                                  |
++----------+------------------------------------------------------------------+
+
+Ignore and remove all prefix commands on the screen, also cancel any pending
+prefix block command. This command is typically assigned to a PF key.
+
+
++---------------+-------------------------------------------------------------+
+| REVSEArchnext |                                                             |
+| RSEArchnext   |                                                             |
+| -/            |                                                             |
++---------------+-------------------------------------------------------------+
+
+If the last Locate command entered had exactly one target and this target was
+a search pattern, then the search direction (down or up) is inversed and the
+previous text search is repeated in the new search direction.
+
+The command REVSEArchnext is assigned to PF16 per default.
+
+The single token  -/ (without any further characters on the command line) is
+a shortcut for REVSEArchnext. Giving any character (even a blank) after the -/
+will start a new Locate with this text as search pattern.
+
+
++------------+----------------------------------------------------------------+
+| SEArchnext |                                                                |
+| /          |                                                                |
++------------+----------------------------------------------------------------+
+
+If the last Locate command entered had exactly one target and this target was
+a search pattern, then the previous text search is repeated in the last search
+direction (down or up) used.
+
+The command SEArchnext is assigned to PF04 per default.
+
+The single token / (without any further characters on the command line) is a
+shortcut for SEArchnext. Giving any character (even a blank) after the / will
+start a new Locate with this text as search pattern.
+
+
++----------+------------------------------------------------------------------+
+| SHIFT    | [ by ]  Left|Right  [ count | :line | .mark ] [ shiftmode ]      |
++----------+------------------------------------------------------------------+
+
+Shift the content of the current line or a block of lines to the left by
+removing characters or to the right by inserting spaces at the beginning of
+the line. The direction of indentation shifting must be explicitly given as
+parameter.
+
+The amount of the indentation shifting is specified by the optional parameter
+by, defaulted by the value specified with the SHIFTCONFig command resp.
+shifting by 2 characters if no SHIFTCONFig command was given.
+
+If more than only the current line is to be shifted, a block of lines starting
+or ending with the current line can be specified by either with:
+
+count     a relative line count, the count gives the number of additional
+          lines before (negative value) or after (positive value) the current
+          line are to be shifted; the count 0 shifts only the current line;
+
+:line     an absolute line number
+
+.mark     a line mark
+
+The lines between and including the current and the specified line will be
+shifted.
+
+How shifting is handled if non-space characters would be lost (moved beyond
+the left or right file border) is controlled by the default behavior defined
+with the SHIFTCONFig command , which can be overridden if the optional
+shiftmode is specified on the SHIFT command.
+See the SHIFTCONFig command (in: EE-CONFG) for the possible shift behaviors
+when shifting beyond a border. If neither a SHIFTCONFig command was given nor
+the shiftmode parameter for SHIFT is specified, the shiftmode LIMit will be
+used.
+
+
++----------+------------------------------------------------------------------+
+| SPLTJoin | [ Force ]                                                        |
++----------+------------------------------------------------------------------+
+
+If the cursor is placed in a file line, the line is:
+
+- splitted at the cursor position if the cursor is placed before the end of
+  the line, with the new line starting with the character under the cursor;
+  the new line will have the same indentation as the original line;
+
+- joined with the next line if the cursor is placed after the last
+  non-whitespace character of the line, the first non-space character of the
+  next line being placed under the cursor and the gap from the old line end to
+  this position being filled with blanks.
+  If the resulting line would be truncated, the join will not happen, unless
+  the parameter Force is given.
+
+
++------------+----------------------------------------------------------------+
+| TABforward |                                                                |
++------------+----------------------------------------------------------------+
+
+If invoked while the cursor is in the file area (usually via the assigned
+PF-key), the cursor is moved to the next defined tab following the current
+cursor position.
+If no tab position is defined on the right of the current position, the cursor
+is not moved.
+
+If the TABforward is invoked while the cursor is in the command line, EE
+attempts to move the cursor to the file line and cursor position on that line
+where the cursor was last known to be before it was placed on the command line.
+If this last known position is visible on the current screen, the cursor is
+placed there. If the screen has been scrolled away from this last known
+position or this file line has been deleted, then the cursor is placed in the
+file area on the first column of the current line.
+
+The command TABforward is assigned to PF01 per default.
+
+
++-------------+---------------------------------------------------------------+
+| TABBackward |                                                               |
++-------------+---------------------------------------------------------------+
+
+If invoked while the cursor is in the file area (usually via the assigned
+PF-key), the cursor is moved to the next defined tab preceding the current
+cursor position. If no tab position is defined on the left of the current
+position, the cursor is moved to the first column (left file border).
+
+The command TABBackward is assigned to PF13 per default.
+
+
++----------+------------------------------------------------------------------+
+| TOp      |                                                                  |
++----------+------------------------------------------------------------------+
+
+Move the current line before the first line of the file.

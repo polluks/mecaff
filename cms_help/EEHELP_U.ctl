@@ -1,0 +1,7 @@
+$EE      HELP$EE  U2  V         Text    $EE.HELP$EE
+EE$CONFG HELPEE   U2  V         Text    EE$CONFG.HELPEE
+EE$CUST  HELPEE   U2  V         Text    EE$CUST.HELPEE
+EE$EDIT  HELPEE   U2  V         Text    EE$EDIT.HELPEE
+EE$FILES HELPEE   U2  V         Text    EE$FILES.HELPEE
+EE$MISC  HELPEE   U2  V         Text    EE$MISC.HELPEE
+EE$PREFX HELPEE   U2  V         Text    EE$PREFX.HELPEE

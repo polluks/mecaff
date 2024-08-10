@@ -1,0 +1,27 @@
+EE-CUST                                                          EE customizing
+
+The EE program reads 2 configuration files on startup before the file to be
+edited is read.
+
+If found in one of the accessed disks, the SYSPROF EE is processed first, then
+PROFILE EE. For each of these files, the first file found in the search order
+of the minidisks is used.
+
+However, the file SYSPROF EE is intended to be on a system disk, providing the
+system-wide defaults (as the FTDEFAULTS and FTTABDEFAULTS for the file types).
+The file PROFILE EE is intended to provide the user preferences.
+
+Only configuration commands (see EE-CONFG) can be used in these files, as no
+file is opened when they are processed (commands requiring a file are
+ignored). The commands in the profiles are executed as if they were given in
+the command area,
+with the following extensions:
+
+  -> A star (*) as first non-whitespace character introduces a comment line,
+     the whole line is ignored.
+
+  -> If a line ends with a backslash as last non-whitespace character, the
+     next line will be concatenated to the line at the position of the
+     backslash (however leading whitespace of the next line is removed).
+     Several lines in the profile can be concatenated up to a total length of
+     512 characters.

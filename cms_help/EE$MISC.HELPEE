@@ -1,0 +1,50 @@
+EE-MISC                                            EE miscellaneous subcommands
+
++----------+------------------------------------------------------------------+
+| CMS      | [ cmscommand ... ]                                               |
++----------+------------------------------------------------------------------+
+
+Enter CMS Subset or execute a CMS command.
+
+If invoked without a command, EE temporarily leaves the fullscreen mode and
+the CMS Subset level is entered on the MECAFF console. This allows entering
+CMS subset compatible commands until the CMS Subset command RETURN is entered,
+which will leave the CMS subset and restore fullscreen EE editing mode.
+
+If a command is given, EE attempts to execute it. As an invoked program may
+overwrite the memory used by EE, the first token of 'cmscommand' is checked
+and command names not on a list of explicitly allowed commands will not be
+executed.
+Allowed CMS or CP commands are:
+
+   ACCess, CLOSE, DETACH, ERASE, LINK, Listfile, PRint, PUnch,
+   Query, READcard, RELease, Rename, SET, STATEw, TAPE, Type.
+
+However, if an EXEC with the name of an allowed command is present, this
+EXEC will be executed, possibly executing programs that overwrite EEs data
+structures und preventing the proper continuation of EE, leading to the loss
+of all file changes not saved!
+
+
++----------+------------------------------------------------------------------+
+| CLRCMD   |                                                                  |
++----------+------------------------------------------------------------------+
+
+Clear the command line. This command is intended for a PF-Key setting
+(assigned to PF11 as default).
+
+
++----------+------------------------------------------------------------------+
+| Help     |                                                                  |
++----------+------------------------------------------------------------------+
+
+Show the top-level help topic for EE.
+
+
++----------+------------------------------------------------------------------+
+| RECALL   |                                                                  |
++----------+------------------------------------------------------------------+
+
+Place the previous command in the command history. EE has a history of the
+last 32 commands issued on the command line. This command is intended for a
+PF-Key setting (assigned to PF12 as default).

@@ -1,0 +1,20 @@
+E:\HomeBrew\GitHub\MECAFF\cms_help>E:\Hercules-4.4.1.10647-SDL-gd0ccfbc9-x64\vmfplc2.exe -t -c 819/1047 load EEHELP_U.ctl "g:\Hercules\MECAFF_+_HELPEE_U_2024-08-10-1829.aws"
+HHC02499I Hercules utility vmfplc2 - VM/CMS VMFPLC2/TAPE Utility - version 4.4.1.10647-SDL-gd0ccfbc9
+HHC01414I (C) Copyright 1999-2022 by Roger Bowler, Jan Jaeger, and others
+HHC01417I ** The SoftDevLabs version of Hercules **
+HHC01415I Build date: Jan  6 2022 at 16:32:26
+HHC02637I Input tape format set to CMS TAPE
+HHC02625I LOADING...
+HHC02626I >>> LOADING:    $EE      HELP$EE  U2 V 78    04/14/13 16:37 recs   15 blks 1
+HHC01474I Using internal codepage conversion table 819/1047
+HHC02626I >>> LOADING:    EE$CONFG HELPEE   U2 V 79    02/17/13 21:50 recs  246 blks 15
+HHC02626I >>> LOADING:    EE$CUST  HELPEE   U2 V 79    02/17/13 21:51 recs   27 blks 2
+HHC02626I >>> LOADING:    EE$EDIT  HELPEE   U2 V 79    07/17/13 20:14 recs  437 blks 28
+HHC02626I >>> LOADING:    EE$FILES HELPEE   U2 V 79    02/17/13 21:51 recs  170 blks 11
+HHC02626I >>> LOADING:    EE$MISC  HELPEE   U2 V 79    02/17/13 21:52 recs   50 blks 4
+HHC02626I >>> LOADING:    EE$PREFX HELPEE   U2 V 79    04/14/13 17:13 recs  107 blks 7
+HHC02633I     @TM
+HHC02633I     @TM
+HHC02631I LOAD complete
+
+E:\HomeBrew\GitHub\MECAFF\cms_help>

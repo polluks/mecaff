@@ -1,0 +1,246 @@
+EE-CONFG                                           EE configuration subcommands
+
+The following subcommands for EE allow to configure the behavior and layout
+of the EE editor.
+
++----------+------------------------------------------------------------------+
+| ATTR     | screen-object  color  [ HIlight ]                                |
++----------+------------------------------------------------------------------+
+
+Define the text rendering attributes for the screen element types of the screen
+setup. Besides the color, passing HIlight allows to specify the highlighted
+display on monochrome displays. These attributes are used for all functional
+modes (EE, FSLIST, FSVIEW) of the program.
+
+The following parameters can be given as  screen-object:
+  FILe       the file content (not being the current line)
+  CURRline   the current file line
+  PREFix     the prefix zone
+  GAPFill    the gap between the file part and the prefix resp. the screen
+             border
+  CMDline    the command line input area
+  CMDARRow   the arrow before the command line area
+  MSGlines   the messages lines (one line, dynamically up to 3 lines)
+  INFOlines  the info lines set with command INFOLines
+  HEADline   the title line (top line) on the screen
+  FOOTline   the footer line (bottom line) in the screen
+  SCALEline  the scale line
+
+The following color values can be given:
+  BLUe , REd , PInk , GREen , TURquoise , YELlow , WHIte ,  MOno
+
+(MOno specifies the default color for displays)
+
+
++----------+------------------------------------------------------------------+
+| CMDLine  | TOP | BOTtom                                                     |
++----------+------------------------------------------------------------------+
+
+Define the placement of the command line on the screen.
+
+
++----------+------------------------------------------------------------------+
+| CURRLine | Top | MIddle                                                     |
++----------+------------------------------------------------------------------+
+
+Define the placement of the current line of the file on the screen.
+
+
++------------+----------------------------------------------------------------+
+| FTDEFaults | ft  recfm  lrecl  casemode  [worklrecl]                        |
++------------+----------------------------------------------------------------+
+
+Define the default record format and the logical record length to use when
+creating a new file with the given file type, also defining the default case
+setting when opening a file with this file type. Optionally the default
+working LRECL for the filetype can be specified (also used for editing
+existing files, see also command WORKLRECL).
+
+This command can be used repeatedly, a command for an already defined filetype
+overwrites the previous settings.
+
+As this information is needed when opening a file, the FTDEFaults commands must
+be given in the profile files for the editor.
+
+The following values can be given:
+  recfm     : V | F
+  lrecl     : 1 .. 255
+  casemode  : U | M | R
+  worklrecl : 1 .. 255
+              (with lrecl being the effective max. value), default: lrecl
+
+
++---------------+-------------------------------------------------------------+
+| FTTABDEFaults | ft  tabpos1 [ tabpos2 [...] ]                               |
++---------------+-------------------------------------------------------------+
+
+Define the default tab positions for the specified file type.
+
+The tab positions must be integer values in the range 1..255. Up to 16 tab
+positions can be given. It is not necessary to specify a tab position for
+column 1, as the line start is an implicit tab position for TABBackward.
+
+As this information is used when opening a file, the FTTABDEFaults commands
+must be given in the profile files for the editor. If no FTTABDEFaults is
+present for the file type of a file being opened, then no tabs will be defined
+for that file.
+
+
++----------+------------------------------------------------------------------+
+| GAPFill  | NONE | DOT | DASH | CROSS                                        |
++----------+------------------------------------------------------------------+
+
+Define the character to fill the gap between each input field for a file line
+and the right border (screen boundary or prefix zone placed on the right).
+
+
++-----------+-----------------------------------------------------------------+
+| INFOLines | OFf | TOp | BOTtom                                              |
+|           | CLEAR                                                           |
+|           | ADD infoline-text                                               |
++-----------+-----------------------------------------------------------------+
+
+Control the permanently displayed information lines, usually describing the PF
+key settings, with:
+
+OFF     remove the infolines from screen
+TOP     display the lines in the head area of the screen
+BOTTOM  display the lines on the footer area of the screen
+CLEAR   reset the infolines (no infoline will be displayed, although not set
+        to OFF, preserving the current positioning)
+
+EE can display up to 2 infolines with max. 80 characters. Defining a new
+infoline with ADD appends a new infoline, dropping the current first infoline
+if there already are 2 lines.
+
+
++----------+------------------------------------------------------------------+
+| MSGLines | TOp | BOTtom                                                     |
++----------+------------------------------------------------------------------+
+
+Set the placement of the message lines, with:
+
+TOP     display the message lines in the head area of the screen
+BOTTOM  display it on the footer area of the screen
+
+EE displays at least one (possibly empty) message line, dynamically growing up
+to 3 lines if necessary.
+
+
++----------+------------------------------------------------------------------+
+| NULls    | ON | OFf                                                         |
++----------+------------------------------------------------------------------+
+
+Control how the editable space after the last non-blank character of the file
+lines is rendered. ON will write NUL characters (default), OFF will use blanks
+characters to fill the space.
+
+
++----------+------------------------------------------------------------------+
+| NUMbers  | ON | OFf                                                         |
++----------+------------------------------------------------------------------+
+
+Control how the prefix zone is rendered, with:
+
+ON      display the prefix command zone with the line number of the
+        corresponding line
+OFF     display all prefix command zones filled with '=' characters.
+
+
++----------+------------------------------------------------------------------+
+| PF       | pfno  command  [ parameters ... ]                                |
+|          | CLEAR pfno                                                       |
++----------+------------------------------------------------------------------+
+
+Set or clear the command issued by a PF key. The pfno must be a number from
+1 to 24, the maximal command length is 120 characters.
+
+
++----------+------------------------------------------------------------------+
+| PREFIX   | OFf  |  ON  |  LEft  |  RIght                                    |
++----------+------------------------------------------------------------------+
+
+Control the display and position of the prefix zone, with:
+
+ON      like LEft (see below)
+LEFT    place the prefix command zone on the left side of the screen
+RIGHT   place it on the right of the screen
+OFF     remove the prefix zone from the screen
+
+
++----------+------------------------------------------------------------------+
+| SCALE    | OFf | TOp | ABOve | BELow                                        |
++----------+------------------------------------------------------------------+
+
+Control the display and position of the column scale on the screen, with:
+
+TOP     display the scale before the first displayed file line
+ABOVE   place the scale on the line before the current line
+BELOW   place the scale on the line following the current line
+OFF     hide the scale.
+
+Besides giving an orientation on the column position of the edited text, the
+scale also indicates the tab positions currently defined for the file with a |
+(pipe character).
+
+
++-------------+---------------------------------------------------------------+
+| SHIFTCONFig | CHEckall | MINimal | LIMit | TRUNCate  [shiftBy]              |
++-------------+---------------------------------------------------------------+
+
+Define the default behavior for the SHIFT command or the shift prefix commands
+(<, >, <<..<<, >>..>>) when the shifted texts reaches a line border, i.e. if
+non-space content would be lost by shifting the text to the left beyond the
+first column or to the right beyond the last column (at LRECL).
+
+The shift commands support the following options when this situation occurs:
+
+CHEckall   if text loss would happen for any of the lines to be shifted,
+           the text will not be shifted and the shifting command is aborted.
+
+MINimal    the shift-by count applied to all lines will be reduced if
+           necessary to avoid text loss for any of the shifted lines. This
+           ensures that the relative indentation among the lines to be
+           shifted will be preserved.
+           This is the default if no SHIFTCONFig command is given.
+
+LIMit      each line will be shifted at most until the border is reached,
+           limiting shifting for each line separately.
+
+TRUNCate   the lines are shifted by the shift-by count specified, with text
+           shifted beyond the corresponding border being truncated.
+
+The optional second parameter specifies the default shift character count for
+the shift subcommand and prefix commands.
+This value must be in the range 1..9.
+
+If not predefined with a SHIFTCONFig command, the default shift mode MINimal
+and the default shift count 2 will be used.
+
+The configured shift defaults can be overridden for each shift (prefix)
+command by specifying the shift count and shift mode options.
+
+
++----------+------------------------------------------------------------------+
+| TABSet   | [ tabpos1 [ tabpos2 [...] ] ]                                    |
++----------+------------------------------------------------------------------+
+
+Define the tab positions for the current file. The tab position must be
+integer values in the range 1.255. Up to 16 tab positions can be given.
+
+If no tab positions are given, all currently defined tab positions will be
+removed. It is not necessary to specify a tab position for column 1, as the
+line start is an implicit tab position for TABBackward.
+
+
++-----------+-----------------------------------------------------------------+
+| WORKLrecl | length                                                          |
++-----------+-----------------------------------------------------------------+
+
+Change the working record length for displaying and editing the file content
+to length, but limited to LRECL,  values lower than 1 will interpreted as
+length = 1.
+
+Displaying the file content and all editing operations are restricted to the
+first length bytes of a line. Anything line content beyond length will be not
+displayed and will be dropped if the line is modified in any way.

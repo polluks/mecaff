@@ -1,0 +1,15 @@
+
+See the following help topics for further information about the EE
+subcommands, grouped by their functionality focus:
+
+EE$PREFX   prefix commands
+
+EE$EDIT    editing and scrolling commands
+
+EE$FILES   file control commands
+
+EE$CONFG   configuration commands
+
+FSLIST     file selection mode in EE and usage of EE as fullscreen file lister
+
+EE$CUST    customizing with the files SYSPROF EE and PROFILE EE
