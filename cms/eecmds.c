@@ -49,6 +49,8 @@ static const char *_FILE_NAME_ = "eecmds.c";
 static bool parseTabs(char *params, int *tabs, int *count);
 static bool isInternalEE(EditorPtr ed);
 static int CmdSqmetDisplay(ScreenPtr scr, char sqmet, char *params, char *msg);
+static int closeAllFiles(ScreenPtr scr, bool saveModified, char *msg);
+
 /*
 ** ****** global screen data
 */
@@ -365,7 +367,15 @@ static int closeFile(ScreenPtr scr, char *msg) {
     scr->ed = NULL;
     return true;
   }
-  switchToEditor(scr, nextEd);
+  EditorPtr guardEd = nextEd;
+  while true {
+    switchToEditor(scr, nextEd);
+    ed = scr->ed;
+    if (!isInternalEE(ed)) { break; }
+    nextEd = getNextEd(ed);
+    if (nextEd == guardEd) { return closeAllFiles(scr, false, msg); }
+  }
+
   return false;
 }
 
@@ -394,6 +404,7 @@ static int closeAllFiles(ScreenPtr scr, bool saveModified, char *msg) {
     ed = nextEd;
   }
   scr->ed = NULL;
+  return false;
   return true;
 }
 
@@ -700,18 +711,51 @@ static int CmdQQuit(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
-static int CmdRingNext(ScreenPtr scr, char *params, char *msg) {
+static int CmdRingPN(ScreenPtr scr, char *params, char *msg, bool backward) {
   if (!scr->ed) { return false; }
+  EditorPtr ed;
   int count = 1;
   int i = 0;
+  bool goto_hidden   = false;
+  bool goto_unhidden = false;
+  bool goto_internal = false;
+  bool goto_normal   = false;
+  bool goto_modified = false;
+  bool goto_binary   = false;
+  bool goto_filtered = false;
 
   if (fileCount == 1) {
     strcpy(msg, "1 file in ring");
   } else {
     if (!getToken(params, ' ')) {
-      count = 1;
+      goto_unhidden = true;
+      goto_filtered = true;
     } else {
-      if (tryParseInt(params, &count)) {
+      if (isAbbrev(params, "Hidden")) {
+        goto_hidden = true;
+        goto_filtered = true;
+        params = getCmdParam(params);
+      } else if (isAbbrev(params, "Unhidden")) {
+        goto_unhidden = true;
+        goto_filtered = true;
+        params = getCmdParam(params);
+      } else if (isAbbrev(params, "Internal")) {
+        goto_internal = true;
+        goto_filtered = true;
+        params = getCmdParam(params);
+      } else if (isAbbrev(params, "Normal")) {
+        goto_normal = true;
+        goto_filtered = true;
+        params = getCmdParam(params);
+      } else if (isAbbrev(params, "Modified")) {
+        goto_modified = true;
+        goto_filtered = true;
+        params = getCmdParam(params);
+      } else if (isAbbrev(params, "Binary")) {
+        goto_binary = true;
+        goto_filtered = true;
+        params = getCmdParam(params);
+      } else if (tryParseInt(params, &count)) {
         params = getCmdParam(params);
       } else {
         sprintf(msg, "Ring index is not numeric: %s", params);
@@ -722,7 +766,18 @@ static int CmdRingNext(ScreenPtr scr, char *params, char *msg) {
         return _rc_error;
       }
     }
-    for (i = 1; i <= count; i++)  { switchToEditor(scr, getNextEd(scr->ed)); }
+    if (goto_filtered) { count = fileCount; }
+    for (i = 1; i <= count; i++)
+    {
+      if (backward) { switchToEditor(scr, ed = getPrevEd(scr->ed)); }
+       else         { switchToEditor(scr, ed = getNextEd(scr->ed)); }
+      if (goto_internal &&  isInternalEE(ed))                    { break; }
+      if (goto_normal   && !isInternalEE(ed))                    { break; }
+      if (goto_hidden   &&  isHidden(ed))                        { break; }
+      if (goto_unhidden && !isHidden(ed))                        { break; }
+      if (goto_binary   &&  isBinary(ed))                        { break; }
+      if (goto_modified && getModified(ed) && !isInternalEE(ed)) { break; }
+    }
 
   }
 
@@ -730,12 +785,12 @@ static int CmdRingNext(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
+static int CmdRingNext(ScreenPtr scr, char *params, char *msg) {
+  return CmdRingPN(scr, params, msg, false);
+}
+
 static int CmdRingPrev(ScreenPtr scr, char *params, char *msg) {
-  if (!scr->ed) { return false; }
-  if (fileCount == 1) { strcpy(msg, "1 file in ring"); }
-  switchToEditor(scr, getPrevEd(scr->ed));
-  checkNoParams(params, msg);
-  return false;
+  return CmdRingPN(scr, params, msg, true);
 }
 
 static int CmdEditFile(ScreenPtr scr, char *params, char *msg) {
@@ -1787,6 +1842,32 @@ static int CmdUnbinary(ScreenPtr scr, char *params, char *msg) {
   return !b;
 }
 
+static int CmdUnHide(ScreenPtr scr, char *params, char *msg) {
+  if (!scr->ed) { return false; }
+  bool b;
+  if (b = resetIsHidden(scr->ed)) {
+    strcpy(msg,
+      "File is not hidden anymore");
+  } else {
+    strcpy(msg,
+      "File is not hidden");
+  }
+  checkNoParams(params, msg);
+  return !b;
+}
+
+static int CmdHide(ScreenPtr scr, char *params, char *msg) {
+  if (!scr->ed) { return false; }
+  bool b;
+  if (b = setIsHidden(scr->ed)) {
+    strcpy(msg,
+      "File is already hidden");
+  } else {
+    strcpy(msg,
+      "File is now hidden");
+  }
+  checkNoParams(params, msg);
+  return b;
 }
 
 static int CmdFtDefaults(ScreenPtr scr, char *params, char *msg) {
@@ -3272,9 +3353,53 @@ static int CmdQuery(ScreenPtr scr, char *params, char *msg) {
 }
 
 static int CmdRingList(ScreenPtr scr, char *params, char *msg) {
+  bool show_all      = false;
+  bool show_hidden   = false;
+  bool show_unhidden = true;
+  bool show_internal = false;
+  bool show_normal   = false;
+  bool show_binary   = false;
+  bool show_modified = false;
+  bool call_ringnext = true;
+
+
   if (getToken(params, ' ')) {
-    CmdRingNext(scr, params, msg);
-    /* CmdCmsg(scr, "RR 1", msg); */
+    if (isAbbrev(params, "Hidden")) {
+      show_hidden = true;
+      show_unhidden = false;
+      params = getCmdParam(params);
+      call_ringnext = false;
+    } else if (isAbbrev(params, "Unhidden")) {
+      show_unhidden = true;
+      show_hidden   = false;
+      params = getCmdParam(params);
+      call_ringnext = false;
+    } else if (isAbbrev(params, "Internal")) {
+      show_internal = true;
+      show_unhidden = false;
+      params = getCmdParam(params);
+      call_ringnext = false;
+    } else if (isAbbrev(params, "Normal")) {
+      show_normal   = true;
+      show_unhidden = false;
+      params = getCmdParam(params);
+      call_ringnext = false;
+    } else if (isAbbrev(params, "Binary")) {
+      show_binary   = true;
+      show_unhidden = false;
+      params = getCmdParam(params);
+      call_ringnext = false;
+    } else if (isAbbrev(params, "Modified")) {
+      show_modified = true;
+      show_unhidden = false;
+      params = getCmdParam(params);
+      call_ringnext = false;
+    } else if (isAbbrev(params, "All")) {
+      show_all = true;
+      params = getCmdParam(params);
+      call_ringnext = false;
+    }
+    if (call_ringnext) { CmdRingNext(scr, params, msg); }
   }
 
   EditorPtr ed = scr->ed;
@@ -3301,7 +3426,14 @@ static int CmdRingList(ScreenPtr scr, char *params, char *msg) {
   while(true) {
     getFnFtFm(ed, fn, ft, fm);
     getLineInfo(ed, &lineCount, &currLineNo);
-    sprintf(msg, "%s\n%s %-8s %-8s %-2s %c %4d %6d%6d   0   %s%s%s",
+    if ( show_all || (show_hidden   &&  isHidden(ed))
+                  || (show_unhidden && !isHidden(ed))
+                  || (show_normal   && !isInternalEE(ed))
+                  || (show_internal &&  isInternalEE(ed))
+                  || (show_binary   &&  isBinary(ed))
+                  || (show_modified &&  getModified(ed) && !isInternalEE(ed))
+       )
+    { sprintf(msg, "%s\n%s %-8s %-8s %-2s %c %4d %6d%6d   0   %s%s%s%s",
       msg,
       currMarker,
       fn, ft, fm,
@@ -3310,8 +3442,10 @@ static int CmdRingList(ScreenPtr scr, char *params, char *msg) {
       lineCount,
       currLineNo,
       (isInternalEE(ed)) ? "*INTERNAL*, " : "",
-      (getModified(ed)) ? "* * * Modified * * *    " : "Unchanged",
-      (isBinary(ed)) ? ", Binary" : "");
+      (getModified(ed)) ? "* * * Modified * * * " : "Unchanged",
+      (isBinary(ed)) ? ", Binary" : "",
+      (isHidden(ed)) ? ", *HIDDEN*" : "");
+    }
     ed = getNextEd(ed);
     if (ed == guardEd) { break; }
     sprintf(currMarker, "%5d", ++counter);
@@ -3430,6 +3564,7 @@ static MyCmdDef eeCmds[] = {
   {"GETD"                    , &CmdGetD                             },
   {"Help"                    , &CmdHelp                             },
   {"HEX"                     , &CmdImpSet                           },
+  {"HIDe"                    , &CmdHide                             },
   {"HIGHlight"               , &CmdImpSet                           },
   {"IMage"                   , &CmdImpSet                           },
   {"IMPcmscp"                , &CmdImpSet                           },
@@ -3552,6 +3687,7 @@ static MyCmdDef eeCmds[] = {
   {"TRANSLat"                , &CmdImpSet                           },
   {"TRunc"                   , &CmdImpSet                           },
   {"UNBINARY"                , &CmdUnbinary                         },
+  {"UNHIDe"                  , &CmdUnHide                           },
   {"UNIQueid"                , &CmdImpSet                           },
   {"UNTil"                   , &CmdImpSet                           },
   {"UPDate"                  , &CmdImpSet                           },
@@ -3595,6 +3731,12 @@ EditorPtr initCmds() {
   fileCount++;
   macroLibrary     = createEditorForFile(getPrevEd(filetypeTabs),     "MACROS  ", "EE$INTRN", "A0", 255,               'V', &_dummy_state, _dummy_msg);
   fileCount++;
+
+  setIsHidden(commandHistory  );
+  setIsHidden(filetypeDefaults);
+  setIsHidden(filetypeTabs    );
+  setIsHidden(macroLibrary    );
+
 /*
   commandHistory = createEditor(NULL, CMDLINELENGTH + 2, 'V');
   filetypeDefaults = createEditor(NULL, 24, 'F');

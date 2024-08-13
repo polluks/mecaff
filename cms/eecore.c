@@ -111,6 +111,11 @@ typedef struct _editor {
   bool isBinary;     /* are there any binary chars => forbid saving? */
   bool isModified;   /* were there changes since opening or last write? */
 
+  bool isHidden;     /* is file hidden from ring ? */
+  bool bool_unallocated2;     /* reserved for future use */
+  bool bool_unallocated3;     /* reserved for future use */
+  bool bool_unallocated4;     /* reserved for future use */
+
   bool scopeAll;     /* SET SCOPE ALL in effect ? */
   bool sParadox;     /* SET SCOPE PARADOX in effect ? */
   bool shadowOn;     /* SET SHADOW ON in effect ? */
@@ -686,6 +691,8 @@ EditorPtr mkEd(EditorPtr prevEd, int lrecl, char recfm) {
     emitEmergencyMessage("unable to allocate editor (OUT OF MEMORY)");
     return NULL;
   }
+  ed->isBinary = false;
+  ed->isHidden = false;
   ed->fileLrecl = lrecl;
   ed->workLrecl = lrecl;
   ed->recfm = recfm;
@@ -818,6 +825,27 @@ void smdfd(EditorPtr ed, bool modified) {
 int edll(EditorPtr ed, LinePtr line) {
   return minInt(line->lineinfo & 0x000000FF, ed->workLrecl);
 }
+
+bool gihid(EditorPtr ed) {
+  return ed->isHidden;
+}
+
+bool sihid(EditorPtr ed) {
+  if (!(ed->isHidden)) {
+    ed->isHidden = true;
+    return false;
+  }
+  return true;
+}
+
+bool rihid(EditorPtr ed) {
+  if (ed->isHidden) {
+    ed->isHidden = false;
+    return true;
+  }
+  return false;
+}
+
 
 bool gibin(EditorPtr ed) {
   return ed->isBinary;

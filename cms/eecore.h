@@ -314,6 +314,36 @@ extern bool ribin(EditorPtr ed);
   ribin(ed)
 
 
+/* hidden from ring ?
+*/
+extern bool gihid(EditorPtr ed);
+#define isHidden(ed) \
+  gihid(ed)
+
+/* hide from ring
+*/
+extern bool sihid(EditorPtr ed);
+#define setIsHidden(ed) \
+  sihid(ed)
+
+/* unhide
+*/
+extern bool rihid(EditorPtr ed);
+#define resetIsHidden(ed) \
+  rihid(ed)
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* set the tab positions for 'ed'. Only the first MAX_TAB_COUNT elements of
    'tabs'.
    The tab positions a 0-based offsets to the first character position in the
