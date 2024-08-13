@@ -1775,12 +1775,18 @@ static int CmdWorkLrecl(ScreenPtr scr, char *params, char *msg) {
 
 static int CmdUnbinary(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
-  if (resetIsBinary(scr->ed)) {
+  bool b;
+  if (b = resetIsBinary(scr->ed)) {
     strcpy(msg,
       "Removed BINARY flag, saving this file will destroy binary content");
+  } else {
+    strcpy(msg,
+      "BINARY flag already removed");
   }
   checkNoParams(params, msg);
-  return false;
+  return !b;
+}
+
 }
 
 static int CmdFtDefaults(ScreenPtr scr, char *params, char *msg) {
