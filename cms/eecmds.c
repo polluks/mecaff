@@ -2649,7 +2649,7 @@ static int CmdMemUnLock(ScreenPtr scr, char *params, char *msg) {
 }
 
 static int CmdSqmetVersion(ScreenPtr scr, char sqmet, char *params, char *msg) {
-  sprintf(msg, "version --- 2024-08-07 22:15 %d --- " VERSION, versionCount);
+  sprintf(msg, "version --- 2024-08-14 00:09 %d --- " VERSION, versionCount);
   return false;
 }
 
