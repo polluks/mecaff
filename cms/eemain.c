@@ -742,10 +742,39 @@ void tmpInfShow(
 }
 
 /*
-** ****** main program ******
+** ****** main program cascade ******
 */
 
-int main(int argc, char *argv[], char *argstrng) {
+int main2(int argc, char *argv[], char *argstrng);
+int main3(int argc, char *argv[], char *argstrng);
+int main4(int argc, char *argv[], char *argstrng);
+int main5(int argc, char *argv[], char *argstrng);
+int main9(int argc, char *argv[], char *argstrng);
+
+/*
+** ****** the "formal" main function ******
+*/
+int main(int argc, char *argv[], char *argstrng)
+  { return main2(argc, argv, argstrng); }
+
+int main2(int argc, char *argv[], char *argstrng)
+  { return main3(argc, argv, argstrng); }
+
+int main3(int argc, char *argv[], char *argstrng)
+  { return main4(argc, argv, argstrng); }
+
+int main4(int argc, char *argv[], char *argstrng)
+  { return main5(argc, argv, argstrng); }
+
+int main5(int argc, char *argv[], char *argstrng)
+  { return main9(argc, argv, argstrng); }
+
+
+/*
+** ****** the "real" main function ******
+*/
+
+int main9(int argc, char *argv[], char *argstrng) {
 
       int long size = PGMB_size;
       t_PGMB *PGMB_loc = CMSPGAll(size);
