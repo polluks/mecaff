@@ -16,7 +16,7 @@
 ** (while wc3270 implements the terminal side), with simplifications and changes
 ** in the coding style, the functionality is derived from the work of the
 ** WC3270 creator, so the original copyright of these files applies:
- 
+
  * Copyright (c) 1996-2009, Paul Mattes.
  * All rights reserved.
  *
@@ -41,7 +41,7 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- 
+
 **
 **
 ** This software is provided "as is" in the hope that it will be useful, with
@@ -52,15 +52,15 @@
 ** Adaptations by Dr. Hans-Walter Latz, Berlin (Germany), 2012
 ** These adaptions to WC3270 code are released to the public domain.
 */
- 
+
 #include <string.h>
- 
+
 #include "bool.h"
 #include "ind$file.h"
- 
- 
+
+
 /* Data stream conversion tables. */
- 
+
   /* data stream representation (others are quadrant-chars (or invalid!) */
 static char *alphas = /* 77 characters */
   " "
@@ -68,7 +68,7 @@ static char *alphas = /* 77 characters */
   "abcdefghijklmnopqrstuvwxyz"
   "0123456789"
   "%&_()<+,-./:>?";
- 
+
   /* the 4 quadrant mapping tables */
 static unsigned char Q0_map[] = {
   0x40, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6,
@@ -83,7 +83,7 @@ static unsigned char Q0_map[] = {
   0x6c, 0x50, 0x6d, 0x4d, 0x5d, 0x4c, 0x4e,
   0x6b, 0x60, 0x4b, 0x61, 0x7a, 0x6e, 0x6f
 };
- 
+
 static unsigned char Q1_map[] = {
   0x20, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46,
   0x47, 0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d,
@@ -97,7 +97,7 @@ static unsigned char Q1_map[] = {
   0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b,
   0x2c, 0x2d, 0x2e, 0x2f, 0x3a, 0x3b, 0x3f
 };
- 
+
 static unsigned char Q2_map[] = {
   0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
   0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c,
@@ -111,7 +111,7 @@ static unsigned char Q2_map[] = {
   0x7b, 0x7c, 0x7d, 0x7e, 0x7f, 0x1a, 0x1b,
   0x1c, 0x1d, 0x1e, 0x1f, 0x00, 0x00, 0x00
 };
- 
+
 static unsigned char Q3_map[] = {
   0x00, 0xa0, 0xa1, 0xea, 0xeb, 0xec, 0xed,
   0xee, 0xef, 0xe0, 0xe1, 0xaa, 0xab, 0xac,
@@ -125,12 +125,12 @@ static unsigned char Q3_map[] = {
   0x00, 0x9c, 0x9d, 0x9e, 0x9f, 0xba, 0xbb,
   0xbc, 0xbd, 0xbe, 0xbf, 0x9a, 0x9b, 0x00
 };
- 
+
   /* constant characteristics of the mappings */
 #define Q_SIZE     77   /* number of mappingchars per quadrant */
 #define Q_BINARY    2   /* binary quadrant (includes NULL) */
 #define NULL_REPR 'A'   /* special code for translation of NULL */
- 
+
   /* the char identifying a quadrant change in the data stream */
 unsigned char q_identifiers[Q_COUNT] = {
   ';', /* quadrant #0 */
@@ -138,14 +138,14 @@ unsigned char q_identifiers[Q_COUNT] = {
   '*', /* quadrant #2 (the binary one) */
   '\'' /* quadrant #3 */
 };
- 
+
   /* the char maps with same index as 'q_identifiers'  */
 static unsigned char *q_maps[Q_COUNT] = { Q0_map, Q1_map, Q2_map, Q3_map };
- 
+
 /* which quadrant is current for data stream characters? (< 0 : none) */
 int curr_q_t2h = -1; /* term -> host */
 int curr_q_h2t = -1; /* host -> term */
- 
+
 /* internal mapping ASCII -> EBCDIC */
 static unsigned char a2e_base[256] = {
     0x00, 0x01, 0x02, 0x03, 0x37, 0x2d, 0x2e, 0x2f,
@@ -181,10 +181,10 @@ static unsigned char a2e_base[256] = {
     0xdc, 0xdd, 0xde, 0xdf, 0xea, 0xeb, 0xec, 0xed,
     0xee, 0xef, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff
 };
- 
+
 unsigned char eterm2ehost[256]; /* configurable remapping table */
 static unsigned char a2e[256];  /* final translation table incl. remapping */
- 
+
 /* internal mapping EBCDIC -> ASCII */
 static unsigned char e2a_base[256] = {
     0x00, 0x01, 0x02, 0x03, 0x9c, 0x09, 0x86, 0x7f,
@@ -220,10 +220,10 @@ static unsigned char e2a_base[256] = {
     0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
     0x38, 0x39, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff
 };
- 
+
 unsigned char ehost2eterm[256]; /* configurable remapping table */
 static unsigned char e2a[256];  /* final translation icl. remapping */
- 
+
 /* initialize the adaptation files to be patched with the IND$MAP files */
 void prepTbls() {
   unsigned short idx;
@@ -232,13 +232,13 @@ void prepTbls() {
     eterm2ehost[idx] = (unsigned char)idx;
   }
 }
- 
+
 /* patch the adaptation tables with a single char mapping */
 void addcmap(unsigned char hostChar, unsigned char termChar) {
   ehost2eterm[hostChar] = termChar;
   eterm2ehost[termChar] = hostChar;
 }
- 
+
 /* finalize the adaptation tables (merge with other inernal tables) */
 void pstpTbls() {
   unsigned short idx;
@@ -247,16 +247,16 @@ void pstpTbls() {
     a2e[idx] = eterm2ehost[a2e_base[idx]];
   }
 }
- 
- 
+
+
 /* transmission modes, global to save parameter passings */
 bool doAscii = false;
 bool doCrLf = false;
- 
- 
+
+
 /* the writer currently to use (if upload from terminal), NULL if test mode */
 RecordWriter writer = NULL;
- 
+
 /* check if the current uploaded records fills up LRECL and write it of so */
 static short chkWriteRecord() {
   if (currLineLen < lrecl) { return 0; }
@@ -265,14 +265,14 @@ static short chkWriteRecord() {
   if (doAscii) { segmented = true; }
   return (result) ? -1 : 1;
 }
- 
+
 #define checkWriteRecord() \
 if (writer) { \
   short r = chkWriteRecord(); \
   if (r < 0) { return ob - ob0; } \
   if (r > 0) { ob = ob0; obuf_len = ob_len; } \
 }
- 
+
 /*
  * Convert a buffer for sending/uploading: terminal -> VM-Host.
  * Returns the length of the converted data.
@@ -289,15 +289,15 @@ int put_cnv(
     int obuf_len = ob_len - currLineLen;
     unsigned char *ob = &ob0[currLineLen];
     int nx;
- 
+
     *errMsg = NULL;
- 
+
     while (len-- && obuf_len) {
         unsigned char c = *buf++;
         char *ixp;
         int ix;
         int oq = -1;
- 
+
         /* check for quadrant change */
         ixp = strchr(q_identifiers, c);
         if (ixp) {
@@ -308,7 +308,7 @@ int put_cnv(
           *errMsg = "TRANS99 - Conversion error (invalid quadrant)";
           return -1;
         }
- 
+
         /* check for encoded null-character */
         if (curr_q_t2h == Q_BINARY && c == NULL_REPR) {
           *ob++ = '\0';
@@ -317,7 +317,7 @@ int put_cnv(
           obuf_len--;
           continue;
         }
- 
+
         /* try to translate to a quadrant index */
         ixp = strchr(alphas, c);
         if (ixp == (char *)NULL) {
@@ -325,7 +325,7 @@ int put_cnv(
           return -1;
         }
         ix = ixp - alphas;
- 
+
         /* map the code using the curr quadrant to the final character */
         c = q_maps[curr_q_t2h][ix];
         if (doAscii) {
@@ -362,10 +362,10 @@ int put_cnv(
         }
         obuf_len--;
     }
- 
+
     return ob - ob0;
 }
- 
+
 /*
 ** Convert the char 'c' to be downloaded (host -> terminal).
 ** Returns the number of bytes stored in 'ob'.
@@ -378,12 +378,12 @@ static int get_cnv_char(
     unsigned char *ixp;
     unsigned ix;
     int oq;
- 
+
     /* get the byte to be converted, either ASCII or binary(1:1) */
     unsigned char c = (doAscii) ? e2a[ec] : ec;
- 
+
     *errMsg = NULL;
- 
+
     /* try if the char can be mapped with the current quadrant */
     if (curr_q_h2t >= 0) {
       ixp = (unsigned char *)memchr(q_maps[curr_q_h2t], c, Q_SIZE);
@@ -397,7 +397,7 @@ static int get_cnv_char(
         return 1;
       }
     }
- 
+
     /* find another quadrant where the char can be mapped */
     oq = curr_q_h2t;
     for (curr_q_h2t = 0; curr_q_h2t < Q_COUNT; curr_q_h2t++) {
@@ -413,13 +413,13 @@ static int get_cnv_char(
       *ob++ = alphas[ix];
       return 2;
     }
- 
+
     /* error: this char cannot be mapped with any of the quadrants ... ? */
     curr_q_h2t = -1;
     *errMsg = "TRANS99 - Conversion error (no quadrant found)";
     return 0;
 }
- 
+
 /*
  * Convert a buffer for receiving/download: VM-Host -> terminal.
  * Returns the length of appended target data, obuf will be null-terminated.
@@ -433,13 +433,13 @@ int get_cnv(
 {
     int outLen = 0;
     *errMsg = NULL;
- 
+
     while (len && obuf_len > 2 && !*errMsg) {
         unsigned char c = *buf++;
         len--;
- 
+
         int cnvLen = 0;
- 
+
         if (c == 0x00) {
           /* special handling for null-character */
           if (doAscii) {
@@ -477,4 +477,4 @@ int get_cnv(
     *obuf = '\0';
     return outLen;
 }
- 
+

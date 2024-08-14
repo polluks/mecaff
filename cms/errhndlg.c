@@ -16,8 +16,8 @@
 ** Written by Dr. Hans-Walter Latz, Berlin (Germany), 2013
 ** Released to the public domain.
 */
- 
+
 #include "errhndlg.h"
- 
+
 jmp_buf *__eh_buf = 0;
- 
+

@@ -15,14 +15,14 @@
 ** Written by Dr. Hans-Walter Latz, Berlin (Germany), 2011,2012
 ** Released to the public domain.
 */
- 
+
 #ifndef _AID3270imported
 #define _AID3270imported
- 
+
 /* AID codes */
 enum AidCode {
   Aid_Enter = ((char)0x7D), /* "Enter" */
- 
+
   Aid_PF01 = ((char)0xF1), /* "PF01" */
   Aid_PF02 = ((char)0xF2), /* "PF02" */
   Aid_PF03 = ((char)0xF3), /* "PF03" */
@@ -47,23 +47,23 @@ enum AidCode {
   Aid_PF22 = ((char)0x4A), /* "PF22" */
   Aid_PF23 = ((char)0x4B), /* "PF23" */
   Aid_PF24 = ((char)0x4C), /* "PF24" */
- 
+
   Aid_PA01 = ((char)0x6C), /* "PA01" */
   Aid_PA02 = ((char)0x6E), /* "PA02" */
   Aid_PA03 = ((char)0x6B), /* "PA03" */
- 
+
   Aid_Clear = ((char)0x6D), /* "Clear" */
- 
+
   Aid_SysReq = ((char)0xF0), /* "SysReq/TestReq" */
- 
+
   Aid_StructF = ((char)0x88), /* "Structured field" */
   Aid_ReadPartition = ((char)0x61), /* "Read partition" */
   Aid_TriggerAction = ((char)0x7F), /* "Trigger action" */
   Aid_ClearPartition = ((char)0x6A), /* "Clear partition" */
- 
+
   Aid_SelectPen = ((char)0x7E), /* "Select pen attention" */
- 
+
   Aid_NoAID = ((char)0x60) /* "No AID generated" */
 };
- 
+
 #endif

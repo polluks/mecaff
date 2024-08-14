@@ -15,27 +15,27 @@
 ** Written by Dr. Hans-Walter Latz, Berlin (Germany), 2011,2012
 ** Released to the public domain.
 */
- 
+
 #include "glblpre.h"
- 
+
 #include <stdio.h>
 #include <string.h>
- 
+
 #include "errhndlg.h"
- 
+
 #include "eecore.h"
 #include "eeutil.h"
 #include "eescrn.h"
 #include "eemain.h"
- 
+
 #include "glblpost.h"
- 
+
 /* set the filename for error messages from memory protection in EEUTIL */
 static const char *_FILE_NAME_ = "eeprefix.c";
- 
+
 /* the single char prefix commands */
 static const char *SingleCharPrefixes = "ID/\"*<>@";
- 
+
 /* the structure holding blockmode operation data between screen roundtrips */
 typedef struct _blockops {
   EditorPtr srcEd;
@@ -46,33 +46,33 @@ typedef struct _blockops {
   int shiftBy;
   int shiftMode;
 } BlockOps, *BlockOpsPtr;
- 
+
 static BlockOps blockOpsData;
 static BlockOpsPtr blockOps = NULL;
- 
+
 static void resetPrefixMarks(ScreenPtr scr) {
   scr->prefixMarks[0].forLine = NULL;
   scr->prefixMarks[0].prefixPrefill[0] = '\0';
   scr->prefixMarks[1].forLine = NULL;
   scr->prefixMarks[1].prefixPrefill[0] = '\0';
 }
- 
+
 static void resetBlockOps() {
   blockOps = &blockOpsData;
   memset(blockOps, '\0', sizeof(*blockOps));
   blockOps->op = '/';
   blockOps->shiftMode = SHIFTMODE_IFALL;
 }
- 
+
 static bool mayProcessPrefixes(ScreenPtr scr) {
   char *cmd = NULL;
- 
+
   if (scr->aidCode == Aid_Enter && *scr->cmdLine) {
     cmd = scr->cmdLine;
   } else {
     cmd = getPFCommand(scr->aidCode);
   }
- 
+
   while(*cmd == ' ') { cmd++; }
   if (isAbbrev(cmd, "RESet")
       || ((isAbbrev(cmd, "Quit") || isAbbrev(cmd, "QQuit"))
@@ -87,7 +87,7 @@ static bool mayProcessPrefixes(ScreenPtr scr) {
   /*strcpy(scr->msgText, "~~~~ mayProcessPrefixes() -> true");*/
   return true;
 }
- 
+
 /* returns: cursorPlaced? */
 static bool processCurrlinePrefixCmd(ScreenPtr scr, bool cursorPlaced) {
   int i;
@@ -105,7 +105,7 @@ static bool processCurrlinePrefixCmd(ScreenPtr scr, bool cursorPlaced) {
   }
   return cursorPlaced;
 }
- 
+
 static void getShiftModifiers(char *p, int *shiftBy, int *mode, char *msg) {
   if (*p >= '1' && *p <= '9') {
     *shiftBy = *p - '0';
@@ -124,7 +124,7 @@ static void getShiftModifiers(char *p, int *shiftBy, int *mode, char *msg) {
     strcat(msg, "Invalid option for shift prefix command");
   }
 }
- 
+
 static int getCountModifier(char *p, int *prefixLen) {
   /* skip the prefix command */
   *prefixLen = 0;
@@ -133,7 +133,7 @@ static int getCountModifier(char *p, int *prefixLen) {
     p++;
   }
   if (!*p) { return 1; }
- 
+
   /* parse the digit sequence */
   int count = 0;
   while(*p >= '0' && *p <= '9') {
@@ -142,13 +142,13 @@ static int getCountModifier(char *p, int *prefixLen) {
   }
   return (count > 0) ? count : 1;
 }
- 
+
 static forceUpLineToVisible(ScreenPtr scr, LinePtr line) {
   EditorPtr ed = scr->ed;
   unsigned int shiftUp = 0;
   int remainingUplines = scr->visibleEdLinesBeforeCurrent;
   LinePtr currLine = getCurrentLine(ed);
- 
+
   /* see if 'line' is in the visible upper part */
   while(remainingUplines > 0 && currLine != NULL && currLine != line) {
     currLine = getPrevLine(ed, currLine);
@@ -156,7 +156,7 @@ static forceUpLineToVisible(ScreenPtr scr, LinePtr line) {
   }
   if (currLine == NULL) { return; } /* line is not before ed's currentLine */
   if (currLine == line) { return; } /* line is already visible */
- 
+
   /* count the lines to shift up needed to show line */
   while(currLine != NULL && currLine != line) {
     currLine = getPrevLine(ed, currLine);
@@ -165,7 +165,7 @@ static forceUpLineToVisible(ScreenPtr scr, LinePtr line) {
   if (currLine == NULL) { return; } /* line is not before ed's currentLine */
   moveUp(ed, shiftUp);
 }
- 
+
 static shiftBlock(
     EditorPtr ed,
     bool shiftLeft,
@@ -189,7 +189,7 @@ static shiftBlock(
     strcat(msg, "Line(s) truncated");
   }
 }
- 
+
 /* returns: cursorPlaced? */
 static bool processSinglePrefixCmds(
     ScreenPtr scr,
@@ -199,18 +199,18 @@ static bool processSinglePrefixCmds(
   LinePtr neededVisibleUpLine = NULL;
   int currLineNo = getCurrLineNo(ed);
   int i;
- 
+
   for (i = 0; i < scr->cmdPrefixesAvail; i++) {
     PrefixInput *pi = &scr->cmdPrefixes[i];
     int prefixLen = strlen(pi->prefixCmd);
- 
+
     if (prefixLen == 2 && pi->prefixCmd[0] == '.') {
       if (setLineMark(ed, pi->line, &pi->prefixCmd[1], msg)) {
         pi->prefixCmd[0] = '\0';
       }
       continue; /* done with this one */
     }
- 
+
     if ((pi->prefixCmd[0] == '<' && pi->prefixCmd[1] != '<')
         || (pi->prefixCmd[0] == '>' && pi->prefixCmd[1] != '>')) {
       int shiftBy = getShiftBy();
@@ -224,10 +224,10 @@ static bool processSinglePrefixCmds(
       pi->prefixCmd[1] = '\0';
       continue;
     }
- 
+
     int count = getCountModifier(pi->prefixCmd, &prefixLen);
     if (prefixLen > 1) { continue; } /* not a single char prefix cmd */
- 
+
     char prefixCmd = c_upper(pi->prefixCmd[0]);
     if (prefixCmd == 'I') {
       LinePtr newLine;
@@ -294,18 +294,18 @@ static bool processSinglePrefixCmds(
   }
   return cursorPlaced;
 }
- 
+
 /* returns: cursorPlaced? */
 static bool processBlockPrefixCmd(
     ScreenPtr scr,
     char *msg,
     bool cursorPlaced) {
   *msg = '\0';
- 
+
   bool inconsistent = false;
   int cntTargets = 0;
   int cntLimits = blockOps->blockEndsAvail;
- 
+
   LinePtr limit1 = blockOps->blockPos1;
   LinePtr limit2 = blockOps->blockPos2;
   char op = blockOps->op;
@@ -318,18 +318,18 @@ static bool processBlockPrefixCmd(
         ? blockOps->shiftMode
         : getShiftMode();
   EditorPtr blockEd = blockOps->srcEd;
- 
+
   LinePtr target = NULL;
   char targetMode = '/'; /* or one of: P , F */
- 
+
   EditorPtr ed = scr->ed;
   char prefixU[8];
   int i;
- 
+
   bool interEdBlockOps = (cntLimits == 2 && ed != blockEd);
- 
+
   char *pendingOp = scr->prefixMarks[0].prefixPrefill;
- 
+
   /* interpret prefix commands */
   for (i = 0; i < scr->cmdPrefixesAvail; i++) {
     PrefixInput *pi = &scr->cmdPrefixes[i];
@@ -421,7 +421,7 @@ static bool processBlockPrefixCmd(
       return cursorPlaced;
     }
   }
- 
+
   /* check consistency of prefix commands given now and previously */
   if (inconsistent || cntLimits > 2) {
     strcpy(msg,
@@ -469,7 +469,7 @@ static bool processBlockPrefixCmd(
            "Target is inside the source block, prefix commands ignored");
     return cursorPlaced;
   }
- 
+
   /* if it is a consistent DD-block: execute it */
   if (op == 'D' && cntLimits == 2) {
     if (!cursorPlaced) {
@@ -487,7 +487,7 @@ static bool processBlockPrefixCmd(
     resetPrefixMarks(scr);
     return cursorPlaced;
   }
- 
+
   /* if it is a consistent ""-block: execute it */
   if (op == '"' && cntLimits == 2) {
     copyLineRange(ed, limit1, limit2, ed, limit2, false);
@@ -504,7 +504,7 @@ static bool processBlockPrefixCmd(
     resetPrefixMarks(scr);
     return cursorPlaced;
   }
- 
+
   /* if it is a consistent >>-block: execute it */
   if (op == '>' && cntLimits == 2) {
     shiftBlock(
@@ -523,7 +523,7 @@ static bool processBlockPrefixCmd(
     resetPrefixMarks(scr);
     return cursorPlaced;
   }
- 
+
   /* if it is a consistent <<-block: execute it */
   if (op == '<' && cntLimits == 2) {
     shiftBlock(
@@ -542,17 +542,17 @@ static bool processBlockPrefixCmd(
     resetPrefixMarks(scr);
     return cursorPlaced;
   }
- 
+
   /* block-operation with source editor not the current one AND no target */
   if (interEdBlockOps && cntTargets == 0) {
     return cursorPlaced;
   }
- 
+
   /* is only an at least a partially consistent operation with target? */
   if (cntLimits < 2 || (cntLimits == 2 && cntTargets == 0)) {
     /* make sure the lines are in first .. last order */
     if (limit1 != limit2) { orderLines(ed, &limit1, &limit2); }
- 
+
     /* special case: selected block is BOF..00001: collapse to single line */
     if (limit1 == limit2
         && cntLimits == 2
@@ -561,13 +561,13 @@ static bool processBlockPrefixCmd(
       if (op == 'c') { pendingOp = "C"; }
       else if (op == 'm') { pendingOp = "M"; }
     }
- 
+
     /* set prefix markers */
     scr->prefixMarks[0].forLine = limit1;
     strcpy(scr->prefixMarks[0].prefixPrefill, pendingOp);
     scr->prefixMarks[1].forLine = limit2;
     strcpy(scr->prefixMarks[1].prefixPrefill, pendingOp);
- 
+
     /* remember current partial state for next set of prefix cmds */
     blockOps->srcEd = ed;
     blockOps->blockPos1 = limit1;
@@ -576,10 +576,10 @@ static bool processBlockPrefixCmd(
     blockOps->op = op;
     blockOps->shiftBy = shiftBy;
     blockOps->shiftMode = shiftMode;
- 
+
     return cursorPlaced;
   }
- 
+
   /* here we have a consistent line range and a target => execute it */
   if (!blockEd) { blockEd = ed; } /* block was defined in this roundtrip... */
   if (op == 'C' || op == 'c') {
@@ -614,14 +614,14 @@ static bool processBlockPrefixCmd(
   }
   resetBlockOps();
   resetPrefixMarks(scr);
- 
+
   return cursorPlaced;
 }
- 
+
 void inBlOps() {
   resetBlockOps();
 }
- 
+
 /* returns: cursorPlaced? */
 bool xcPrfxs(ScreenPtr scr, bool cursorPlaced) {
   _try {
@@ -649,7 +649,7 @@ bool xcPrfxs(ScreenPtr scr, bool cursorPlaced) {
   } _endtry;
   return cursorPlaced;
 }
- 
+
 static void getPendingOp(char *to) {
   char *pendingOp = "??";
   if (blockOps->op == 'C') { pendingOp = "CC"; }
@@ -662,13 +662,13 @@ static void getPendingOp(char *to) {
   else if (blockOps->op == 'm') { pendingOp = "M"; }
   strcpy(to, pendingOp);
 }
- 
+
 void swPrfxs(ScreenPtr scr, EditorPtr newEd) {
   if (!blockOps->srcEd || !newEd || scr->ed == newEd) { return; }
- 
+
   char pendingOp[4];
   getPendingOp(pendingOp);
- 
+
   if (blockOps->srcEd == newEd) {
     /* switching back to the block-originating editor */
     scr->prefixMarks[0].forLine = blockOps->blockPos1;
@@ -684,10 +684,10 @@ void swPrfxs(ScreenPtr scr, EditorPtr newEd) {
     resetPrefixMarks(scr);
   }
 }
- 
+
 void addPrMsg(ScreenPtr scr) {
   if (!blockOps->srcEd || blockOps->blockEndsAvail == 0) { return; }
- 
+
   char *msg = scr->msgText;
   if (!msg) { return; }
   if (*msg) {
@@ -695,10 +695,10 @@ void addPrMsg(ScreenPtr scr) {
     *msg++ = '\n';
     *msg = '\0';
   }
- 
+
   char pendingOp[4];
   getPendingOp(pendingOp);
- 
+
   if (blockOps->srcEd == scr->ed) {
     /* selected block belongs to current displayed editor */
     sprintf(msg, "'%s' pending...", pendingOp);
@@ -712,4 +712,4 @@ void addPrMsg(ScreenPtr scr) {
       pendingOp, fn, ft, fm);
   }
 }
- 
+

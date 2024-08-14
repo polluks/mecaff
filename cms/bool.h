@@ -15,16 +15,16 @@
 ** Written by Dr. Hans-Walter Latz, Berlin (Germany), 2011,2012
 ** Released to the public domain.
 */
- 
+
 #if !defined(__BOOLimported)
 #define __BOOLimported
- 
+
 #ifndef true
- 
+
 typedef unsigned char bool;
 #define true ((bool)1)
 #define false ((bool)0)
- 
+
 #endif
- 
+
 #endif

@@ -15,17 +15,17 @@
 ** Written by Dr. Hans-Walter Latz, Berlin (Germany), 2011,2012
 ** Released to the public domain.
 */
- 
+
 #ifndef __GLBLPOST_INCLUDED
 #define __GLBLPOST_INCLUDED
- 
+
 /*
 ** add here all definitions needed globally after any other include to
 ** ensure that possibly missing things are defined.
 */
- 
+
 #ifndef NULL
 #define NULL 0
 #endif
- 
+
 #endif

@@ -15,13 +15,13 @@
 ** Written by Dr. Hans-Walter Latz, Berlin (Germany), 2011,2012
 ** Released to the public domain.
 */
- 
+
 #ifndef __GLBLPRE_INCLUDED
 #define __GLBLPRE_INCLUDED
- 
+
 /*
 ** add here all definitions needed globally before any other include,
 ** for example #define-s to select items to define in these other includes.
 */
- 
+
 #endif

@@ -28,12 +28,12 @@
 ** Written by Dr. Hans-Walter Latz, Berlin (Germany), 2011,2012
 ** Released to the public domain.
 */
- 
+
 #ifndef _FS3270imported
 #define _FS3270imported
- 
+
 #include "bool.h"
- 
+
 /* Command Codes */
 enum CommandCode {
   Cmd_EAU = ((char)0x6F), /* Erase All Unprotected */
@@ -45,7 +45,7 @@ enum CommandCode {
   Cmd_W   = ((char)0xF1), /* Write */
   Cmd_WSF = ((char)0xF3)  /* Write Structured Field */
 };
- 
+
 enum WCC {
   WCC_None       = ((char)0x00),
   WCC_Reset      = ((char)0x40),
@@ -53,7 +53,7 @@ enum WCC {
   WCC_KbdRestore = ((char)0x02),
   WCC_ResetMDT   = ((char)0x01)
 };
- 
+
 /* order codes */
 enum OrderCode {
   Ord_SF  = ((char)0x1D), /* Start Field */
@@ -66,7 +66,7 @@ enum OrderCode {
   Ord_MF  = ((char)0x2C), /* Modify Field */
   Ord_SA  = ((char)0x28)  /* Set Attribute */
 };
- 
+
 enum FldAttr {
   FldAttr_None        = ((char)0x00),
   FldAttr_Protected   = ((char)0x20),
@@ -75,7 +75,7 @@ enum FldAttr {
   FldAttr_Intensified = ((char)0x08),
   FldAttr_Modified    = ((char)0x01)
 };
- 
+
 /* color codes */
 enum ColorCode {
   Color_Default   = ((char)0x00),
@@ -88,9 +88,9 @@ enum ColorCode {
   Color_White     = ((char)0xF7),
   Color_None      = ((char)0xFF)
 };
- 
+
 /* extended highlight codes */
- 
+
 enum HiLitCode {
   HiLit_Default    = ((char)0x00),
   HiLit_Blink      = ((char)0xF1),
@@ -98,16 +98,16 @@ enum HiLitCode {
   HiLit_Underscore = ((char)0xF4),
   HiLit_None       = ((char)0xFF)
 };
- 
+
 /* AID codes */
 #include "aid3270.h"
- 
+
 /*******************************************************************
 **
 ** creation of outgoing 3270 streams
 **
 *******************************************************************/
- 
+
 /* start a new data stream in internal buffer, wcc: OR-ed WCC-values */
 /* Write */
 extern void strtW(char wcc);
@@ -117,22 +117,22 @@ extern void strtEW(char wcc);
 extern void strtEWA(char wcc, unsigned int altRows, unsigned int altCols);
 /* EraseAllUnprotected */
 extern void strtEAU();
- 
+
 /* set buffer address: x,y: 0-based (!) */
 extern void SBA(unsigned int row, unsigned int col);
- 
+
 /* repeat to address: x,y: 0-based (!) */
 extern void RA(int row, int col, char repeatByte);
- 
+
 /* insert cursor */
 extern void IC();
- 
+
 /* start field, fAttr: OR-ed FldAttr-values */
 extern void SF(char fAttr);
- 
+
 /* start field extended, fAttr: OR-ed FldAttr-values */
 extern void SFE(char fAttr, char hilit, char color);
- 
+
 /* set attributes for plain text */
 extern void SA_H(char hilit);
 #define setAttributeHighlight(CODE) SA_H(CODE)
@@ -142,22 +142,22 @@ extern void SA_BGC(char color);
 #define setAttributeBgColor SA_BGC(COLOR)
 extern void SA_DFLT();
 #define setAttributesToDefault() SA_DFLT()
- 
+
 /* append text to 3270 stream */
 extern void addStrL(char *str, int trgLength, char fillChar);
 #define appendStringWithLength(STR,LEN,FILL) addStrL(STR, LEN, FILL)
 #define appendString(STR) addStrL(STR, 0, (char)0x00)
- 
+
 extern void addChr(char c);
 #define appendChar(c) addChr(c)
- 
+
 /* Get-Buffer-Address: get the current (known) buffer address
    (this routine is useful to remember the position of input fields)
 */
 extern void GBA(unsigned int *row, unsigned int *col);
- 
+
 /* perform full screen write of the internal buffer via __fswr()
- 
+
   retval:
    -1 = buffer is empty, no I/O done
     0 = success
@@ -167,19 +167,19 @@ extern void GBA(unsigned int *row, unsigned int *col);
     4 = unsupported 3270-command (i.e. WSF, RB, RM, RMA)
 */
 extern int fs_tsnd();
- 
+
 /*******************************************************************
 **
 ** interpretation of ingoing 3270 streams
 **
 *******************************************************************/
- 
+
 /* perform full screen read via __fsrd()
    and return the basic input information (AID-code, cursor position) in the
    out-parameters.
- 
+
    (cursorRow,cursorCol: 0-based)
- 
+
   retval:
     0 = success
     1 = not in fs-mode (no previous fs-write or screen forced to non-fs-mode)
@@ -192,12 +192,12 @@ extern int fs_trcv(
   char         *aidCode,
   unsigned int *cursorRow,
   unsigned int *cursorCol);
- 
+
 /* extract next input field data from the buffer, returning the field's address
    anf length inside the internal transmission buffer
- 
+
    (row,col: 0-based)
- 
+
   retval:
     false = no next field (enumeration of fields done)
     true  = success, another field was found
@@ -207,12 +207,12 @@ extern bool fs_nxtf(
   unsigned int  *col,
   char         **fldStart,
   unsigned int  *fldLen);
- 
+
 /* extract next input field data from buffer, copying the fields text
    content to the specified target buffer up to the given max. length.
- 
+
    (row,col: 0-based)
- 
+
   retval:
     false = no next field (enumeration of fields done)
     true  = success, another field was found
@@ -223,11 +223,11 @@ extern bool fs_nxtc(
   char         *fldBuf,
   unsigned int  fldBufLen,
   unsigned int *fldLen);
- 
+
 /* translate Aid-Code to a displayable text */
 extern char* aidTran(char aidcode);
- 
+
 /* map Aid-Code to an index: PF01-PF24 => 1-24, Enter => 0, others => 25 */
 extern int aidPfIndex(char aidcode);
- 
+
 #endif

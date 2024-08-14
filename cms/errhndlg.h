@@ -16,10 +16,10 @@
 ** Written by Dr. Hans-Walter Latz, Berlin (Germany), 2013
 ** Released to the public domain.
 */
- 
+
 /* Usage sample for exception handling */
 #if 0
- 
+
   _try {
     ...
     if (...) { _throw(ERR_xxx); }
@@ -45,45 +45,45 @@
   } _catchall() {
     ...
   } _endtry;
- 
+
 #endif
- 
+
 #ifndef __errhndlg_included
 #define __errhndlg_included
- 
+
 #include <setjmp.h>
- 
+
 #define __GET_2ND(p0,p1,FUNC,...) FUNC
 #define ___INVALID(...) {&;}
- 
+
 extern jmp_buf *__eh_buf;
- 
+
 #define _try { \
   jmp_buf __my_eh_buf; \
   jmp_buf *__my_eh_prev = __eh_buf; \
   __eh_buf = &__my_eh_buf; \
   int __eh_code; \
   if ( (__eh_code = setjmp(__my_eh_buf)) == 0) {
- 
+
 #define _break { __eh_buf = __my_eh_prev; break; }
- 
+
 #define _continue { __eh_buf = __my_eh_prev; continue; }
- 
+
 #define _return(...) { __eh_buf = __my_eh_prev; return __VA_ARGS__ ; }
- 
+
 #define _endtry } }
- 
+
 #define _catch(__code) \
   } else if (__eh_code == __code) { __eh_buf = __my_eh_prev;
 #define _catchall() \
   } else { __eh_buf  = __my_eh_prev;
- 
+
 #define _throw(__code) longjmp(*__eh_buf, __code)
 #define _throwdefault() longjmp(*__eh_buf, __ERR_DEFAULT)
- 
+
 #define _rethrow \
   longjmp(*__eh_buf, (__eh_code == 0) ? __ERR_DEFAULT : __eh_code)
- 
+
 /*
 ** predefined exception codes
 */
@@ -91,5 +91,5 @@ extern jmp_buf *__eh_buf;
 #define __ERR_INTERNAL_ERROR (-2)
 #define __ERR_OUT_OF_MEMORY (-3)
 #define __ERR_CMS_IO_ERROR (-4)
- 
+
 #endif
