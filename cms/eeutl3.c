@@ -16,21 +16,21 @@
 ** Written by Dr. Hans-Walter Latz, Berlin (Germany), 2011,2012,2013
 ** Released to the public domain.
 */
- 
+
 #include "glblpre.h"
- 
+
 #include "eeutil.h"
- 
+
 #include "glblpost.h"
- 
- 
+
+
 /*
 ** ***************************************************************** basic items
 */
- 
+
 typedef unsigned char _byte;
 typedef unsigned short _half;
- 
+
 static bool _isA2Z(char c) {
   if ((_byte)c <= 0x89 && (_byte)c >= 0x81) {        /* a .. i */
     return true;
@@ -47,21 +47,21 @@ static bool _isA2Z(char c) {
   }
   return false;
 }
- 
+
 static char _ucasec(char c) {
   if (_isA2Z(c)) { return c | 0x40; }
   return c;
 }
- 
+
 /*
 ** ******************************** pattern matching for CMS filename / filetype
 */
- 
+
 #define MAX_CAND_LEN 8
- 
+
 /* return value is: new offset in 'cand' if matched or -1 if no match */
 typedef int (*SubMatcher)(char *cand, int offset, char *refTxt);
- 
+
 /* AnyMatcher:
      match any chars form 'offset' to 'cand' end
 */
@@ -69,7 +69,7 @@ static int AnyMatcher(char *cand, int offset, char *refTxt) {
   if (offset > MAX_CAND_LEN) { return -1; }
   return MAX_CAND_LEN;
 }
- 
+
 /* SingleAnyMatcher:
      match any single char in 'cand'
 */
@@ -77,7 +77,7 @@ static int AnySingleMatcher(char *cand, int offset, char *refTxt) {
   if (offset >= MAX_CAND_LEN) { return -1; }
   return offset + 1;
 }
- 
+
 /* TxtMatcher:
      matches if 'refTxt' is at 'offset' of 'cand'
 */
@@ -90,16 +90,16 @@ static int TxtMatcher(char *cand, int offset, char *refTxt) {
   if (*refTxt) { return -1; }
   return offset;
 }
- 
+
 /* AnyThenTxtMatcher:
      matches if refTxt is found inside MAX_CAND_LEN from 'offset'
 */
 static int AnyThenTxtMatcher(char *cand, int offset, char *refTxt) {
   if (offset >= MAX_CAND_LEN) { return -1; }
- 
+
   int refTxtLen = strlen(refTxt);
   int maxOffset = MAX_CAND_LEN - refTxtLen;
- 
+
   int i;
   for (i = offset; i <= maxOffset; i++) {
     int tmpOffset = TxtMatcher(cand, i, refTxt);
@@ -107,22 +107,22 @@ static int AnyThenTxtMatcher(char *cand, int offset, char *refTxt) {
   }
   return -1;
 }
- 
+
 /* *1*2*3*4*5*6*7*8 => 16 Subpatterns
    '1 2 3 4 5 6 7 8 ' => max. 16 bytes for refTxts
 */
- 
+
 typedef struct _subPattern {
   SubMatcher subMatcher;
   char*      refTxt;
   } SubPattern;
- 
+
 typedef struct _pattern {
   SubPattern subPattern[16];
   int        subPatternCount;
   char       refTxts[16];
   } Pattern, *PatternPtr;
- 
+
 /* compile: fill the Pattern 'pattern' according 'pat', returns true if the
             pattern was valid.
    Wildchars are:
@@ -134,13 +134,13 @@ static bool compile(char *pat, PatternPtr pattern) {
   int candMinLen = 0; /* effective length the pattern needs to match */
   char *p = pat; /* current position in 'pat' */
   char *currTxt = pattern->refTxts; /* current start of a text constant */
- 
+
   memset(pattern, '\0', sizeof(*pattern));
- 
+
   PatState state = NONE;
   int currSub = 0;
   SubPattern *sub = pattern->subPattern;
- 
+
   /* simple case: '*' */
   if (p[0] == '*' && p[1] == '\0') {
     pattern->subPatternCount = 1;
@@ -148,7 +148,7 @@ static bool compile(char *pat, PatternPtr pattern) {
     sub->refTxt = NULL;
     return true;
   }
- 
+
   /* non trivial patterns */
   while(*p && candMinLen <= MAX_CAND_LEN) {
     if (*p == '?') { /* matches a single char */
@@ -196,7 +196,7 @@ static bool compile(char *pat, PatternPtr pattern) {
   pattern->subPatternCount = currSub;
   return (candMinLen <= MAX_CAND_LEN);
 }
- 
+
 /* matches: matches the first 8 characters of 'cand' against the 'pattern'.
      if 'cand' is shorter than 8 chars, it must be filled with blanks up
      to the length of 8.
@@ -220,11 +220,11 @@ static bool matches(char *cand, PatternPtr pattern) {
   if (offset >= MAX_CAND_LEN) { return true; }
   return (cand[offset] == ' ');
 }
- 
+
 /*
 ** ********************************************** CMS file status table handling
 */
- 
+
 typedef struct __FST { /* File Status Table entry */
   char      fname[8];    /* filename */
   char      ftype[8];    /* filetype */
@@ -243,40 +243,40 @@ typedef struct __FST { /* File Status Table entry */
   _half     blockcount;  /* number of 800 byte blocks */
   _half     yearw;       /* year last written */
   } FST, *FSTPTR;
- 
+
 typedef struct __HBLK { /* hyperblock in memory */
   FST              fst[20];     /* FST table */
   struct __HBLK*   next;        /* ptr to next hyperblock in memory */
   struct __HBLK*   prev;        /* ptr tp previous hyperblopck in memory */
   } HBLK, *HBLKPTR;
- 
+
 typedef struct __HBLOCK {
   FST          fst[20];
   struct __HBLOCK *next;
   } HBLOCK, *HBLOCKPTR;
- 
+
 typedef struct __HBLOCK0 {
   unsigned int entrylen; /* length of a single FST entry */
   unsigned int tablelen; /* length of the FST table in the hyperblock */
   FST          fst[20];
   HBLOCKPTR    next;
   } HBLOCKROOT, *HBLOCKROOTPTR;
- 
+
 #define FILELIST_HEADER \
   "Filename Filetype Fm  Format    Recs Blocks  Date       Time   Label"
- 
+
 #define DISKLIST_HEADER \
   "Label  CUU M  Stat  Cyl Type " \
   "Blksize  Files  Blks Used-(%) Blks Left  Blk Total"
- 
+
 static Pattern fnPatternObj;
 static Pattern ftPatternObj;
- 
+
 static PatternPtr fnFilter = &fnPatternObj;
 static PatternPtr ftFilter = &ftPatternObj;
 static char fmDiskFilter;
 static char fmAccessFilter;
- 
+
 static int dumpHyperblock(
     FST* fst,
     int fstcount,
@@ -291,11 +291,11 @@ static int dumpHyperblock(
   char yearw[3];
   FST *f = fst;
   char line[120];
- 
+
   memset(fn, '\0', sizeof(fn));
   memset(ft, '\0', sizeof(ft));
   memset(yearw, '\0', sizeof(yearw));
- 
+
   for (i = 0; i < entriesInBlock && fstcount > 0; i++, f++) {
     if (f->fname[0] == ' ' || f->fname[0] == '\0') { continue; }
     fstcount--;
@@ -327,7 +327,7 @@ static int dumpHyperblock(
   }
   return fstcount;
 }
- 
+
 static void dumpHyperblocks(
     HBLOCKROOTPTR r,
     int fstcount,
@@ -362,11 +362,11 @@ static void dumpHyperblocks(
     memcpy(&b, &b->fst[entriesInBlock], 4);
   }
 }
- 
+
 /*
 ** ***************************************************** CMS disk table handling
 */
- 
+
 typedef struct __DEVTYPE { /* devtype table entry */
   _half     devaddr;     /* device address */
   _half     devtype;     /* device type */
@@ -374,7 +374,7 @@ typedef struct __DEVTYPE { /* devtype table entry */
   void*     devipra;
   int       devmisc;
   } DEVTYPE;
- 
+
 typedef struct __ADT { /* Active Disk Table block */
   char      adtid[6];    /* disk-identifier (label) */
   _byte     adtflg3;     /* third flag byte */
@@ -399,13 +399,13 @@ typedef struct __ADT { /* Active Disk Table block */
   _byte     adtflg1;     /* first flag byte */
   _byte     adtflg2;     /* second flag byte */
   } ADT, *ADTPTR;
- 
+
 #define ADT_DISK_RO 0x40
 #define ADT_DISK_RW 0x20
- 
+
 /* root pointer for the disk list structures */
 static ADTPTR* iadt = (ADTPTR*)0x000644; /* as seen in MAINT's CMSNUC MAP A */
- 
+
 static void dumpSingleDisk(ADTPTR adt, LineCallback cb, void *cbdata) {
   if (!adt || adt->adtcyl < 0) { return; }
   char adtid[7];
@@ -414,7 +414,7 @@ static void dumpSingleDisk(ADTPTR adt, LineCallback cb, void *cbdata) {
   char *rwstate = (adt->adtflg1 & ADT_DISK_RW) ? "R/W" : "R/O";
   int pctUsed = ((adt->adtused * 100) + (adt->adtnum / 2)) / adt->adtnum;
   char line[99];
- 
+
   memcpy(adtid, adt->adtid, 6);
   adtid[6] = '\0';
   switch(dev->devtype & 0x0ff) {
@@ -443,13 +443,13 @@ static void dumpSingleDisk(ADTPTR adt, LineCallback cb, void *cbdata) {
          adt->adtnum);
   cb(line, cbdata);
 }
- 
+
 /* get the header line for the disk list.
 */
 char* enumdhd() {
   return DISKLIST_HEADER;
 }
- 
+
 /* get the (printable) disk list for the access CMS disks.
   'cb' is called for each generated line (=disk).
    The format of the lines is like QUERY DISK command.
@@ -458,7 +458,7 @@ char* enumdhd() {
 bool enumdln(LineCallback cb, void *cbdata) {
   ADTPTR adt = *iadt;
   if (adt == NULL) { return false; }
- 
+
   while(adt != NULL) {
     if (adt->adtid[0] == ' ') {
       adt = adt->adtptr;
@@ -467,12 +467,12 @@ bool enumdln(LineCallback cb, void *cbdata) {
     dumpSingleDisk(adt, cb, cbdata);
     adt = adt->adtptr;
   }
- 
+
   return true;
 }
- 
+
 /* check if disk 'dsk' is writable and if not: return the first writable disk.
- 
+
    Returns:
    - the letter 'dsk' if it is writable
    - or the minidisk letter of the first writable disk
@@ -480,10 +480,10 @@ bool enumdln(LineCallback cb, void *cbdata) {
 */
 char gwrdsk(char dsk) {
   char wrDisk = '~';
- 
+
   ADTPTR adt = *iadt;
   if (adt == NULL) { return wrDisk; }
- 
+
   while(adt != NULL) {
     if (adt->adtid[0] == ' ') {
       adt = adt->adtptr;
@@ -495,10 +495,10 @@ char gwrdsk(char dsk) {
     }
     adt = adt->adtptr;
   }
- 
+
   return wrDisk;
 }
- 
+
 /* get a writable filemode, preferably 'fm' if the disk is writable.
    'fm' must have at least 3 characters space, but may be of 0..2 characters
    long with a correct filemode.
@@ -517,32 +517,32 @@ char* gwrmode(char *fm) {
   fm[2] = '\0';
   return fm;
 }
- 
+
 /* get the header line for the file list.
 */
 char* enumfhd() {
   return FILELIST_HEADER;
 }
- 
+
 /* compile fid pattern into internal filter structures
 */
 char* cplfidp(
     char *fnPat,
     char *ftPat,
     char *fmPat) {
- 
+
   if (!fnPat || !*fnPat) { fnPat = "*"; }
   if (!ftPat || !*ftPat) { ftPat = "*"; }
   if (!fmPat || !*fmPat) { fmPat = "A"; }
- 
+
   if (!compile(fnPat, fnFilter)) {
     return "Invalid filename pattern specified";
   }
- 
+
   if (!compile(ftPat, ftFilter)) {
     return "Invalid filetype pattern specified";
   }
- 
+
   fmDiskFilter = _ucasec(fmPat[0]);
   if (!_isA2Z(fmDiskFilter) && fmDiskFilter != '*') {
     return "Invalid filemode letter spefified";
@@ -558,19 +558,19 @@ char* cplfidp(
   } else {
     fmAccessFilter = '*';
   }
- 
+
   return NULL;
 }
- 
+
 bool isfidmtc(char *fname, char *ftype, char *fmode) {
   return matches(fname, fnFilter)
          && matches(ftype, ftFilter)
          && (fmDiskFilter == '*' || fmode[0] == fmDiskFilter)
          && (fmAccessFilter == '*' || fmode[1] == fmAccessFilter);
 }
- 
+
 /* enumerate the CMS files for the given pattern "fnPat ftPat fmPat".
- 
+
    Valid pattern wildcards for fnPat and ftPat are:
      * -> 0..n arbitrary characters
      ? -> exactly one arbitrary character
@@ -579,7 +579,7 @@ bool isfidmtc(char *fname, char *ftype, char *fmode) {
           or * for any minidisk
      d -> file access mode as single digit 0..9
           or * for any access mode.
- 
+
   'cb' is called for each generated line (=file) matching the patterns.
    The format of the lines is like LISTFILE <pattern> ( LABEL ISODATE command.
    Returns an error message if the patterns given where invalid in some way
@@ -593,16 +593,16 @@ char* enumfln(
        char *fmPat) {
   ADTPTR adt = *iadt;
   if (adt == NULL) { return "No disk accessed ??"; }
- 
+
   char *msg = compileFidPattern(fnPat, ftPat, fmPat);
   if (msg) { return msg; }
- 
+
   while(adt != NULL) {
     if (adt->adtid[0] == ' ') {
       adt = adt->adtptr;
       continue;
     }
- 
+
     if (fmDiskFilter == '*' || adt->adtm == fmDiskFilter) {
       char dsklabel[7];
       memcpy(dsklabel, adt->adtid, 6);
@@ -615,22 +615,22 @@ char* enumfln(
         cb,
         cbdata);
     }
- 
+
     adt = adt->adtptr;
   }
- 
+
   return NULL;
 }
- 
+
 /* locate a file, i.e. find the 'fmFound' for the given file 'fn ft'.
    Returns true if the file was found and 'fmFound' was set.
 */
- 
+
 typedef struct _getfirstfmodecbdata {
   bool notFound;
   char *fm;
   } GetFirstFModeCbDataObj, *GetFirstFModeCbData;
- 
+
 /* 012345678901234567890 */
 /* ABCDEFGH ABCDEFGH AB */
 static void getFirstFMode(char *buffer, void *cbdata) {
@@ -641,7 +641,7 @@ static void getFirstFMode(char *buffer, void *cbdata) {
     d->notFound = false;
   }
 }
- 
+
 bool lfdsk(char *fn, char *ft, char *fmFound) {
   GetFirstFModeCbDataObj d;
   d.notFound = true;
@@ -649,4 +649,4 @@ bool lfdsk(char *fn, char *ft, char *fmFound) {
   getFileList(&getFirstFMode, &d, fn, ft, "*");
   return !d.notFound;
 }
- 
+
