@@ -1984,6 +1984,11 @@ static int CmdCms(ScreenPtr scr, char *params, char *msg) {
     return false;
   }
 
+  /* CMS EXEC ? prepare for SC@ENTRY : see EESUBCOM ASSEMBLE */
+  unsigned long R13;
+  __asm__("LR %0,13"    : "=d" (R13));
+  savePGMB_loc->cmscrab = R13;
+
   int rc = CMScommand(params, CMS_CONSOLE);
   sprintf(msg, "CMS command executed -> RC = %d\n", rc);
   return false;
@@ -2653,8 +2658,27 @@ static int CmdSqmetVersion(ScreenPtr scr, char sqmet, char *params, char *msg) {
   return false;
 }
 
+/************************************************************************************
+*************************************************************************************
+**                                                                                 **
+** http://bitsavers.informatik.uni-stuttgart.de/pdf/ibm/370/                       **
+**        VM/SP/Release_3.0_Jul83/                                                 **
+**        SC19-6203-2_VM_SP_System_Programmers_Guide_Release_3_Aug83.pdf           **
+**                                                                                 **
+**   paqge 346(371) : Dynamic Linkage--Subcom                                      **
+**                                                                                 **
+**   Note: When control passes to the specified entry point,                       **
+**         the register contents are:                                              **
+**    R2   Address of SCBLOCK for this entry point.                                **
+**    R12  Entry point address.                                                    **
+**    R13  24-word save area address.                                              **
+**    R14  Return address (CMSRET).                                                **
+**    R15  Entry point address.                                                    **
+**                                                                                 **
+*************************************************************************************
+************************************************************************************/
 
-
+/* we are called from SC@ENTRY : see EESUBCOM ASSEMBLE */
 
 extern int sc_hndlr()  {
   ++versionCount;
@@ -2720,7 +2744,8 @@ static int CmdSqmetSubcom(ScreenPtr scr, char sqmet, char *params, char *msg) {
   __SVC202(&subcom_plist, &eplist_dummy,0);
   PGMB_loc->sc_block = subcom_plist.SUBCPSW ;
 
-  sprintf(msg, "SUBCOM: PGMB_loc = %08x     SCBLOCK = %08x", PGMB_loc, PGMB_loc->sc_block);
+  sprintf(msg, "SUBCOM: PGMB_loc = %08x     SCBLOCK = %08x    rc = %08x   R13 = %08x   CmdSqmetSubcom",
+      PGMB_loc, PGMB_loc->sc_block, rc_subcom, R13 );
 
   return rc_subcom;
 }

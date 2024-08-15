@@ -1,8 +1,28 @@
+*********************************************************************
+*********************************************************************
+**                                                                 **
+** http://bitsavers.informatik.uni-stuttgart.de/pdf/ibm/370/       **
+**  VM/SP/Release_3.0_Jul83/                                       **
+**  SC19-6203-2_VM_SP_System_Programmers_Guide_Release_3_Aug83.pdf **
+**                                                                 **
+**   paqge 346(371) : Dynamic Linkage--Subcom                      **
+**                                                                 **
+**   Note: When control passes to the specified entry point,       **
+**         the register contents are:                              **
+**    R2   Address of SCBLOCK for this entry point.                **
+**    R12  Entry point address.                                    **
+**    R13  24-word save area address.                              **
+**    R14  Return address (CMSRET).                                **
+**    R15  Entry point address.                                    **
+**                                                                 **
+*********************************************************************
+*********************************************************************
+*
 EESUBCOM CSECT
          ENTRY SC@ENTRY
 SC@ENTRY DS    0D
          USING *,12
-         STM   14,12,12(13) save area supplied by caller (=bREXX)
+         STM   14,12,12(13) save area supplied by caller (=bREXX/CMS)
 *
          L     3,4(,2)     SCBLOCK user word : had been set to ...
 *                          ... t_PGMB *PGMB_loc = CMSGetPG();
@@ -26,6 +46,8 @@ SC@ENTRY DS    0D
 *
          LR 12,15  "Martin, das könnte der 'Golden Touch' gewesen sein"
          ENTRY SC@ENTR2
+*
+*** TODO: *** Needs C stack pointer which had been saved previously
 SC@ENTR2 BALR  14,15       next stage of subcommand handler
 *
          LR    14,10       restore register 14 from R10

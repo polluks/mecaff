@@ -745,42 +745,87 @@ void tmpInfShow(
 ** ****** main program cascade ******
 */
 
-int main2(int argc, char *argv[], char *argstrng);
-int main3(int argc, char *argv[], char *argstrng);
-int main4(int argc, char *argv[], char *argstrng);
-int main5(int argc, char *argv[], char *argstrng);
-int main9(int argc, char *argv[], char *argstrng);
+int main2(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc);
+int main3(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc);
+int main4(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc);
+int main5(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc);
+int main9(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc);
 
 /*
 ** ****** the "formal" main function ******
 */
 int main(int argc, char *argv[], char *argstrng)
-  { return main2(argc, argv, argstrng); }
+  {
+    int long size = PGMB_size;
+    return main2(argc, argv, argstrng, CMSPGAll(size));
+  }
 
-int main2(int argc, char *argv[], char *argstrng)
-  { return main3(argc, argv, argstrng); }
+int main2(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc)
+  { return main3(argc, argv, argstrng, PGMB_loc); }
 
-int main3(int argc, char *argv[], char *argstrng)
-  { return main4(argc, argv, argstrng); }
+int main3(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc)
+  {
+    int rc_subcom;
+    typedef struct t_subcom_plist {
+      char subcom[8]     ;
+      char xedit[8]      ;
+      long SUBCPSW       ;
+      long ENTRY_ADDRESS ;
+      long USER_WORD     ;
 
-int main4(int argc, char *argv[], char *argstrng)
-  { return main5(argc, argv, argstrng); }
+    } t_subcom_plist;
 
-int main5(int argc, char *argv[], char *argstrng)
-  { return main9(argc, argv, argstrng); }
+
+
+
+    return main4(argc, argv, argstrng, PGMB_loc);
+    /*** return main4(argc, argv, argstrng, PGMB_loc); ***/
+
+
+
+    /*** t_PGMB *PGMB_loc = savePGMB_loc = CMSGetPG(); ***/
+    unsigned long R13;
+    __asm__("LR %0,13"    : "=d" (R13));
+    PGMB_loc->cmscrab = R13;
+
+    t_subcom_plist subcom_plist = { "SUBCOM  ", SUBCOM_name_8,0 ,&sc_entry, PGMB_loc } ;
+    t_subcom_plist eplist_dummy ;
+
+    /* SUBCOM delete */
+    subcom_plist.SUBCPSW = subcom_plist.ENTRY_ADDRESS = 0;
+    __SVC202(&subcom_plist, &eplist_dummy,0);
+
+    /* SUBCOM Set */
+    subcom_plist.SUBCPSW = 0;
+    subcom_plist.ENTRY_ADDRESS = &sc_entry;
+    rc_subcom = __SVC202(&subcom_plist, &eplist_dummy,0);
+
+    /* SUBCOM query */
+    subcom_plist.SUBCPSW = 0;
+    subcom_plist.ENTRY_ADDRESS = 0xFFffFFff;
+    __SVC202(&subcom_plist, &eplist_dummy,0);
+    PGMB_loc->sc_block = subcom_plist.SUBCPSW ;
+
+    printf(" %08x   %08x   %08x   %08x   %08x   %08x   %08x  \n",
+      &argc, &argv, &argstrng, &rc_subcom, &R13, &subcom_plist, &eplist_dummy);
+    printf("SUBCOM: PGMB_loc = %08x     SCBLOCK = %08x    rc = %08x   R13 = %08x   main3\n",
+      PGMB_loc, PGMB_loc->sc_block, rc_subcom, R13 );
+
+    return main4(argc, argv, argstrng, PGMB_loc);
+  }
+
+int main4(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc)
+  { return main5(argc, argv, argstrng, PGMB_loc); }
+
+int main5(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc)
+  { return main9(argc, argv, argstrng, PGMB_loc); }
 
 
 /*
 ** ****** the "real" main function ******
 */
 
-int main9(int argc, char *argv[], char *argstrng) {
-
-      int long size = PGMB_size;
-      t_PGMB *PGMB_loc = CMSPGAll(size);
-    /*
-      t_PGMB *PGMB_loc = CMSGetPG();
-    */
+int main9(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc) {
 
     /* work-around for bug in GCCLIB runtime startup code:
        -> if called from an EXEC, the PLIST is copied to 'argv', but
