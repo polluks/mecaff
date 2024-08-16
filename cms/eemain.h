@@ -21,7 +21,7 @@
 #define _EEMAINimported
 
 /* the version information for the tools, displayed in header/footer lines */
-#define VERSION "V1.3.2.0005_240815-1927" /* git branch AGPLv3_WIP */
+#define VERSION "V1.3.2.0006_240817-0005" /* git branch AGPLv3_WIP */
 
 /**************************************************************************************************/
 /* Two functions to help C programs avoid having any non-const static or global                   */
