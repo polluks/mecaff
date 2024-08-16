@@ -35,13 +35,15 @@
 
 #include "glblpost.h"
 
+int main(int argc, char *argv[], char *argstrng);
+
 /*
 ** ****** global screen data
 */
 
 static ScreenPtr scr = NULL;
 
-#define LINES_LEN 80
+#define LINES_LEN 132
 
 static char headline[LINES_LEN + 1];
 static char footline[LINES_LEN + 1];
@@ -49,7 +51,11 @@ static char footline[LINES_LEN + 1];
 static char infoline0[LINES_LEN + 1];
 static char infoline1[LINES_LEN + 1];
 
+static char identify[LINES_LEN + 1];
+
 static char *progName = "EE";
+
+void LoadPoint() { ; }
 
 /*
 ** -- infolines handling
@@ -84,6 +90,40 @@ static void buildHeadFootlinesDelta(bool deltaModified, int deltaLines) {
   if (scr == NULL) {
     return;
   }
+     char c;
+     char *pr, *pw;
+     char id_line [80];
+     char dummy   [80];
+     int id_rc =     CMScommand("IDENTIFY (LIFO", CMS_CONSOLE);
+     int id_length = CMSconsoleRead(id_line);
+     /*
+     printf("%s\n", id_line);
+     CMSdirectRead(dummy);
+     */
+     pr = &id_line[0];
+     pw = &identify[0];
+     *pw++ = '\t';
+     *pw = '\0';
+
+     while (true) { c = *pr++; if (c == ' ') break; *pw++ = c; }
+     *pw++ = ' ';
+     *pw++ = 'a';
+     *pw++ = 't';
+     *pw++ = ' ';
+     pr = &id_line[12];
+     while (true) { c = *pr++; if (c == ' ') break; *pw++ = c; }
+     *pw++ = '\t';
+     pr = &id_line[33];
+     *pw++ = *pr++;
+     *pw++ = *pr++;
+     *pw++ = *pr++;
+     *pw++ = *pr++;
+     *pw++ = *pr++;
+     *pw++ = *pr++;
+     *pw++ = *pr++;
+     *pw++ = *pr++;
+     *pw++ = *pr++;
+     *pw++ = '\0';
 
   scr->headLine = headline;
   scr->footLine = footline;
@@ -110,7 +150,7 @@ static void buildHeadFootlinesDelta(bool deltaModified, int deltaLines) {
     fileLrecl = getFileLrecl(ed);
     workLrecl = getWorkLrecl(ed);
     getLineInfo(ed, &lineCnt, &currLineNo);
-    if (currLineNo > 0) { sprintf(posTxt, "%5d", currLineNo); }
+    if (currLineNo > 0) { sprintf(posTxt, "%d", currLineNo); }
     lineCnt += deltaLines;
     isModified = getModified(ed) && deltaModified;
     isBinary = isBinary(ed);
@@ -120,18 +160,21 @@ static void buildHeadFootlinesDelta(bool deltaModified, int deltaLines) {
     strcpy(ft, "?");
     strcpy(fm, "?");
   }
-  if (!posTxt[0]) { strcpy(posTxt, "  TOP"); }
+  if (!posTxt[0])           { strcpy(posTxt, "ToF"); }
+  if (currLineNo > lineCnt) { strcpy(posTxt, "EoF"); }
 
   /* build headline */
   sprintf(headline,
-    "File: %-8s %-8s %-2s\t\tRECFM: %c LRECL: %3d(%d) Lines: %5d Current: %s",
-    fn, ft, fm, recfm, workLrecl, fileLrecl, lineCnt, posTxt);
+    " %-8s %-8s %-2s\t\t %c %3d  Workl=%d Size=%d Line=%s\t\t%3d File(s) ",
+    fn, ft, fm, recfm, fileLrecl, workLrecl, lineCnt, posTxt, fileCnt);
 
   /* build footline */
-  sprintf(footline, "%s%s\t\t%s " VERSION ", %2d File(s)",
+  sprintf(footline, "%s%s\t\t Load=0x%06X \t\t%s " VERSION "\t%s",
     (isModified) ? "Modified" : "Unchanged",
     (isBinary) ? ", Binary" : "",
-    progName, fileCnt);
+    (&LoadPoint)-12,
+    progName,
+    identify);
 
   /* extend message lines with potential common messages */
   addPrefixMessages(scr);
