@@ -90,6 +90,182 @@ static long versionCount;                     /* debugging SUBCOM */
 typedef int (*CmdImpl)(ScreenPtr scr, char *params, char *msg);
 typedef int (*CmdSqmetImpl)(ScreenPtr scr, char sqmet, char *params, char *msg);
 
+
+
+
+/************************************************************************************
+*************************************************************************************
+**                                                                                 **
+** http://bitsavers.informatik.uni-stuttgart.de/pdf/ibm/370/                       **
+**        VM/SP/Release_3.0_Jul83/                                                 **
+**        SC19-6203-2_VM_SP_System_Programmers_Guide_Release_3_Aug83.pdf           **
+**                                                                                 **
+**   paqge 346(371) : Dynamic Linkage--Subcom                                      **
+**                                                                                 **
+**   Note: When control passes to the specified entry point,                       **
+**         the register contents are:                                              **
+**    R2   Address of SCBLOCK for this entry point.                                **
+**    R12  Entry point address.                                                    **
+**    R13  24-word save area address.                                              **
+**    R14  Return address (CMSRET).                                                **
+**    R15  Entry point address.                                                    **
+**                                                                                 **
+*************************************************************************************
+************************************************************************************/
+
+/* we are called from SC@ENTRY : see EESUBCOM ASSEMBLE */
+
+extern int sc_hndlr()  {
+  ++versionCount;
+  char dummy_msg[4096];
+  char command_line[256];
+  dummy_msg[0] = '\0';
+  command_line[0] = '\0';
+  t_PGMB *PGMB_loc = CMSGetPG();  /* does not work - why ? */
+  PGMB_loc = savePGMB_loc;
+
+  unsigned long *p_R0 = PGMB_loc->GPR_SUBCOM[0];
+  unsigned char *q1 = *++p_R0;
+  unsigned char *q2 = *++p_R0;
+  unsigned long qq = q2-q1;
+
+  if (qq > 255) {qq = 255 ;}
+  int i=0;
+  while (i < qq) {command_line[i++] = *q1++ ;}
+  command_line[i] = '\0';
+
+
+  return execCmd(saveScreenPtr, command_line, dummy_msg, false) ;
+/*
+  sprintf(command_line,"input PGMB_loc = %08x   p_R0 =  %08x    q1 = %08x    q2 = %08x    qq = %d   versionCount = %d  ",
+                              PGMB_loc    ,     p_R0     ,      q1      ,    q2       ,   qq      , versionCount    );
+  return qq;
+  return PGMB_loc;
+  return versionCount;
+*/
+}
+
+
+
+static int CmdSqmetSubcom(ScreenPtr scr, char sqmet, char *params, char *msg) {
+  int rc_subcom;
+  typedef struct t_subcom_plist {
+    char subcom[8]     ;
+    char xedit[8]      ;
+    long SUBCPSW       ;
+    long ENTRY_ADDRESS ;
+    long USER_WORD     ;
+
+  } t_subcom_plist;
+
+  t_PGMB *PGMB_loc = savePGMB_loc = CMSGetPG();
+  unsigned long R13;
+  __asm__("LR %0,13"    : "=d" (R13));
+  PGMB_loc->cmscrab = R13;
+
+  t_subcom_plist subcom_plist = { "SUBCOM  ", SUBCOM_name_8,0 ,&sc_entry, PGMB_loc } ;
+  t_subcom_plist eplist_dummy ;
+
+  /* SUBCOM delete */
+  subcom_plist.SUBCPSW = subcom_plist.ENTRY_ADDRESS = 0;
+  __SVC202(&subcom_plist, &eplist_dummy,0);
+
+  /* SUBCOM Set */
+  subcom_plist.SUBCPSW = 0;
+  subcom_plist.ENTRY_ADDRESS = &sc_entry;
+  rc_subcom = __SVC202(&subcom_plist, &eplist_dummy,0);
+
+  /* SUBCOM query */
+  subcom_plist.SUBCPSW = 0;
+  subcom_plist.ENTRY_ADDRESS = 0xFFffFFff;
+  __SVC202(&subcom_plist, &eplist_dummy,0);
+  PGMB_loc->sc_block = subcom_plist.SUBCPSW ;
+
+  sprintf(msg, "SUBCOM: PGMB_loc = %08x     SCBLOCK = %08x    rc = %08x   R13 = %08x   CmdSqmetSubcom",
+      PGMB_loc, PGMB_loc->sc_block, rc_subcom, R13 );
+
+  return rc_subcom;
+}
+
+int ExecCommSet(char *msg, char *var_name, char *value, unsigned long len) {
+
+  /* from z/VM 6.4 Help MACROS SHVBLOCK
+  *        ***  LAYOUT OF SHARED-VARIABLE ACCESS CONTROL BLOCK  ***
+  *
+  *   THE CONTROL BLOCKS FOR ACCESSING SHARED VARIABLES ARE CHAINED
+  *   AS A LIST TERMINATED BY A NULL POINTER.  THE LIST IS ADDRESSED
+  *   VIA THE 'PRIVATE INTERFACE' PLIST IN A SUBCOMMAND CALL TO A
+  *   PUBLIC VARIABLE-SHARING ENVIRONMENT (E.G. AS SET UP BY THE
+  *   EXEC 2 OR REXX/VM).
+  *
+  SHVBLOCK DSECT ,
+  SHVNEXT  DS    A        (+0)  CHAIN POINTER (0 IF LAST)
+  SHVUSER  DS    A        (+4)  NOT USED, AVAILABLE FOR PRIVATE
+  *                       use EXCEPT DURING 'FETCH NEXT'
+  SHVCODE  DS    CL1      (+8)  INDIVIDUAL FUNCTION CODE
+  SHVRET   DS    XL1      (+9)  INDIVIDUAL RETURN CODE FLAG
+           DS    H'0'           RESERVED, SHOULD BE ZERO
+  SHVBUFL  DS    F       (+12)  LENGTH OF 'FETCH' VALUE BUFFER
+  SHVNAMA  DS    A       (+16)  ADDR OF PUBLIC VARIABLE NAME
+  SHVNAML  DS    F       (+20)  LENGTH OF PUBLIC VARIABLE NAME
+  SHVVALA  DS    A       (+24)  ADDR OF VALUE BUFFER (0 IF NONE)
+  SHVVALL  DS    F       (+28)  LENGTH OF VALUE (SET BY 'FETCH')
+  SHVBLEN  EQU   *-SHVBLOCK     (LENGTH OF THIS BLOCK = 32)
+  */
+
+
+  typedef struct t_shv_block {
+    void          *shv_next ;
+    unsigned long shv_user  ;
+    char          shv_code  ;
+    char          shv_ret   ;
+    short         shv_zero  ;
+    unsigned long shv_bufl  ;
+    unsigned long shv_nama  ;
+    unsigned long shv_naml  ;
+    unsigned long shv_vala  ;
+    unsigned long shv_vall  ;
+  } t_shv_block;
+
+  int rc_execcomm;
+  typedef struct t_execcomm_plist {
+    char execcomm[8] ;   /* = EXECCOMM (always) */
+  } t_execcomm_plist;
+
+  typedef struct t_execcomm_eplist {
+    unsigned long R1_pure;
+    unsigned long blank1;
+    unsigned long blank2;
+    t_shv_block *p_shv_block;
+  } t_execcomm_eplist;
+
+
+  int l1=0; while(var_name[l1]) {l1++;}
+  int l2=0;
+
+  if (len) {
+    l2 = len;  /* length given: terminating null byte might not be present */
+  } else {
+    l2=0; while(value[l2]) {l2++;}
+  }
+  t_shv_block  shv_block = { 0, 0, 'S', 0, 0, 0, &var_name[0], l1, &value[0], l2} ;
+  t_execcomm_plist  execcomm_plist  = { "EXECCOMM" } ;
+  t_execcomm_eplist execcomm_eplist = { &execcomm_plist, 0, 0, &shv_block } ;
+
+  rc_execcomm = __SVC202(&execcomm_plist, &execcomm_eplist, 0x02);
+  if (rc_execcomm) {
+    sprintf(msg,"EXTRACT command valid only when issued from a macro: RC = %d", rc_execcomm);
+    return rc_execcomm;
+  }
+}
+
+
+static int CmdSqmetVersion(ScreenPtr scr, char sqmet, char *params, char *msg) {
+  sprintf(msg, "version --- 2024-08-18 03:15 %d --- " VERSION, versionCount);
+  return false;
+}
+
+
 static void checkNoParams(char *params, char *msg) {
   if (!params) { return; }
   while(*params == ' ' || *params == '\t') { params++; }
@@ -420,79 +596,6 @@ typedef struct _mysqmetdef {
   CmdSqmetImpl sqmetImpl;
 } MySqmetDef;
 
-
-
-int ExecCommSet(char *msg, char *var_name, char *value, unsigned long len) {
-
-  /* from z/VM 6.4 Help MACROS SHVBLOCK
-  *        ***  LAYOUT OF SHARED-VARIABLE ACCESS CONTROL BLOCK  ***
-  *
-  *   THE CONTROL BLOCKS FOR ACCESSING SHARED VARIABLES ARE CHAINED
-  *   AS A LIST TERMINATED BY A NULL POINTER.  THE LIST IS ADDRESSED
-  *   VIA THE 'PRIVATE INTERFACE' PLIST IN A SUBCOMMAND CALL TO A
-  *   PUBLIC VARIABLE-SHARING ENVIRONMENT (E.G. AS SET UP BY THE
-  *   EXEC 2 OR REXX/VM).
-  *
-  SHVBLOCK DSECT ,
-  SHVNEXT  DS    A        (+0)  CHAIN POINTER (0 IF LAST)
-  SHVUSER  DS    A        (+4)  NOT USED, AVAILABLE FOR PRIVATE
-  *                       use EXCEPT DURING 'FETCH NEXT'
-  SHVCODE  DS    CL1      (+8)  INDIVIDUAL FUNCTION CODE
-  SHVRET   DS    XL1      (+9)  INDIVIDUAL RETURN CODE FLAG
-           DS    H'0'           RESERVED, SHOULD BE ZERO
-  SHVBUFL  DS    F       (+12)  LENGTH OF 'FETCH' VALUE BUFFER
-  SHVNAMA  DS    A       (+16)  ADDR OF PUBLIC VARIABLE NAME
-  SHVNAML  DS    F       (+20)  LENGTH OF PUBLIC VARIABLE NAME
-  SHVVALA  DS    A       (+24)  ADDR OF VALUE BUFFER (0 IF NONE)
-  SHVVALL  DS    F       (+28)  LENGTH OF VALUE (SET BY 'FETCH')
-  SHVBLEN  EQU   *-SHVBLOCK     (LENGTH OF THIS BLOCK = 32)
-  */
-
-
-  typedef struct t_shv_block {
-    void          *shv_next ;
-    unsigned long shv_user  ;
-    char          shv_code  ;
-    char          shv_ret   ;
-    short         shv_zero  ;
-    unsigned long shv_bufl  ;
-    unsigned long shv_nama  ;
-    unsigned long shv_naml  ;
-    unsigned long shv_vala  ;
-    unsigned long shv_vall  ;
-  } t_shv_block;
-
-  int rc_execcomm;
-  typedef struct t_execcomm_plist {
-    char execcomm[8] ;   /* = EXECCOMM (always) */
-  } t_execcomm_plist;
-
-  typedef struct t_execcomm_eplist {
-    unsigned long R1_pure;
-    unsigned long blank1;
-    unsigned long blank2;
-    t_shv_block *p_shv_block;
-  } t_execcomm_eplist;
-
-
-  int l1=0; while(var_name[l1]) {l1++;}
-  int l2=0;
-
-  if (len) {
-    l2 = len;  /* length given: terminating null byte might not be present */
-  } else {
-    l2=0; while(value[l2]) {l2++;}
-  }
-  t_shv_block  shv_block = { 0, 0, 'S', 0, 0, 0, &var_name[0], l1, &value[0], l2} ;
-  t_execcomm_plist  execcomm_plist  = { "EXECCOMM" } ;
-  t_execcomm_eplist execcomm_eplist = { &execcomm_plist, 0, 0, &shv_block } ;
-
-  rc_execcomm = __SVC202(&execcomm_plist, &execcomm_eplist, 0x02);
-  if (rc_execcomm) {
-    sprintf(msg,"EXTRACT command valid only when issued from a macro: RC = %d", rc_execcomm);
-    return rc_execcomm;
-  }
-}
 
 
 
@@ -2658,104 +2761,6 @@ static int CmdMemUnLock(ScreenPtr scr, char *params, char *msg) {
           count, count*sizeof(LockBlock));
   return false;
 }
-
-static int CmdSqmetVersion(ScreenPtr scr, char sqmet, char *params, char *msg) {
-  sprintf(msg, "version --- 2024-08-18 03:15 %d --- " VERSION, versionCount);
-  return false;
-}
-
-/************************************************************************************
-*************************************************************************************
-**                                                                                 **
-** http://bitsavers.informatik.uni-stuttgart.de/pdf/ibm/370/                       **
-**        VM/SP/Release_3.0_Jul83/                                                 **
-**        SC19-6203-2_VM_SP_System_Programmers_Guide_Release_3_Aug83.pdf           **
-**                                                                                 **
-**   paqge 346(371) : Dynamic Linkage--Subcom                                      **
-**                                                                                 **
-**   Note: When control passes to the specified entry point,                       **
-**         the register contents are:                                              **
-**    R2   Address of SCBLOCK for this entry point.                                **
-**    R12  Entry point address.                                                    **
-**    R13  24-word save area address.                                              **
-**    R14  Return address (CMSRET).                                                **
-**    R15  Entry point address.                                                    **
-**                                                                                 **
-*************************************************************************************
-************************************************************************************/
-
-/* we are called from SC@ENTRY : see EESUBCOM ASSEMBLE */
-
-extern int sc_hndlr()  {
-  ++versionCount;
-  char dummy_msg[4096];
-  char command_line[256];
-  dummy_msg[0] = '\0';
-  command_line[0] = '\0';
-  t_PGMB *PGMB_loc = CMSGetPG();  /* does not work - why ? */
-  PGMB_loc = savePGMB_loc;
-
-  unsigned long *p_R0 = PGMB_loc->GPR_SUBCOM[0];
-  unsigned char *q1 = *++p_R0;
-  unsigned char *q2 = *++p_R0;
-  unsigned long qq = q2-q1;
-
-  if (qq > 255) {qq = 255 ;}
-  int i=0;
-  while (i < qq) {command_line[i++] = *q1++ ;}
-  command_line[i] = '\0';
-
-
-  return execCmd(saveScreenPtr, command_line, dummy_msg, false) ;
-/*
-  sprintf(command_line,"input PGMB_loc = %08x   p_R0 =  %08x    q1 = %08x    q2 = %08x    qq = %d   versionCount = %d  ",
-                              PGMB_loc    ,     p_R0     ,      q1      ,    q2       ,   qq      , versionCount    );
-  return qq;
-  return PGMB_loc;
-  return versionCount;
-*/
-}
-
-static int CmdSqmetSubcom(ScreenPtr scr, char sqmet, char *params, char *msg) {
-  int rc_subcom;
-  typedef struct t_subcom_plist {
-    char subcom[8]     ;
-    char xedit[8]      ;
-    long SUBCPSW       ;
-    long ENTRY_ADDRESS ;
-    long USER_WORD     ;
-
-  } t_subcom_plist;
-
-  t_PGMB *PGMB_loc = savePGMB_loc = CMSGetPG();
-  unsigned long R13;
-  __asm__("LR %0,13"    : "=d" (R13));
-  PGMB_loc->cmscrab = R13;
-
-  t_subcom_plist subcom_plist = { "SUBCOM  ", SUBCOM_name_8,0 ,&sc_entry, PGMB_loc } ;
-  t_subcom_plist eplist_dummy ;
-
-  /* SUBCOM delete */
-  subcom_plist.SUBCPSW = subcom_plist.ENTRY_ADDRESS = 0;
-  __SVC202(&subcom_plist, &eplist_dummy,0);
-
-  /* SUBCOM Set */
-  subcom_plist.SUBCPSW = 0;
-  subcom_plist.ENTRY_ADDRESS = &sc_entry;
-  rc_subcom = __SVC202(&subcom_plist, &eplist_dummy,0);
-
-  /* SUBCOM query */
-  subcom_plist.SUBCPSW = 0;
-  subcom_plist.ENTRY_ADDRESS = 0xFFffFFff;
-  __SVC202(&subcom_plist, &eplist_dummy,0);
-  PGMB_loc->sc_block = subcom_plist.SUBCPSW ;
-
-  sprintf(msg, "SUBCOM: PGMB_loc = %08x     SCBLOCK = %08x    rc = %08x   R13 = %08x   CmdSqmetSubcom",
-      PGMB_loc, PGMB_loc->sc_block, rc_subcom, R13 );
-
-  return rc_subcom;
-}
-
 
 
 

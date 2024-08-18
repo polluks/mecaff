@@ -48,7 +48,8 @@ SC@ENTRY DS    0D
          ENTRY SC@ENTR2
 *
 *** TODO: *** Needs C stack pointer which had been saved previously
-SC@ENTR2 BALR  14,15       next stage of subcommand handler
+SC@ENTR2 LR    14,14       ***** dummy *****
+         BALR  14,15       next stage of subcommand handler
 *
          LR    14,10       restore register 14 from R10
          LR    13,9
