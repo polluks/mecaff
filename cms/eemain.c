@@ -170,7 +170,7 @@ static void buildHeadFootlinesDelta(bool deltaModified, int deltaLines) {
 
   /* build footline */
   sprintf(footline, "%s%s\t\t Load=0x%06X \t\t%s " VERSION "\t%s",
-    (isModified) ? "Modified" : "Unchanged",
+    (isModified) ? "Modified*" : "Unchanged",
     (isBinary) ? ", Binary" : "",
     (&LoadPoint)-12,
     progName,
