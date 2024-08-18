@@ -1989,6 +1989,7 @@ static int CmdCms(ScreenPtr scr, char *params, char *msg) {
   unsigned long R13;
   __asm__("LR %0,13"    : "=d" (R13));
   savePGMB_loc->cmscrab = R13;
+/* preliminary */  saveScreenPtr = scr;
 
   int rc = CMScommand(params, CMS_CONSOLE);
   int stacked = CMSstackQuery();
@@ -2659,7 +2660,7 @@ static int CmdMemUnLock(ScreenPtr scr, char *params, char *msg) {
 }
 
 static int CmdSqmetVersion(ScreenPtr scr, char sqmet, char *params, char *msg) {
-  sprintf(msg, "version --- 2024-08-17 00:05 %d --- " VERSION, versionCount);
+  sprintf(msg, "version --- 2024-08-18 03:15 %d --- " VERSION, versionCount);
   return false;
 }
 
