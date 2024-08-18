@@ -1958,6 +1958,7 @@ static int CmdGapFill(ScreenPtr scr, char *params, char *msg) {
 }
 
 static CmdDef allowedCmsCommands[] = {
+  {"IDentify", NULL}, {"MAKEBUF", NULL}, {"DROPBUF", NULL}, {"SENTRIES", NULL},
   {"ACcess", NULL}, {"CLOSE", NULL},
   {"CP", NULL},
   {"DETACH", NULL}, {"ERASE", NULL},    {"EXEC", NULL},
@@ -1990,8 +1991,12 @@ static int CmdCms(ScreenPtr scr, char *params, char *msg) {
   savePGMB_loc->cmscrab = R13;
 
   int rc = CMScommand(params, CMS_CONSOLE);
-  sprintf(msg, "CMS command executed -> RC = %d\n", rc);
-  return false;
+  int stacked = CMSstackQuery();
+  int makebuf_rc = CMScommand("MAKEBUF", CMS_CONSOLE);
+                   CMScommand("DROPBUF", CMS_CONSOLE);
+  sprintf(msg, "CMS command executed -> RC = %d, stack entries = %d, buffer index = %d ",
+                                        rc,      stacked,            makebuf_rc-1 );
+  return rc;
 }
 
 static bool getEEBufName(char **paramsPtr, char *fn, char *ft, char *fm) {
@@ -3298,6 +3303,110 @@ MySqmetDef* fndsqmet(char *cand, MySqmetDef *cmdList, unsigned int cmdCount) {
   return NULL;
 }
 
+static int CmdPull(ScreenPtr scr, char *params, char *msg) {
+  if (!scr->ed) { return false; }
+
+  bool conflicting   = false;
+  bool reversed      = false;
+  bool single_buffer = false;
+  bool dump_all      = false;
+  char buffer[512];
+  char buffer2[512];
+  int stacked = CMSstackQuery();
+  int count = stacked;
+  int makebuf_rc;
+  int makebuf_rc1;
+  int makebuf_rc2;
+
+  bool keyword_found = false;
+
+  while (true) /* outer loop */
+  {
+    keyword_found = false;
+    while (true) /* inner loop */
+    {
+      if (isAbbrev(params, "DUMPALL")) {
+        dump_all = true;
+        if (single_buffer) { conflicting = true; }
+        params = getCmdParam(params);
+        keyword_found = true;
+        break; /* inner -> outer */
+      }
+      if (isAbbrev(params, "REVersed")) {
+        reversed = true;
+        params = getCmdParam(params);
+        keyword_found = true;
+        break; /* inner -> outer */
+      }
+      if (isAbbrev(params, "BUFfer")) {
+        single_buffer = true;
+        if (dump_all) { conflicting = true; }
+        params = getCmdParam(params);
+        keyword_found = true;
+        break; /* inner -> outer */
+      }
+      if (tryParseInt(params, &count)) {
+        params =  getCmdParam(params);
+        keyword_found = true;
+        break; /* inner -> outer */
+      }
+
+      /* ToDo: invalid/unrecognized keyword check */
+
+      break; /* inner -> outer : keyword_found = false */
+    }
+    if (!keyword_found) { break; /* escape from outer loop */  }
+  }
+
+  if (conflicting) {
+    sprintf(msg, "Conflicting keywords");
+    return 30001;
+  }
+
+  if (dump_all) {
+     makebuf_rc = CMScommand("MAKEBUF", CMS_CONSOLE);
+                  CMScommand("DROPBUF", CMS_CONSOLE);
+     sprintf (buffer2, " *** Buffer %d *** ", makebuf_rc-1);
+     insertLine(scr->ed, buffer2);
+     if (reversed) { moveUp(scr->ed, 1);  }
+     while (true) {
+       stacked = CMSstackQuery();
+       makebuf_rc1 = CMScommand("MAKEBUF", CMS_CONSOLE);
+                     CMScommand("DROPBUF", CMS_CONSOLE);
+       if (!stacked)  { break; /* stack is empty */  }
+       CMSconsoleRead(buffer);
+       makebuf_rc2 = CMScommand("MAKEBUF", CMS_CONSOLE);
+                     CMScommand("DROPBUF", CMS_CONSOLE);
+       if (makebuf_rc2 != makebuf_rc1) {
+         sprintf (buffer2, " *** Buffer %d *** ", makebuf_rc2-1);
+         insertLine(scr->ed, buffer2);
+         if (reversed) { moveUp(scr->ed, 1);  }
+       }
+       sprintf (buffer2, "%7d %5d %5d : %s", stacked, makebuf_rc1-1, makebuf_rc2-1, buffer);
+       insertLine(scr->ed, buffer2);
+       if (reversed) { moveUp(scr->ed, 1);  }
+
+     }
+  } else if (single_buffer) { /* NYI (not yet implemented) */
+      ;
+  } else { /* standard case, faster */
+      if (count < 0)       { count = -count; reversed = true; }
+      if (count > stacked) { count = stacked; }
+      while (count--) {
+        CMSconsoleRead(buffer);
+        insertLine(scr->ed, buffer);
+        if (reversed) { moveUp(scr->ed, 1);  }
+      }
+  }
+
+  stacked = CMSstackQuery();
+  makebuf_rc = CMScommand("MAKEBUF", CMS_CONSOLE);
+               CMScommand("DROPBUF", CMS_CONSOLE);
+  sprintf(msg, "Stack entries = %d, buffer index = %d ",
+                stacked,            makebuf_rc-1 );
+  return stacked+((makebuf_rc-1)*1000);
+}
+
 static int CmdCmsg(ScreenPtr scr, char *params, char *msg) {
   scr->cmdLinePrefill = params;
   return _rc_success;
@@ -3647,6 +3756,7 @@ static MyCmdDef eeCmds[] = {
 /*{"PREfix"                  , &CmdImpSet                           },*/
   {"PREFIX"                  , &CmdPrefix                           },
   {"Previous"                , &CmdPrevious                         },
+  {"PULL"                    , &CmdPull                             },
   {"PUT"                     , &CmdPut                              },
   {"PUTD"                    , &CmdPutD                             },
   {"QQuit"                   , &CmdQQuit                            },
