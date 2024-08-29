@@ -21,6 +21,7 @@
 
 #include <stdio.h>
 #include <cmssys.h>
+#include <CMSRUNTM.H>
 #include <string.h>
 
 #include "errhndlg.h"
@@ -116,7 +117,7 @@ typedef int (*CmdSqmetImpl)(ScreenPtr scr, char sqmet, char *params, char *msg);
 /* we are called from SC@ENTRY : see EESUBCOM ASSEMBLE */
 
 extern int sc_hndlr()  {
-  ++versionCount;
+  /* return ++versionCount; */
   char dummy_msg[4096];
   char command_line[256];
   dummy_msg[0] = '\0';
@@ -3309,6 +3310,29 @@ MySqmetDef* fndsqmet(char *cand, MySqmetDef *cmdList, unsigned int cmdCount) {
   return NULL;
 }
 
+static int CmdCallstack(ScreenPtr scr, char *params, char *msg) {
+  if (!scr->ed) { return false; }
+
+  char buffer[512];
+  unsigned long R13, *p;
+  long i = 1;
+
+  __asm__("LR %0,13"    : "=d" (R13));
+  p = R13;
+
+  while (true) {
+    sprintf (buffer, "R13=%08x  D=%08x B=%08x F=%08x  R14=%08x R15=%08x  R0=%08x R1=%08x R2=%08x  GCCcrab=%08x", p,
+                    *p, *(p+1), *(p+2), *(p+3),  *(p+4),  *(p+5),  *(p+6) , *(p+7) , *(p+18) );
+    insertLine(scr->ed, buffer);
+    if (!(p=*(p+1)))  { break; }
+    i++;
+  }
+
+  return i;
+}
+
+
+
 static int CmdPull(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
 
@@ -3655,6 +3679,7 @@ static MyCmdDef eeCmds[] = {
   {"BASEft"                  , &CmdImpSet                           },
   {"BOTtom"                  , &CmdBottom                           },
   {"BRKkey"                  , &CmdImpSet                           },
+  {"CALLSTack"               , &CmdCallstack                        },
   {"CANcel"                  , &CmdCancel                           },
   {"CASe"                    , &CmdImpSet                           },
   {"CASEOLD"                 , &CmdCaseold                          },
@@ -3950,6 +3975,8 @@ extern int execCmd(
   }
   moveToBOF(commandHistory);
 
+  /* check if we shall search for macros first : XEDIT - SET MACRO ON */
+
   MyCmdDef *cmdDef = (MyCmdDef*)findCommand(
     cmd,
     (CmdDef*)eeCmds,
@@ -3969,8 +3996,23 @@ extern int execCmd(
               || tryParseInt(cmd, &dummyInt)) {
       return CmdLocate(scr, cmd, msg);
     }
+    /* check if we shall search for macros : XEDIT - SET MACRO OFF */
+    char cmsexeccmd[255];
+    unsigned long R13;
+    sprintf(cmsexeccmd,"EXEC EE$MACRO %s",cmd);
+    __asm__("LR %0,13"    : "=d" (R13));
+    savePGMB_loc->cmscrab = R13;
+    /* preliminary */  saveScreenPtr = scr;
+    int rc = CMScommand(cmsexeccmd, CMS_CONSOLE);
+    if (rc != -3) {
+      if (rc != 0) {
+        if (!*msg) strcpy(msg, "Non-zero return code from macro");
+        sprintf(msg,"%s\n(RC=%d)", msg, rc);
+      }
+      return rc;
+    }
     sprintf(msg, "Unknown command '%s'", cmd);
-    return false;
+    return -3;
   }
 
   msg = &msg[strlen(msg)];

@@ -1,0 +1,194 @@
+/* REXX */
+address "EE"
+signal on syntax
+signal on novalue
+
+parse arg arg_string
+arg_string = strip(arg_string)
+
+i = 0
+do forever
+  i = i + 1
+  if datatype(substr(arg_string,i,1),"M") = 0 then leave   /* not a letter ? */
+end
+parse upper value substr(arg_string,1,i-1) with cmd_name
+parse       value substr(arg_string,i)     with cmd_args
+
+scale     = "....+....1....+....2....+....3....+....4....+....5....+....6....+....7....+....8....+....9....+"
+commands  = " . FINDFILE PROFILE MORE LESS SHOW RCTEST . "
+too_short = " . FIND     PROFIL  MO   LE   S    RCTES  . "
+/* "input ." cmd_name     pos(" "cmd_name,commands)     pos(" "cmd_name,too_short) */
+/* "input ." cmd_name   word(substr(commands,pos(" "cmd_name,commands)),1)         */
+/* "input ." cmd_name wordpos(" "cmd_name,commands) wordpos(" "cmd_name,too_short) */
+/* "input ." cmd_name    find(commands," "cmd_name)    find(too_short," "cmd_name) */
+/* "input ." cmd_args                                                              */
+pos_c = pos(" "cmd_name,commands)
+pos_t = pos(" "cmd_name,too_short)
+
+if pos_c <> pos_t then do
+  /* command found and it is not too short */
+  command_found = word(substr(commands,pos(" "cmd_name,commands)),1)
+  label = "cmd_"||command_found
+  interpret "signal" label  /* handle internal macro and exit */
+end
+
+address "COMMAND" "MAKEBUF"
+new_Buffer_id = rc
+address "COMMAND" "SENTRIES"
+stack_entries1 = rc
+address "COMMAND" "LISTFILE" cmd_name "EE * (LABEL ISODATE FIFO"
+rc_listfile = rc
+address "COMMAND" "SENTRIES"
+stack_entries2 = rc
+
+
+if rc_listfile <> 0 then do
+  address "COMMAND" "DROPBUF" new_Buffer_id
+  exit -3 /* not found -> unknown command/macro */
+end
+
+if stack_entries2 <= stack_entries1 then do
+  /* this should not happen */
+  address "COMMAND" "DROPBUF" new_Buffer_id
+  exit -999
+end
+
+parse pull listfile_info
+address "COMMAND" "DROPBUF" new_Buffer_id  /* we need only one line */
+
+parse var listfile_info fn ft fm listfile_info_2
+macro_fileid = fn ft fm
+/* "x" macro_fileid */
+
+/*
+  find temp file id
+  read first line
+  REXX ?
+  add 'address "EE"'
+  write first line
+  read/write until EOF
+  CMS EXEC
+*/
+
+
+
+macro_lines = lines(macro_fileid)
+if macro_lines < 1 then signal exit_unknown_command
+macro_line = linein(macro_fileid)
+
+if left(strip(macro_line),2) <> "/*" then do
+  /* no REXX magic, simple macro assumed */
+  last_rc = 0
+  address "EE" macro_line
+  if rc <> 0 then last_rc = rc
+  do macro_lines-1
+    address "EE" linein(macro_fileid)
+    if rc <> 0 then last_rc = rc
+  end
+  exit last_rc /* last non-zero return code */
+end
+
+temp_counter = 0
+do 999 /* forever */
+  /* search for a non-existing temp file */
+  temp_counter = temp_counter + 1
+  temp_fn = substr("EE$TEMP",1,8-length(temp_counter)) || temp_counter
+  temp_fileid = temp_fn "EXEC A1"
+  address "COMMAND" "MAKEBUF"
+  new_Buffer_id = rc
+  address "COMMAND" "LISTFILE" temp_fileid "(LABEL ISODATE FIFO"
+  rc_listfile = rc
+  address "COMMAND" "DROPBUF" new_Buffer_id
+  if rc_listfile <> 0 then leave
+end
+
+
+rexx_comment_closed = 0 /* false */
+do i = 1 to macro_lines
+  if i > 1 then macro_line = linein(macro_fileid)
+  if rexx_comment_closed = 0 then do
+    comment_pos = pos("*/",macro_line)
+    if comment_pos <> 0 then do
+      rexx_comment_closed = 1
+      macro_line = substr(macro_line,1,comment_pos+1) 'address "EE";' substr(macro_line,comment_pos+2)
+    end
+  end
+  write_status = lineout(temp_fileid, macro_line)
+end
+call lineout temp_fileid
+
+
+address "COMMAND" "EXEC" temp_fn cmd_args
+save_rc = rc
+address "COMMAND" "ERASE" temp_fileid
+exit save_rc
+
+
+exit_unknown_command:
+exit -3
+
+
+cmd_FINDFILE:
+cmd_PROFILE:
+"input" "Not yet implemented - "label":" command_found cmd_args
+exit 111
+
+cmd_MORE:
+"EXTRACT LINE"
+line_initial = line.1
+"TOP"
+"EXTRACT LINE"
+/* NYI: "EXTRACT /SCOPE/DISPLAY/" */
+"SET SCOPE ALL"
+do forever /* i = 1 to 1000 */
+  line_old = line.1
+  "LOCATE" cmd_args
+  if rc <> 0 then leave
+  /* "EXTRACT LINE"                  */
+  /* if line.1 = line_old then leave */
+  "SET SELECT 1"
+end
+"LOCATE :"line_initial
+"SET DISPLAY 1 *"
+"SET SCOPE DISPLAY"
+exit rc
+
+
+cmd_LESS:
+"EXTRACT LINE"
+line_initial = line.1
+"TOP"
+"EXTRACT LINE"
+/* NYI: "EXTRACT /SCOPE/DISPLAY/" */
+/* "SET SCOPE ALL" */
+do forever /* i = 1 to 1000 */
+  line_old = line.1
+  "LOCATE" cmd_args
+  if rc <> 0 then leave
+  /* "EXTRACT LINE"                  */
+  /* if line.1 = line_old then leave */
+  "SET SELECT 0"
+end
+"LOCATE :"line_initial
+/* "SET DISPLAY 1 *" */
+/* "SET SCOPE DISPLAY" */
+exit rc
+
+
+cmd_SHOW:
+"SET DISPLAY 0 *"
+exit rc
+
+cmd_RCTEST:
+"RC" cmd_args
+exit rc*2
+
+syntax:
+novalue:
+parse source source_string
+"X EE$MACRO EXEC A"
+"LOCATE :"sigl
+/* "CMSG" source_string */
+exit 777
+
+

@@ -1,3 +1,6 @@
+         COPY  PDPTOP
+*
+*
 *********************************************************************
 *********************************************************************
 **                                                                 **
@@ -18,44 +21,212 @@
 *********************************************************************
 *********************************************************************
 *
+***A01 save registers to save area supplied by CMS/bREXX
+***A02   DMSFREE acquire buffer
+***        search backward for C runtime stack
+***        debug: search forward for C runtime stack
+***        use acquired buffer to mimick C runtime stack
+***
+***
+***
+***
+***
+***
+***
+***
+***
+***Z02   DMSFRET return buffer
+***Z01 restore registers from save area supplied by CMS/bREXX
+***
+**                                                                 **
+*********************************************************************
+*********************************************************************
+**
+*
 EESUBCOM CSECT
          ENTRY SC@ENTRY
-SC@ENTRY DS    0D
-         USING *,12
-         STM   14,12,12(13) save area supplied by caller (=bREXX/CMS)
+         DS    0D
+         USING *,R12
+***A01
+SC@ENTRY STM R14,R12,12(R13) save area supplied by caller (=bREXX/CMS)
 *
-         L     3,4(,2)     SCBLOCK user word : had been set to ...
+         L     R3,4(,R2)   SCBLOCK user word : had been set to ...
 *                          ... t_PGMB *PGMB_loc = CMSGetPG();
 *
-         STM   0,15,0(3)   save ALL GP registers to PGMB, R3 invalid
-         L     9,32(13)    retrieve first saved copy of R2
-         ST    9,12(,3)    update second copy of R3
+*
+* preliminary: does not allow recursive macro calls
+         STM   R0,R15,0(R3) save ALL GP registers to PGMB, R3 invalid
+         L     R9,32(R13)  retrieve first saved copy of R3
+         ST    R9,12(,R3)  update second copy of R3
+*
+*
+         LR    R9,R13      R13 when we were called from bREXX/CMS
+         L     R8,64(,R3)  CMScrab is stored here in PGMB
+*
+*********************************************************************
+*** *        walking back from (R9) : will we find (R13) ?
+*** *        *** does not work ***
+*** *
+***          SR    R7,R7
+***          LR    R8,R9
+***          ENTRY SC@LOOP1
+*** SC@LOOP1 L     R8,BACK-CMSCRAB(R8)
+***          LA    R7,1(R7)
+***          CR    R8,R13
+***          BNE   SC@LOOP1
+***          ENTRY SC@LOOP2
+*** SC@LOOP2 LR    R7,R7
+*********************************************************************
 *
 *
 *
 *
+         LR    R4,R0       DMSFREE ...
+         LR    R5,R1       ... will use R0+R1
+***A02
+         DMSFREE DWORDS=80,TYPE=USER,TYPCALL=SVC
+         LR    R10,R0
+         LR    R11,R1
+         LR    R13,R1      we will mimick a CMSCRAB here
 *
-         LR    6,0         called C routine 'sc_hndlr()' will ...
-         LR    7,1         ... take register contents ...
-         LR    8,2         ... via ___asm___
+         MVC   DSTACK-CMSCRAB(4,R13),DSTACK-CMSCRAB(R8)
+         MVC   GCCCRABA-CMSCRAB(4,R13),GCCCRABA-CMSCRAB(R8)
+         MVC   STACKNXT-CMSCRAB(4,R13),STACKNXT-CMSCRAB(R8)
 *
-         L     15,=V(SC@HNDLR)  subcommand handler implemented in C
-         LR    9,13
-         L     13,64(,3)   CMScrab is stored here in PGMB
-         LR    10,14       backup register 14 to R10
+         SR    R7,R7
+         ST    R7,FORWARD-CMSCRAB(R13)   clear forward chain
+         ST    R8,BACK-CMSCRAB(R13)      link backward chain
+         ST    R13,FORWARD-CMSCRAB(R8)
 *
-         LR 12,15  "Martin, das könnte der 'Golden Touch' gewesen sein"
-         ENTRY SC@ENTR2
-*
-*** TODO: *** Needs C stack pointer which had been saved previously
-SC@ENTR2 LR    14,14       ***** dummy *****
+         L     15,=V(SC@HNDL0)  subcommand handler implemented in C
          BALR  14,15       next stage of subcommand handler
+         LR    R13,R9      R13 when we were called from bREXX/CMS
+         SR    R7,R7
+         ST    R7,FORWARD-CMSCRAB(R8)    forget forward chain
 *
-         LR    14,10       restore register 14 from R10
-         LR    13,9
-         LM    0,12,20(13) restore the registers 0-12 ...
-         BR 14             ... from caller's save area
-*
+***Z02
+         LR    R7,R15         R15 has return code, preserve
+         DMSFRET DWORDS=(0),LOC=(1),TYPCALL=SVC
+******** LA    R15,4095    0x0FFF
+         LR    R15,R7
+***Z01
+         L     R14,12(R13)    R15 has return code, do not touch
+         LM    R0,R12,20(R13) restore the registers 0-12 ...
+         BR    R14            ... from caller's save area
          LTORG
          DC 16F'0'
+*
+         REGEQU
+         CMSCRAB
+         GCCCRAB
+*
          END
+*
+**                                                                 **
+*********************************************************************
+*********************************************************************
+**
+*
+*EESUBCOM CSECT
+*         ENTRY SC@ENTRY
+*SC@ENTRY DS    0D
+*         USING *,12
+*         STM   14,12,12(13) save area supplied by caller (=bREXX/CMS)
+**
+*         L     3,4(,2)     SCBLOCK user word : had been set to ...
+**                          ... t_PGMB *PGMB_loc = CMSGetPG();
+**
+*         STM   0,15,0(3)   save ALL GP registers to PGMB, R3 invalid
+*         L     9,32(13)    retrieve first saved copy of R2
+*         ST    9,12(,3)    update second copy of R3
+**
+**
+**
+**
+**
+*         LR    6,0         called C routine 'sc_hndlr()' will ...
+*         LR    7,1         ... take register contents ...
+*         LR    8,2         ... via ___asm___
+**
+*         LR    9,13
+*         L     13,64(,3)   CMScrab is stored here in PGMB
+**
+****102   LR    4,14        R14 will be restored after PDPEPIL
+*         LA    14,SC@PEPIL      ***101
+*SC@HNDPR PDPPRLG CINDEX=0,FRAME=88,BASER=12,ENTRY=YES
+*         B     FEN0
+*         LTORG
+*FEN0     EQU   *
+***
+***
+***
+********* LR    10,14       backup register 14 to R10
+**
+*         LR 12,15  "Martin, das könnte der 'Golden Touch' gewesen sein"
+*         ENTRY SC@ENTR2
+**
+**** TODO: *** Needs C stack pointer which had been saved previously
+*SC@ENTR2 LR    14,14       ***** dummy *****
+*         L     15,=V(SC@HNDL0)  subcommand handler implemented in C
+*         BALR  14,15       next stage of subcommand handler
+**
+*         PDPEPIL         should have been fooled to branch to SC@PEPIL
+***
+***
+***
+*SC@PEPIL LR    14,4        restore register 14 from R4
+********* LR    14,10       restore register 14 from R10
+*         LR    13,9
+*         LM    0,12,20(13) restore the registers 0-12 ...
+*         BR 14             ... from caller's save area
+**
+*         LTORG
+*         DC 16F'0'
+*         END
+**
+*
+*
+*********************************************************************
+*********************************************************************
+**                                                                 **
+**          COPY  PDPTOP                                           **
+**          CSECT                                                  **
+** * Program text area                                             **
+**          DS    0F                                               **
+** * X-func sc_hndl0 prologue                                      **
+** SC@HNDL0 PDPPRLG CINDEX=0,FRAME=88,BASER=12,ENTRY=YES           **
+**          B     FEN0                                             **
+**          LTORG                                                  **
+** FEN0     EQU   *                                                **
+**          DROP  12                                               **
+**          BALR  12,0                                             **
+**          USING *,12                                             **
+** PG0      EQU   *                                                **
+**          LR    11,1                                             **
+**          L     10,=A(PGT0)                                      **
+** * Function sc_hndl0 code                                        **
+**          LA    1,88(,13)                                        **
+**          L     15,=V(SC@HNDLR)                                  **
+**          BALR  14,15                                            **
+** * Function sc_hndl0 epilogue                                    **
+**          PDPEPIL                                                **
+** * Function sc_hndl0 literal pool                                **
+**          DS    0F                                               **
+**          LTORG                                                  **
+** * Function sc_hndl0 page table                                  **
+**          DS    0F                                               **
+** PGT0     EQU   *                                                **
+**          DC    A(PG0)                                           **
+**          END                                                    **
+**                                                                 **
+*********************************************************************
+*********************************************************************
+*
+* blank template
+*
+*********************************************************************
+*********************************************************************
+**                                                                 **
+**                                                                 **
+*********************************************************************
+*********************************************************************
