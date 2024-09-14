@@ -37,7 +37,10 @@
 #define _eecore_implementation
 #include "eecore.h"
 
+#include "eescrn.h"
+#include "eemain.h"
 #include "eeutil.h"
+#include "ee_pgm.h"   /* Process Global Memory */
 
 #include "glblpost.h"
 
@@ -164,10 +167,13 @@ typedef struct _editor {
 ** emergency message handling
 */
 
+/*
 static char *emergencyMessage = NULL;
+*/
 
 static void emitEmergencyMessage(char *msg) {
-  emergencyMessage = msg;
+  t_PGMB *PGMB_loc = CMSGetPG();
+  PGMB_loc->emergencyMessage = msg;
   printf("\n********\n");
   printf("**\n");
   printf("** %s\n", msg);
@@ -176,8 +182,9 @@ static void emitEmergencyMessage(char *msg) {
 }
 
 char* glstemsg() {
-  char *msg = emergencyMessage;
-  emergencyMessage = NULL;
+  t_PGMB *PGMB_loc = CMSGetPG();
+  char *msg = PGMB_loc->emergencyMessage;
+  PGMB_loc->emergencyMessage = NULL;
   return msg;
 }
 

@@ -32,8 +32,13 @@
 #include "eeutil.h"
 #include "eescrn.h"
 #include "eemain.h"
+#include "fs3270.h"
+#include "fsio.h"
+#include "ee_pgm.h"   /* Process Global Memory */
 
 #include "glblpost.h"
+
+extern int Subcom(int mode /* set=1 query=0 delete=-1 */ );
 
 int main(int argc, char *argv[], char *argstrng);
 
@@ -41,44 +46,55 @@ int main(int argc, char *argv[], char *argstrng);
 ** ****** global screen data
 */
 
+/*
 static ScreenPtr scr = NULL;
+*/
 
+/*
 #define LINES_LEN 132
+*/
 
+
+/*
 static char headline[LINES_LEN + 1];
 static char footline[LINES_LEN + 1];
-
 static char infoline0[LINES_LEN + 1];
 static char infoline1[LINES_LEN + 1];
-
 static char identify[LINES_LEN + 1];
-
 static char *progName = "EE";
+*/
 
-void LoadPoint() { ; }
+
+
+
+extern void LoadPoint() { ; }
 
 /*
 ** -- infolines handling
 */
 
 void clInfols() {
-  scr->infoLines[0] = NULL;
-  scr->infoLines[1] = NULL;
+  t_PGMB *PGMB_loc = CMSGetPG();
+  (PGMB_loc->scr)->infoLines[0] = NULL;
+  (PGMB_loc->scr)->infoLines[1] = NULL;
 }
 
 void addInfol(char *line) {
+  t_PGMB *PGMB_loc = CMSGetPG();
+  ScreenPtr scr = PGMB_loc->scr;
+
   if (scr->infoLines[0] == NULL) {
-    memset(infoline0, '\0', sizeof(infoline0));
-    strncpy(infoline0, line, sizeof(infoline0) - 1);
-    scr->infoLines[0] = infoline0;
+    memset(PGMB_loc->infoline0, '\0', sizeof(PGMB_loc->infoline0));
+    strncpy(PGMB_loc->infoline0, line, sizeof(PGMB_loc->infoline0) - 1);
+    scr->infoLines[0] = PGMB_loc->infoline0;
   } else if (scr->infoLines[1] == NULL) {
-    memset(infoline1, '\0', sizeof(infoline1));
-    strncpy(infoline1, line, sizeof(infoline1) - 1);
-    scr->infoLines[1] = infoline1;
+    memset(PGMB_loc->infoline1, '\0', sizeof(PGMB_loc->infoline1));
+    strncpy(PGMB_loc->infoline1, line, sizeof(PGMB_loc->infoline1) - 1);
+    scr->infoLines[1] = PGMB_loc->infoline1;
   } else {
-    strcpy(infoline0, infoline1);
-    memset(infoline1, '\0', sizeof(infoline1));
-    strncpy(infoline1, line, sizeof(infoline1) - 1);
+    strcpy(PGMB_loc->infoline0, PGMB_loc->infoline1);
+    memset(PGMB_loc->infoline1, '\0', sizeof(PGMB_loc->infoline1));
+    strncpy(PGMB_loc->infoline1, line, sizeof(PGMB_loc->infoline1) - 1);
   }
 }
 
@@ -87,6 +103,8 @@ void addInfol(char *line) {
 */
 
 static void buildHeadFootlinesDelta(bool deltaModified, int deltaLines) {
+  t_PGMB *PGMB_loc = CMSGetPG();
+  ScreenPtr scr = PGMB_loc->scr;
   if (scr == NULL) {
     return;
   }
@@ -101,10 +119,12 @@ static void buildHeadFootlinesDelta(bool deltaModified, int deltaLines) {
      CMSdirectRead(dummy);
      */
      pr = &id_line[0];
-     pw = &identify[0];
+     pw = &((PGMB_loc->identify)[0]);
      *pw++ = '\t';
      *pw = '\0';
 
+/* MECAFF   AT VM370CE  VIA RSCS     09:37:31 09/04/24 GMT     WEDNESDAY    */
+/* ....+....1....+....2....+....3....+....4....+....5....+....6....+....7.. */
      while (true) { c = *pr++; if (c == ' ') break; *pw++ = c; }
      *pw++ = ' ';
      *pw++ = 'a';
@@ -125,8 +145,8 @@ static void buildHeadFootlinesDelta(bool deltaModified, int deltaLines) {
      *pw++ = *pr++;
      *pw++ = '\0';
 
-  scr->headLine = headline;
-  scr->footLine = footline;
+  scr->headLine = PGMB_loc->headline;
+  scr->footLine = PGMB_loc->footline;
 
   EditorPtr ed = scr->ed;
   char fn[9];
@@ -164,17 +184,17 @@ static void buildHeadFootlinesDelta(bool deltaModified, int deltaLines) {
   if (currLineNo > lineCnt) { strcpy(posTxt, "EoF"); }
 
   /* build headline */
-  sprintf(headline,
+  sprintf(PGMB_loc->headline,
     " %-8s %-8s %-2s\t\t %c %3d  Workl=%d Size=%d Line=%s\t\t%3d File(s) ",
     fn, ft, fm, recfm, fileLrecl, workLrecl, lineCnt, posTxt, fileCnt);
 
   /* build footline */
-  sprintf(footline, "%s%s\t\t Load=0x%06X \t\t%s " VERSION "\t%s",
+  sprintf(PGMB_loc->footline, "%s%s\t\t Load=0x%06X \t\t%s " VERSION "\t%s",
     (isModified) ? "Modified*" : "Unchanged",
     (isBinary) ? ", Binary" : "",
-    (&LoadPoint)-12,
-    progName,
-    identify);
+    (&LoadPoint)-0, /* was -12, was -8 : all "static" declarations moved to PGMB */
+    PGMB_loc->progName,
+    PGMB_loc->identify);
 
   /* extend message lines with potential common messages */
   addPrefixMessages(scr);
@@ -804,7 +824,65 @@ int main(int argc, char *argv[], char *argstrng)
   }
 
 int main2(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc)
-  { return main3(argc, argv, argstrng, PGMB_loc); }
+  {
+    PGMB_loc->scr = NULL;
+    PGMB_loc->progName = "EE";
+    PGMB_loc->fileCount = 0;
+    PGMB_loc->versionCount = 0;
+    PGMB_loc->HEAD_PATTERN_FSLIST = "%s: %s %s %s\t\tLines %d-%d/%d  %s " VERSION;
+    PGMB_loc->HEAD_PATTERN_SHOWF  = "FSVIEW: %s %s %s\t\tLines %d-%d/%d %c%d[%d-%d]  FSVIEW " VERSION;
+    PGMB_loc->fslistScreen = NULL;
+    PGMB_loc->browseScreen = NULL;
+    PGMB_loc->fslistPrefixOn = false;
+    PGMB_loc->sortSpecCount = 0;
+    PGMB_loc->headTemplate = "Help for %s\t\tFSHELP " VERSION;
+    PGMB_loc->ExtraAllowed = "@#$+-_";
+
+    PGMB_loc->SingleCharPrefixes = "ID/\"*<>@";
+    PGMB_loc->blockOps = NULL;
+
+    PGMB_loc->emergencyMessage = NULL;
+
+    PGMB_loc->numAltRows = -1;
+    PGMB_loc->numAltCols= -1;
+    PGMB_loc->canAltScreenSize = false;
+    PGMB_loc->canExtHighLight = false;
+    PGMB_loc->canColors = false;
+    PGMB_loc->sessionId = 0;
+    PGMB_loc->sessionMode = 0;
+
+    PGMB_loc->rows = 24;
+    PGMB_loc->cols = 80;
+
+    PGMB_loc->lastRow = 23;
+    PGMB_loc->lastCol = 79;
+
+    PGMB_loc->colorsFor3270[0]  = Color_Default   ;
+    PGMB_loc->colorsFor3270[1]  = Color_Default   ;
+    PGMB_loc->colorsFor3270[2]  = Color_Blue      ;
+    PGMB_loc->colorsFor3270[3]  = Color_Blue      ;
+    PGMB_loc->colorsFor3270[4]  = Color_Red       ;
+    PGMB_loc->colorsFor3270[5]  = Color_Red       ;
+    PGMB_loc->colorsFor3270[6]  = Color_Pink      ;
+    PGMB_loc->colorsFor3270[7]  = Color_Pink      ;
+    PGMB_loc->colorsFor3270[8]  = Color_Green     ;
+    PGMB_loc->colorsFor3270[9]  = Color_Green     ;
+    PGMB_loc->colorsFor3270[10] = Color_Turquoise ;
+    PGMB_loc->colorsFor3270[11] = Color_Turquoise ;
+    PGMB_loc->colorsFor3270[12] = Color_Yellow    ;
+    PGMB_loc->colorsFor3270[13] = Color_Yellow    ;
+    PGMB_loc->colorsFor3270[14] = Color_White     ;
+    PGMB_loc->colorsFor3270[15] = Color_White     ;
+
+    PGMB_loc->cmdArrow          = "====>"                   ;
+    PGMB_loc->topOfFileText     = "* * * Top of File * * *" ;
+    PGMB_loc->bottomOfFileText  = "* * * End of File * * *" ;
+    PGMB_loc->prefixLocked      = "....."                   ;
+
+    Subcom(SUBCOM_SET);
+
+    return main3(argc, argv, argstrng, PGMB_loc);
+  }
 
 int main3(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc)
   {
@@ -869,6 +947,8 @@ int main5(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc)
 */
 
 int main9(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc) {
+    /* t_PGMB *PGMB_loc = CMSGetPG(); */
+    ScreenPtr scr = PGMB_loc->scr;
 
     /* work-around for bug in GCCLIB runtime startup code:
        -> if called from an EXEC, the PLIST is copied to 'argv', but
@@ -904,7 +984,7 @@ int main9(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc) {
       }
     }
 
-    progName = argv[0];
+    PGMB_loc->progName = argv[0];
 
     int pcount = 0;
     bool isOption = false;
@@ -963,9 +1043,9 @@ int main9(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc) {
       }
     }
 
-  /*isXLIST |= (isAbbrev(progName, "XList") || isAbbrev(progName, "XXList"));*/
-    isFSLIST |= (isAbbrev(progName, "FSList"));
-    isFSVIEW |= (isAbbrev(progName, "FSView"));
+  /*isXLIST |= (isAbbrev(progName, "XList") || isAbbrev(PGMB_loc->progName, "XXList"));*/
+    isFSLIST |= (isAbbrev(PGMB_loc->progName, "FSList"));
+    isFSVIEW |= (isAbbrev(PGMB_loc->progName, "FSView"));
     /* printf("isFSLIST = %s\n", (isFSLIST) ? "true" : "false"); */
 
     if (isXLIST && xlargc < 3) {
@@ -1011,9 +1091,9 @@ int main9(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc) {
           }
         }
       }
-      printf("Usage: %s fn ft [fm]\n", (isFSVIEW) ? "FSVIEW" : progName);
+      printf("Usage: %s fn ft [fm]\n", (isFSVIEW) ? "FSVIEW" : PGMB_loc->progName);
       if (!isFSLIST && !isFSVIEW) {
-        printf("   or: %s fn.ft[.fm]\n", progName);
+        printf("   or: %s fn.ft[.fm]\n", PGMB_loc->progName);
       }
       return 4;
     }
@@ -1022,7 +1102,7 @@ int main9(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc) {
     char cmdtext[80];
     simu3270(24, 80);
     Printf0("## allocating EE screen\n");
-    scr = allocateScreen(messages);
+    PGMB_loc->scr = scr = allocateScreen(messages);
     if (scr == NULL) {
       deinitCmds();
       printf("** error allocating screen, message:\n");
@@ -1122,6 +1202,8 @@ int main9(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc) {
     initFSList(NULL, messages);
     tmpInfClear();
 
+    Subcom(SUBCOM_DELETE);
+
     /* return to CMS */
     if (rc == RC_CLOSEALL) { rc = 0; }
     return rc;
@@ -1129,6 +1211,8 @@ int main9(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc) {
 
 /* perform editor interactions for 'fn ft fm' */
 int doEdit(char *fn, char *ft, char *fm, char *messages) {
+    t_PGMB *PGMB_loc = CMSGetPG();
+    ScreenPtr scr = PGMB_loc->scr;
     /* load the file into the editor */
     int rc = 0;
     int state;

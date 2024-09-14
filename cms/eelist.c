@@ -30,24 +30,28 @@
 #include "eeutil.h"
 #include "eescrn.h"
 #include "eemain.h"
+#include "ee_pgm.h"   /* Process Global Memory */
 
 #include "glblpost.h"
 
+/*
 static char *HEAD_PATTERN_FSLIST
     = "%s: %s %s %s\t\tLines %d-%d/%d  %s " VERSION;
 static char *HEAD_PATTERN_SHOWF
     = "FSVIEW: %s %s %s\t\tLines %d-%d/%d %c%d[%d-%d]  FSVIEW " VERSION;
 
+
+
 static char FOOT_FSLIST[90];
 static char FOOT_SHOWF[90];
 
-static ScreenPtr fslistScreen = NULL;
-static ScreenPtr browseScreen = NULL;
+static ScreenPtr PGMB_loc->fslistScreen = NULL;
+static ScreenPtr PGMB_loc->browseScreen = NULL;
 
 static bool fslistPrefixOn = false;
 
-static char listPfCmds[25][CMDLINELENGTH+1]; /* the FSLIST PF key commands */
-static char viewPfCmds[25][CMDLINELENGTH+1]; /* the FSVIEW PF key commands */
+static char listPfCmds[25][CMDLINELENGTH+1]; / * the FSLIST PF key commands * /
+static char viewPfCmds[25][CMDLINELENGTH+1]; / * the FSVIEW PF key commands * /
 
 static bool fslisterSearchUp;
 static char fslisterSearchBuffer[CMDLINELENGTH + 1];
@@ -55,58 +59,64 @@ static char fslisterSearchBuffer[CMDLINELENGTH + 1];
 static bool browserSearchUp;
 static char browserSearchBuffer[CMDLINELENGTH + 1];
 
-static SortItem sortSpecs[12]; /* max 9 columns + TS + FORMAT + last */
-int sortSpecCount = 0;
+static SortItem PGMB_loc->sortSpecs[12]; / * max 9 columns + TS + FORMAT + last * /
+int PGMB_loc->sortSpecCount = 0;
+*/
 
 void setFSLInfoLine(char *infoLine) {
-  memset(FOOT_FSLIST, '\0', sizeof(FOOT_FSLIST));
+  t_PGMB *PGMB_loc = CMSGetPG();
+  memset(PGMB_loc->FOOT_FSLIST, '\0', sizeof(PGMB_loc->FOOT_FSLIST));
   if (!infoLine || !*infoLine) { infoLine = " "; }
-  int len = minInt(strlen(infoLine), sizeof(FOOT_FSLIST)-1);
+  int len = minInt(strlen(infoLine), sizeof(PGMB_loc->FOOT_FSLIST)-1);
   if (len > 77) {
-    memcpy(FOOT_FSLIST, infoLine, len);
+    memcpy(PGMB_loc->FOOT_FSLIST, infoLine, len);
   } else {
-    sprintf(FOOT_FSLIST, "\t%s\t", infoLine);
+    sprintf(PGMB_loc->FOOT_FSLIST, "\t%s\t", infoLine);
   }
 }
 
 void setFSVInfoLine(char *infoLine) {
-  memset(FOOT_SHOWF, '\0', sizeof(FOOT_SHOWF));
+  t_PGMB *PGMB_loc = CMSGetPG();
+  memset(PGMB_loc->FOOT_SHOWF, '\0', sizeof(PGMB_loc->FOOT_SHOWF));
   if (!infoLine || !*infoLine) { infoLine = " "; }
-  int len = minInt(strlen(infoLine), sizeof(FOOT_SHOWF)-1);
+  int len = minInt(strlen(infoLine), sizeof(PGMB_loc->FOOT_SHOWF)-1);
   if (len > 77) {
-    memcpy(FOOT_SHOWF, infoLine, len);
+    memcpy(PGMB_loc->FOOT_SHOWF, infoLine, len);
   } else {
-    sprintf(FOOT_SHOWF, "\t%s\t", infoLine);
+    sprintf(PGMB_loc->FOOT_SHOWF, "\t%s\t", infoLine);
   }
 }
 
 void setFSLPFKey(int key, char *cmd) {
+  t_PGMB *PGMB_loc = CMSGetPG();
   if (key < 1 || key > 24) { return; }
-  memset(listPfCmds[key], '\0', CMDLINELENGTH + 1);
+  memset(PGMB_loc->listPfCmds[key], '\0', CMDLINELENGTH + 1);
   if (cmd && *cmd) {
     int len = minInt(strlen(cmd), CMDLINELENGTH);
-    memcpy(listPfCmds[key], cmd, len);
+    memcpy(PGMB_loc->listPfCmds[key], cmd, len);
   }
 }
 
 void setFSVPFKey(int key, char *cmd) {
+  t_PGMB *PGMB_loc = CMSGetPG();
   if (key < 1 || key > 24) { return; }
-  memset(viewPfCmds[key], '\0', CMDLINELENGTH + 1);
+  memset(PGMB_loc->viewPfCmds[key], '\0', CMDLINELENGTH + 1);
   if (cmd && *cmd) {
     int len = minInt(strlen(cmd), CMDLINELENGTH);
-    memcpy(viewPfCmds[key], cmd, len);
+    memcpy(PGMB_loc->viewPfCmds[key], cmd, len);
   }
 }
 
 void setFSLPrefix(bool on) {
-  fslistPrefixOn = on;
-  if (!fslistScreen) { return; }
+  t_PGMB *PGMB_loc = CMSGetPG();
+  PGMB_loc->fslistPrefixOn = on;
+  if (!PGMB_loc->fslistScreen) { return; }
   if (on) {
-    fslistScreen->prefixMode = 1;
-    fslistScreen->prefixChar = ' ';
-    fslistScreen->prefixLen = 1;
+    PGMB_loc->fslistScreen->prefixMode = 1;
+    PGMB_loc->fslistScreen->prefixChar = ' ';
+    PGMB_loc->fslistScreen->prefixLen = 1;
   } else {
-    fslistScreen->prefixMode = 0;
+    PGMB_loc->fslistScreen->prefixMode = 0;
   }
 }
 
@@ -218,21 +228,22 @@ static bool isShortParam(char *cmd, char *msg) {
 }
 
 void initFSList(ScreenPtr tmpl, char *msg) {
-  if (fslistScreen) { freeScreen(fslistScreen); fslistScreen = NULL; }
-  if (browseScreen) { freeScreen(browseScreen); browseScreen = NULL; }
+  t_PGMB *PGMB_loc = CMSGetPG();
+  if (PGMB_loc->fslistScreen) { freeScreen(PGMB_loc->fslistScreen); PGMB_loc->fslistScreen = NULL; }
+  if (PGMB_loc->browseScreen) { freeScreen(PGMB_loc->browseScreen); PGMB_loc->browseScreen = NULL; }
 
   if (tmpl == NULL) { return; }
 
-  memset(sortSpecs, '\0', sizeof(sortSpecs));
+  memset(PGMB_loc->sortSpecs, '\0', sizeof(PGMB_loc->sortSpecs));
 
-  fslisterSearchUp = false;
-  browserSearchUp = false;
+  PGMB_loc->fslisterSearchUp = false;
+  PGMB_loc->browserSearchUp = false;
 
-  memset(fslisterSearchBuffer, '\0', sizeof(fslisterSearchBuffer));
-  memset(browserSearchBuffer, '\0', sizeof(browserSearchBuffer));
+  memset(PGMB_loc->fslisterSearchBuffer, '\0', sizeof(PGMB_loc->fslisterSearchBuffer));
+  memset(PGMB_loc->browserSearchBuffer, '\0', sizeof(PGMB_loc->browserSearchBuffer));
 
-  fslistScreen = initScreen(tmpl, msg);
-  browseScreen = initScreen(tmpl, msg);
+  PGMB_loc->fslistScreen = initScreen(tmpl, msg);
+  PGMB_loc->browseScreen = initScreen(tmpl, msg);
 }
 
 /* get the cms filename from a line in the filelist list */
@@ -278,6 +289,7 @@ typedef enum _scrollCmd {
   } ScrollCmd;
 
 static bool handleScrolling(ScreenPtr scr, ScrollCmd cmd, bool shortScroll) {
+  t_PGMB *PGMB_loc = CMSGetPG();
   EditorPtr ed = scr->ed;
   int middleLine = scr->visibleEdLines / 2;
   int middleCol = scr->screenColumns / 2;
@@ -321,13 +333,13 @@ static bool handleScrolling(ScreenPtr scr, ScrollCmd cmd, bool shortScroll) {
   } else if (cmd == BOTTOM) {
     moveToLastLine(ed);
   } else if (cmd == LEFT && !shortScroll) {
-    deltaHShift(browseScreen, -20);
+    deltaHShift(PGMB_loc->browseScreen, -20);
   } else if (cmd == RIGHT && !shortScroll) {
-    deltaHShift(browseScreen, 20);
+    deltaHShift(PGMB_loc->browseScreen, 20);
   } else if (cmd == LEFT) {
-    deltaHShift(browseScreen, -10);
+    deltaHShift(PGMB_loc->browseScreen, -10);
   } else if (RIGHT == RIGHT) {
-    deltaHShift(browseScreen, 10);
+    deltaHShift(PGMB_loc->browseScreen, 10);
   } else {
     return false;
   }
@@ -351,6 +363,7 @@ static void loadSingleFile(char *line, void *cbdata) {
 
 /* load a new file list and return a new editor */
 static EditorPtr loadList(char *fn, char *ft, char *fm, int *rc, char *msg) {
+  t_PGMB *PGMB_loc = CMSGetPG();
   EditorPtr ed = createEditor(NULL, 72, 'V');
   if (!ed) { return NULL; }
   setWorkLrecl(ed, 71);
@@ -381,8 +394,8 @@ static EditorPtr loadList(char *fn, char *ft, char *fm, int *rc, char *msg) {
   }
 
   *msg = '\0';
-  if (sortSpecCount > 0) {
-     sort(ed, sortSpecs);
+  if (PGMB_loc->sortSpecCount > 0) {
+     sort(ed, PGMB_loc->sortSpecs);
   }
   moveToLineNo(ed, 1);
   return ed;
@@ -400,9 +413,10 @@ static void doFind(EditorPtr ed, bool upwards, char *pattern, char *msg) {
   }
 }
 
-/* load a file into a new editor and display/interact in 'browseScreen' */
+/* load a file into a new editor and display/interact in 'PGMB_loc->browseScreen' */
 int doBrowse(char *fn, char *ft, char *fm, char *msg) {
-  if (!browseScreen) { return -1; }
+  t_PGMB *PGMB_loc = CMSGetPG();
+  if (!PGMB_loc->browseScreen) { return -1; }
 
   int rc;
   EditorPtr fEd = createEditorForFile(NULL, fn, ft, fm, 80, 'V', &rc, msg);
@@ -417,30 +431,30 @@ int doBrowse(char *fn, char *ft, char *fm, char *msg) {
   }
   moveToLineNo(fEd, 1);
 
-  browseScreen->ed = fEd;
-  browseScreen->hShift = 0;
-  browseScreen->cElemType = 0;
-  browseScreen->cElemOffset = 0;
+  PGMB_loc->browseScreen->ed = fEd;
+  PGMB_loc->browseScreen->hShift = 0;
+  PGMB_loc->browseScreen->cElemType = 0;
+  PGMB_loc->browseScreen->cElemOffset = 0;
 
   char headline[80];
-  browseScreen->headLine = headline;
+  PGMB_loc->browseScreen->headLine = headline;
 
-  browseScreen->footLine = FOOT_SHOWF;
+  PGMB_loc->browseScreen->footLine = PGMB_loc->FOOT_SHOWF;
 
-  browseScreen->aidCode = Aid_NoAID;
-  browseScreen->cmdLinePrefill = NULL;
-  while (rc == 0 && browseScreen->aidCode != Aid_PF03) {
-    browseScreen->cursorPlacement = 0;
-    browseScreen->cursorOffset = 0;
-    browseScreen->msgText = msg;
+  PGMB_loc->browseScreen->aidCode = Aid_NoAID;
+  PGMB_loc->browseScreen->cmdLinePrefill = NULL;
+  while (rc == 0 && PGMB_loc->browseScreen->aidCode != Aid_PF03) {
+    PGMB_loc->browseScreen->cursorPlacement = 0;
+    PGMB_loc->browseScreen->cursorOffset = 0;
+    PGMB_loc->browseScreen->msgText = msg;
     *msg = '\0';
 
     char *cmd = NULL;
-    int aidIdx = aidPfIndex(browseScreen->aidCode);
-    if (aidIdx == 0 && *browseScreen->cmdLine) {
-      cmd = browseScreen->cmdLine;
+    int aidIdx = aidPfIndex(PGMB_loc->browseScreen->aidCode);
+    if (aidIdx == 0 && *PGMB_loc->browseScreen->cmdLine) {
+      cmd = PGMB_loc->browseScreen->cmdLine;
     } else if (aidIdx > 0 && aidIdx < 25) {
-      cmd = viewPfCmds[aidIdx];
+      cmd = PGMB_loc->viewPfCmds[aidIdx];
     }
 
     if (cmd && *cmd) {
@@ -449,45 +463,45 @@ int doBrowse(char *fn, char *ft, char *fm, char *msg) {
       } else if (isAbbrev(cmd, "Help")) {
         doHelp("FSVIEW", msg);
       } else if (cmd[0] == '/' && cmd[1] == '\0') {
-        if (*browserSearchBuffer) {
-          doFind(fEd, browserSearchUp, browserSearchBuffer, msg);
+        if (*PGMB_loc->browserSearchBuffer) {
+          doFind(fEd, PGMB_loc->browserSearchUp, PGMB_loc->browserSearchBuffer, msg);
         }
       } else if (cmd[0] == '-' && cmd[1] == '/' && cmd[2] == '\0') {
-        browserSearchUp = !browserSearchUp;
-        if (*browserSearchBuffer) {
-          doFind(fEd, browserSearchUp, browserSearchBuffer, msg);
+        PGMB_loc->browserSearchUp = !PGMB_loc->browserSearchUp;
+        if (*PGMB_loc->browserSearchBuffer) {
+          doFind(fEd, PGMB_loc->browserSearchUp, PGMB_loc->browserSearchBuffer, msg);
         }
       } else if (cmd[0] == '/' || (cmd[0] == '-' && cmd[1] == '/')) {
         int val;
         char *param = cmd;
-        int locType = parseLocation(&param, &val, browserSearchBuffer);
+        int locType = parseLocation(&param, &val, PGMB_loc->browserSearchBuffer);
         if (locType == LOC_PATTERN) {
-          browserSearchUp = false;
-          doFind(fEd, browserSearchUp, browserSearchBuffer, msg);
+          PGMB_loc->browserSearchUp = false;
+          doFind(fEd, PGMB_loc->browserSearchUp, PGMB_loc->browserSearchBuffer, msg);
         } else if (locType == LOC_PATTERNUP) {
-          browserSearchUp = true;
-          doFind(fEd, browserSearchUp, browserSearchBuffer, msg);
+          PGMB_loc->browserSearchUp = true;
+          doFind(fEd, PGMB_loc->browserSearchUp, PGMB_loc->browserSearchBuffer, msg);
         } else {
           sprintf(msg, "No valid locate command");
         }
       } else if (isAbbrev(cmd, "TOp")) {
-        handleScrolling(browseScreen, TOP, false);
+        handleScrolling(PGMB_loc->browseScreen, TOP, false);
       } else if (isAbbrev(cmd, "BOTtom")) {
-        handleScrolling(browseScreen, BOTTOM, false);
+        handleScrolling(PGMB_loc->browseScreen, BOTTOM, false);
       } else if (isAbbrev(cmd, "CENTer")) {
-        handleScrolling(browseScreen, CENTER, false);
+        handleScrolling(PGMB_loc->browseScreen, CENTER, false);
       } else if (isAbbrev(cmd, "LEft")) {
         bool isShort = isShortParam(cmd, msg);
-        handleScrolling(browseScreen, LEFT, isShort);
+        handleScrolling(PGMB_loc->browseScreen, LEFT, isShort);
       } else if (isAbbrev(cmd, "RIght")) {
         bool isShort = isShortParam(cmd, msg);
-        handleScrolling(browseScreen, RIGHT, isShort);
+        handleScrolling(PGMB_loc->browseScreen, RIGHT, isShort);
       } else if (isAbbrev(cmd, "PGUP")) {
         bool isShort = isShortParam(cmd, msg);
-        handleScrolling(browseScreen, UP, isShort);
+        handleScrolling(PGMB_loc->browseScreen, UP, isShort);
       } else if (isAbbrev(cmd, "PGDOwn")) {
         bool isShort = isShortParam(cmd, msg);
-        handleScrolling(browseScreen, DOWN, isShort);
+        handleScrolling(PGMB_loc->browseScreen, DOWN, isShort);
       } else if (isAbbrev(cmd, "Ee")) {
         rc = RC_SWITCHTOEDIT;
         break;
@@ -499,42 +513,44 @@ int doBrowse(char *fn, char *ft, char *fm, char *msg) {
     unsigned int lineCount;
     unsigned int currLineNo;
     getLineInfo(fEd, &lineCount, &currLineNo);
-    sprintf(headline, HEAD_PATTERN_SHOWF,
+    sprintf(headline, PGMB_loc->HEAD_PATTERN_SHOWF,
       fn, ft, fm,
       currLineNo,
-      minInt(lineCount, currLineNo + browseScreen->screenRows - 5),
+      minInt(lineCount, currLineNo + PGMB_loc->browseScreen->screenRows - 5),
       lineCount,
       getRecfm(fEd), getFileLrecl(fEd),
-      browseScreen->hShift + 1,
+      PGMB_loc->browseScreen->hShift + 1,
       minShort(
-        browseScreen->hShift + browseScreen->screenColumns - 1,
+        PGMB_loc->browseScreen->hShift + PGMB_loc->browseScreen->screenColumns - 1,
         getFileLrecl(fEd))
       );
-    rc = writeReadScreen(browseScreen);
+    rc = writeReadScreen(PGMB_loc->browseScreen);
   }
 
   *msg = '\0';
-  browseScreen->ed = NULL;
+  PGMB_loc->browseScreen->ed = NULL;
   freeEditor(fEd);
 
   return rc;
 }
 
 static int addSortSpec(int count, bool desc, int offset, int length) {
+  t_PGMB *PGMB_loc = CMSGetPG();
   int i = 0;
   while(i < count) {
-    if (sortSpecs[i].offset == offset && sortSpecs[i].length == length) {
+    if (PGMB_loc->sortSpecs[i].offset == offset && PGMB_loc->sortSpecs[i].length == length) {
       return count; /* already to sort, but with higher priority ! */
     }
     i++;
   }
-  sortSpecs[count].sortDescending = desc;
-  sortSpecs[count].offset = offset;
-  sortSpecs[count].length = length;
+  PGMB_loc->sortSpecs[count].sortDescending = desc;
+  PGMB_loc->sortSpecs[count].offset = offset;
+  PGMB_loc->sortSpecs[count].length = length;
   return count + 1;
 }
 
 static bool isSortCommand(char *cmd, char *msg) {
+  t_PGMB *PGMB_loc = CMSGetPG();
   if (!isAbbrev(cmd, "Sort")) { return false; }
 
   char *param = getCmdParam(cmd);
@@ -543,8 +559,8 @@ static bool isSortCommand(char *cmd, char *msg) {
     return true;
   }
 
-  memset(sortSpecs, '\0', sizeof(sortSpecs));
-  sortSpecCount = 0;
+  memset(PGMB_loc->sortSpecs, '\0', sizeof(PGMB_loc->sortSpecs));
+  PGMB_loc->sortSpecCount = 0;
 
   if (isAbbrev(param, "OFf")) {
     return true;
@@ -561,36 +577,36 @@ static bool isSortCommand(char *cmd, char *msg) {
 
     while(*param == ' ') { param++; }
     if (!*param) {
-      if (sortSpecCount == 0) {
+      if (PGMB_loc->sortSpecCount == 0) {
         strcpy(msg, "No or no valid parameter given for sort");
       }
       return true;
     }
 
     if (isAbbrev(param, "NAme")) {
-      sortSpecCount = addSortSpec(sortSpecCount, sortDescending, 0, 8);
+      PGMB_loc->sortSpecCount = addSortSpec(PGMB_loc->sortSpecCount, sortDescending, 0, 8);
     } else if (isAbbrev(param, "TYpe")) {
-      sortSpecCount = addSortSpec(sortSpecCount, sortDescending, 9, 8);
+      PGMB_loc->sortSpecCount = addSortSpec(PGMB_loc->sortSpecCount, sortDescending, 9, 8);
     } else if (isAbbrev(param, "MOde")) {
-      sortSpecCount = addSortSpec(sortSpecCount, sortDescending, 18, 2);
+      PGMB_loc->sortSpecCount = addSortSpec(PGMB_loc->sortSpecCount, sortDescending, 18, 2);
     } else if (isAbbrev(param, "RECFm")) {
-      sortSpecCount = addSortSpec(sortSpecCount, sortDescending, 22, 1);
+      PGMB_loc->sortSpecCount = addSortSpec(PGMB_loc->sortSpecCount, sortDescending, 22, 1);
     } else if (isAbbrev(param, "LRecl")) {
-      sortSpecCount = addSortSpec(sortSpecCount, sortDescending, 24, 5);
+      PGMB_loc->sortSpecCount = addSortSpec(PGMB_loc->sortSpecCount, sortDescending, 24, 5);
     } else if (isAbbrev(param, "Format")) {
-      sortSpecCount = addSortSpec(sortSpecCount, sortDescending, 22, 7);
+      PGMB_loc->sortSpecCount = addSortSpec(PGMB_loc->sortSpecCount, sortDescending, 22, 7);
     } else if (isAbbrev(param, "RECS")) {
-      sortSpecCount = addSortSpec(sortSpecCount, sortDescending, 30, 6);
+      PGMB_loc->sortSpecCount = addSortSpec(PGMB_loc->sortSpecCount, sortDescending, 30, 6);
     } else if (isAbbrev(param, "BLocks")) {
-      sortSpecCount = addSortSpec(sortSpecCount, sortDescending, 37, 6);
+      PGMB_loc->sortSpecCount = addSortSpec(PGMB_loc->sortSpecCount, sortDescending, 37, 6);
     } else if (isAbbrev(param, "DAte")) {
-      sortSpecCount = addSortSpec(sortSpecCount, sortDescending, 45, 10);
+      PGMB_loc->sortSpecCount = addSortSpec(PGMB_loc->sortSpecCount, sortDescending, 45, 10);
     } else if (isAbbrev(param, "TIme")) {
-      sortSpecCount = addSortSpec(sortSpecCount, sortDescending, 56, 5);
+      PGMB_loc->sortSpecCount = addSortSpec(PGMB_loc->sortSpecCount, sortDescending, 56, 5);
     } else if (isAbbrev(param, "TS")) {
-      sortSpecCount = addSortSpec(sortSpecCount, sortDescending, 45, 16);
+      PGMB_loc->sortSpecCount = addSortSpec(PGMB_loc->sortSpecCount, sortDescending, 45, 16);
     } else if (isAbbrev(param, "LAbel")) {
-      sortSpecCount = addSortSpec(sortSpecCount, sortDescending, 63, 6);
+      PGMB_loc->sortSpecCount = addSortSpec(PGMB_loc->sortSpecCount, sortDescending, 63, 6);
     } else {
       sprintf(msg, "Invalid sort parameter at: %s", param);
       return true;
@@ -615,6 +631,7 @@ static int xlistSaveActions(
     int *selCount,
     bool displayOnly,
     bool collectReturncodes) {
+  t_PGMB *PGMB_loc = CMSGetPG();
   EditorPtr ed = scr->ed;
   char line[256];
   char cmdline[256];
@@ -671,11 +688,11 @@ static int xlistSaveActions(
   tmpInfAppend(line);
   tmpInfAppend("*");
 
-  for (i = 0; i < sortSpecCount; i++) {
+  for (i = 0; i < PGMB_loc->sortSpecCount; i++) {
     sprintf(line, "*#SORT %d %02d %02d",
-      (sortSpecs[i].sortDescending) ? 1 : 0,
-      sortSpecs[i].offset,
-      sortSpecs[i].length);
+      (PGMB_loc->sortSpecs[i].sortDescending) ? 1 : 0,
+      PGMB_loc->sortSpecs[i].offset,
+      PGMB_loc->sortSpecs[i].length);
     tmpInfAppend(line);
   }
   sprintf(line, "*#LIST %-8s %-8s %-2s", pfn, pft, pfm);
@@ -797,6 +814,7 @@ static EditorPtr xlistRestart(
     char *exfn, char *exft, char *exfm,
     int  *rc, char *msg, int *selCount) {
 
+  t_PGMB *PGMB_loc = CMSGetPG();
   EditorPtr ed = NULL;
   LinePtr currentLine = NULL;
   char fid[20];
@@ -805,7 +823,7 @@ static EditorPtr xlistRestart(
   char buffer[81];
   int selLines = 0;
 
-  sortSpecCount = 0;
+  PGMB_loc->sortSpecCount = 0;
   *selCount = 0;
 
   if (tmpInfLoad(exfn, "XLISTRES", exfm)) {
@@ -851,7 +869,7 @@ static EditorPtr xlistRestart(
         bool descending = (buffer[7] != '0');
         int offset = atoi(&buffer[9]);
         int length = atoi(&buffer[12]);
-        sortSpecCount = addSortSpec(sortSpecCount, descending, offset, length);
+        PGMB_loc->sortSpecCount = addSortSpec(PGMB_loc->sortSpecCount, descending, offset, length);
       } else if (strcmp(buffer, "&ARGS ") == 0 && ed != NULL) {
         char *target = &buffer[7];
         if (findString(ed, target, false, NULL)) {
@@ -962,16 +980,17 @@ int doFSList(
 
   /* printf("doFSList, pattern: '%s %s %s'\n", fn, ft, fm); */
 
+  t_PGMB *PGMB_loc = CMSGetPG();
   int i;
 
-  if (!fslistScreen) { return -1; }
+  if (!PGMB_loc->fslistScreen) { return -1; }
 
-  if (fslistPrefixOn) {
-    fslistScreen->prefixMode = 1;
-    fslistScreen->prefixChar = ' ';
-    fslistScreen->prefixLen = 1;
+  if (PGMB_loc->fslistPrefixOn) {
+    PGMB_loc->fslistScreen->prefixMode = 1;
+    PGMB_loc->fslistScreen->prefixChar = ' ';
+    PGMB_loc->fslistScreen->prefixLen = 1;
   } else {
-    fslistScreen->prefixMode = 0;
+    PGMB_loc->fslistScreen->prefixMode = 0;
   }
 
   char fnDefault[9];
@@ -985,7 +1004,7 @@ int doFSList(
   int rc = 0;
   int selCount = 0;
 
-  ScreenPtr scr = fslistScreen;
+  ScreenPtr scr = PGMB_loc->fslistScreen;
   scr->selectionColumn = (xlistMode > 0) ? 71 : 0;
   scr->selectionMark = '*';
   scr->attrPrefix = DA_WhiteIntens;
@@ -1008,7 +1027,7 @@ int doFSList(
   char headline[80];
   scr->headLine = headline;
 
-  scr->footLine = FOOT_FSLIST;
+  scr->footLine = PGMB_loc->FOOT_FSLIST;
 
   char listHeader[81];
   memset(listHeader, '\0', sizeof(listHeader));
@@ -1056,7 +1075,7 @@ int doFSList(
       cmd = scr->cmdLine;
       tryKeepCommand = (!cmd || !*cmd);
     } else if (aidIdx > 0 && aidIdx < 25) {
-      cmd = listPfCmds[aidIdx];
+      cmd = PGMB_loc->listPfCmds[aidIdx];
     }
 
     if (cmd && *cmd) {
@@ -1104,27 +1123,27 @@ int doFSList(
           strcpy(fmDefault, fm);
         }
       } else if (isSortCommand(cmd, msg)) {
-        sort(ed, sortSpecs);
+        sort(ed, PGMB_loc->sortSpecs);
         moveToLineNo(ed, 1);
       } else if (cmd[0] == '/' && cmd[1] == '\0') {
-        if (*fslisterSearchBuffer) {
-          doFind(ed, fslisterSearchUp, fslisterSearchBuffer, msg);
+        if (*PGMB_loc->fslisterSearchBuffer) {
+          doFind(ed, PGMB_loc->fslisterSearchUp, PGMB_loc->fslisterSearchBuffer, msg);
         }
       } else if (cmd[0] == '-' && cmd[1] == '/' && cmd[2] == '\0') {
-        fslisterSearchUp = !fslisterSearchUp;
-        if (*fslisterSearchBuffer) {
-          doFind(ed, fslisterSearchUp, fslisterSearchBuffer, msg);
+        PGMB_loc->fslisterSearchUp = !PGMB_loc->fslisterSearchUp;
+        if (*PGMB_loc->fslisterSearchBuffer) {
+          doFind(ed, PGMB_loc->fslisterSearchUp, PGMB_loc->fslisterSearchBuffer, msg);
         }
       } else if (cmd[0] == '/' || (cmd[0] == '-' && cmd[1] == '/')) {
         int val;
         char *param = cmd;
-        int locType = parseLocation(&param, &val, fslisterSearchBuffer);
+        int locType = parseLocation(&param, &val, PGMB_loc->fslisterSearchBuffer);
         if (locType == LOC_PATTERN) {
-          fslisterSearchUp = false;
-          doFind(ed, fslisterSearchUp, fslisterSearchBuffer, msg);
+          PGMB_loc->fslisterSearchUp = false;
+          doFind(ed, PGMB_loc->fslisterSearchUp, PGMB_loc->fslisterSearchBuffer, msg);
         } else if (locType == LOC_PATTERNUP) {
-          fslisterSearchUp = true;
-          doFind(ed, fslisterSearchUp, fslisterSearchBuffer, msg);
+          PGMB_loc->fslisterSearchUp = true;
+          doFind(ed, PGMB_loc->fslisterSearchUp, PGMB_loc->fslisterSearchBuffer, msg);
         } else {
           sprintf(msg, "No valid locate command");
         }
@@ -1287,7 +1306,7 @@ int doFSList(
     unsigned int lineCount;
     unsigned int currLineNo;
     getLineInfo(ed, &lineCount, &currLineNo);
-    sprintf(headline, HEAD_PATTERN_FSLIST,
+    sprintf(headline, PGMB_loc->HEAD_PATTERN_FSLIST,
             headToolname,
             fn, ft, fm,
             currLineNo,

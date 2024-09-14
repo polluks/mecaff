@@ -31,6 +31,9 @@
 #include "fs3270.h"
 #include "eescrn.h"
 #include "eemain.h"
+#include "fs3270.h"
+#include "fsio.h"
+#include "ee_pgm.h"
 
 #include "glblpost.h"
 
@@ -46,6 +49,8 @@
 /* set the filename for error messages from memory protection in EEUTIL */
 static const char *_FILE_NAME_ = "eecmds.c";
 
+extern void LoadPoint() ;
+
 /* forward declarations */
 static bool parseTabs(char *params, int *tabs, int *count);
 static bool isInternalEE(EditorPtr ed);
@@ -56,24 +61,29 @@ static int closeAllFiles(ScreenPtr scr, bool saveModified, char *msg);
 ** ****** global screen data
 */
 
+/*
 #define CMD_HISTORY_LEN 1024
 #define CMD_HISTORY_DUPE_CHECK 32
-static EditorPtr commandHistory;   /* eecore-editor with the command history */
+*/
+/* static EditorPtr commandHistory;   */ /* eecore-editor with the command history */
 
-static EditorPtr filetypeDefaults; /* eecore-editor with the ft-defaults */
-static EditorPtr filetypeTabs;     /* eecore-editor with the ft-default-tabs */
-static EditorPtr macroLibrary;     /* eecore-editor with the macro library */
+/* static EditorPtr filetypeDefaults; */ /* eecore-editor with the ft-defaults     */
+/* static EditorPtr filetypeTabs;     */ /* eecore-editor with the ft-default-tabs */
+/* static EditorPtr macroLibrary;     */ /* eecore-editor with the macro library   */
 
-static char pfCmds[25][CMDLINELENGTH+1]; /* the PF key commands */
+/*
+static char pfCmds[25][CMDLINELENGTH+1];      / * the PF key commands        * /
+static int fileCount = 0;                     / * number of open files       * /
+static char searchPattern[CMDLINELENGTH + 1]; / * last search pattern        * /
+static bool searchUp;                         / * was last search upwards ?  * /
+static char *saveMsgPtr;                      / * debugging SUBCOM           * /
+static ScreenPtr saveScreenPtr;               / * debugging SUBCOM           * /
+static t_PGMB *savePGMB_loc;                  / * debugging SUBCOM           * /
+static long versionCount;                     / * debugging SUBCOM           * /
+*/
 
-static int fileCount = 0; /* number of open files */
 
-static char searchPattern[CMDLINELENGTH + 1]; /* last search pattern */
-static bool searchUp;                         /* was last search upwards ? */
 
-static ScreenPtr saveScreenPtr;               /* debugging SUBCOM */
-static t_PGMB *savePGMB_loc;               /* debugging SUBCOM */
-static long versionCount;                     /* debugging SUBCOM */
 
 /*
 ** ****** utilities ******
@@ -117,13 +127,15 @@ typedef int (*CmdSqmetImpl)(ScreenPtr scr, char sqmet, char *params, char *msg);
 /* we are called from SC@ENTRY : see EESUBCOM ASSEMBLE */
 
 extern int sc_hndlr()  {
-  /* return ++versionCount; */
   char dummy_msg[4096];
   char command_line[256];
   dummy_msg[0] = '\0';
   command_line[0] = '\0';
-  t_PGMB *PGMB_loc = CMSGetPG();  /* does not work - why ? */
-  PGMB_loc = savePGMB_loc;
+  t_PGMB *PGMB_loc = CMSGetPG();  /* did not work - why ? needs R13 set correctly */
+  /* PGMB_loc = savePGMB_loc; */              /* chicken or egg - which was first ? */
+
+  /* return ++versionCount; */
+  ++(PGMB_loc->versionCount);
 
   unsigned long *p_R0 = PGMB_loc->GPR_SUBCOM[0];
   unsigned char *q1 = *++p_R0;
@@ -136,7 +148,8 @@ extern int sc_hndlr()  {
   command_line[i] = '\0';
 
 
-  return execCmd(saveScreenPtr, command_line, dummy_msg, false) ;
+/* return execCmd(saveScreenPtr, command_line, dummy_msg, false) ; */
+  return execCmd(PGMB_loc->saveScreenPtr, command_line, PGMB_loc->saveMsgPtr, false) ;
 /*
   sprintf(command_line,"input PGMB_loc = %08x   p_R0 =  %08x    q1 = %08x    q2 = %08x    qq = %d   versionCount = %d  ",
                               PGMB_loc    ,     p_R0     ,      q1      ,    q2       ,   qq      , versionCount    );
@@ -148,7 +161,8 @@ extern int sc_hndlr()  {
 
 
 
-static int CmdSqmetSubcom(ScreenPtr scr, char sqmet, char *params, char *msg) {
+
+extern int Subcom(int mode /* set=1 query=0 delete=-1 */ ) {
   int rc_subcom;
   typedef struct t_subcom_plist {
     char subcom[8]     ;
@@ -159,7 +173,54 @@ static int CmdSqmetSubcom(ScreenPtr scr, char sqmet, char *params, char *msg) {
 
   } t_subcom_plist;
 
-  t_PGMB *PGMB_loc = savePGMB_loc = CMSGetPG();
+  t_PGMB *PGMB_loc = /* savePGMB_loc = */ CMSGetPG();
+  unsigned long R13;
+  __asm__("LR %0,13"    : "=d" (R13));
+  PGMB_loc->cmscrab = R13;
+
+  t_subcom_plist subcom_plist = { "SUBCOM  ", SUBCOM_name_8,0 ,&sc_entry, PGMB_loc } ;
+  t_subcom_plist eplist_dummy ;
+
+  if (mode == SUBCOM_DELETE) {
+        /* SUBCOM delete */
+        subcom_plist.SUBCPSW = subcom_plist.ENTRY_ADDRESS = 0;
+        rc_subcom = __SVC202(&subcom_plist, &eplist_dummy,0);
+  } else if (mode == SUBCOM_SET) {
+        /* SUBCOM Set */
+        subcom_plist.SUBCPSW = 0;
+        subcom_plist.ENTRY_ADDRESS = &sc_entry;
+        rc_subcom = __SVC202(&subcom_plist, &eplist_dummy,0);
+  } else if (mode == SUBCOM_QUERY) {
+        /* SUBCOM query */
+        subcom_plist.SUBCPSW = 0;
+        subcom_plist.ENTRY_ADDRESS = 0xFFffFFff;
+        rc_subcom = __SVC202(&subcom_plist, &eplist_dummy,0);
+        PGMB_loc->sc_block = subcom_plist.SUBCPSW ;
+
+/*
+        sprintf(msg, "SUBCOM: PGMB_loc = %08x     SCBLOCK = %08x    rc = %08x   R13 = %08x   CmdSqmetSubcom",
+            PGMB_loc, PGMB_loc->sc_block, rc_subcom, R13 );
+*/
+  }
+  return rc_subcom;
+}
+
+
+
+static int CmdSqmetSubcom(ScreenPtr scr, char sqmet, char *params, char *msg) {
+  return -1; /* temporarily disabled */
+
+  int rc_subcom;
+  typedef struct t_subcom_plist {
+    char subcom[8]     ;
+    char xedit[8]      ;
+    long SUBCPSW       ;
+    long ENTRY_ADDRESS ;
+    long USER_WORD     ;
+
+  } t_subcom_plist;
+
+  t_PGMB *PGMB_loc = /* savePGMB_loc = */ CMSGetPG();
   unsigned long R13;
   __asm__("LR %0,13"    : "=d" (R13));
   PGMB_loc->cmscrab = R13;
@@ -262,7 +323,8 @@ int ExecCommSet(char *msg, char *var_name, char *value, unsigned long len) {
 
 
 static int CmdSqmetVersion(ScreenPtr scr, char sqmet, char *params, char *msg) {
-  sprintf(msg, "version --- 2024-08-18 03:15 %d --- " VERSION, versionCount);
+  t_PGMB *PGMB_loc = CMSGetPG();
+  sprintf(msg, "version --- 2024-09-05 08:04 %d --- " VERSION, PGMB_loc->versionCount);
   return false;
 }
 
@@ -320,6 +382,7 @@ static void fillFtPattern(char *trg, char *ft) {
 
 static void addFtDefault(char *ft, int lrecl, char recfm, char caseMode,
                          int workLrecl) {
+  t_PGMB *PGMB_loc = CMSGetPG();
   char pattern[10];
   char ftDef[18];
 
@@ -338,21 +401,22 @@ static void addFtDefault(char *ft, int lrecl, char recfm, char caseMode,
   printf("addFtDefault() -> pattern = '%s'\n", pattern);
   printf("addFtDefault() -> ftDef   = '%s'\n", ftDef);*/
 
-  moveToBOF(filetypeDefaults);
-  if (findString(filetypeDefaults, pattern, false, NULL)) {
+  moveToBOF(PGMB_loc->filetypeDefaults);
+  if (findString(PGMB_loc->filetypeDefaults, pattern, false, NULL)) {
     /* filetype already defined */
-    LinePtr line = getCurrentLine(filetypeDefaults);
-    updateLine(filetypeDefaults, line, ftDef, strlen(ftDef));
+    LinePtr line = getCurrentLine(PGMB_loc->filetypeDefaults);
+    updateLine(PGMB_loc->filetypeDefaults, line, ftDef, strlen(ftDef));
     /*printf("addFtDefault() -> definition updated\n");*/
   } else {
     /* new filetype */
-    moveToBOF(filetypeDefaults);
-    insertLine(filetypeDefaults, ftDef);
+    moveToBOF(PGMB_loc->filetypeDefaults);
+    insertLine(PGMB_loc->filetypeDefaults, ftDef);
     /*printf("addFtDefault() -> new definition inserted\n");*/
   }
 }
 
 static void addFtTabs(char *ft, int *tabs) {
+  t_PGMB *PGMB_loc = CMSGetPG();
   char pattern[10];
   char tabsLine[81];
 
@@ -366,15 +430,15 @@ static void addFtTabs(char *ft, int *tabs) {
     sprintf(tabsLineEnd, " %d", tabs[i]+1);
   }
 
-  moveToBOF(filetypeTabs);
-  if (findString(filetypeTabs, pattern, false, NULL)) {
+  moveToBOF(PGMB_loc->filetypeTabs);
+  if (findString(PGMB_loc->filetypeTabs, pattern, false, NULL)) {
     /* filetype already defined */
-    LinePtr line = getCurrentLine(filetypeTabs);
-    updateLine(filetypeTabs, line, tabsLine, strlen(tabsLine));
+    LinePtr line = getCurrentLine(PGMB_loc->filetypeTabs);
+    updateLine(PGMB_loc->filetypeTabs, line, tabsLine, strlen(tabsLine));
   } else {
     /* new filetype */
-    moveToBOF(filetypeTabs);
-    insertLine(filetypeTabs, tabsLine);
+    moveToBOF(PGMB_loc->filetypeTabs);
+    insertLine(PGMB_loc->filetypeTabs, tabsLine);
   }
 }
 
@@ -415,6 +479,7 @@ void openFile(
     int *state, /* 0=OK, 1=FileNotFound, 2=ReadError, 3=OtherError */
     char *msg) {
 
+  t_PGMB *PGMB_loc = CMSGetPG();
   char pattern[10];
   char recfm;
   char caseMode;
@@ -429,11 +494,11 @@ void openFile(
   fillFtPattern(pattern, ft);
   /*printf("openFile() -> pattern = '%s'\n", pattern);*/
 
-  moveToBOF(filetypeDefaults);
-  if (findString(filetypeDefaults, pattern, false, NULL)) {
+  moveToBOF(PGMB_loc->filetypeDefaults);
+  if (findString(PGMB_loc->filetypeDefaults, pattern, false, NULL)) {
     /* filetype defaults found */
     /*printf("openFile() -> filetype defaults found\n");*/
-    LinePtr line = getCurrentLine(filetypeDefaults);
+    LinePtr line = getCurrentLine(PGMB_loc->filetypeDefaults);
     char *txt = line->text;
     tryParseInt(&txt[14], &lrecl);
     tryParseInt(&txt[18], &workLrecl);
@@ -514,9 +579,9 @@ void openFile(
       setCaseMode(ed, false);
       setCaseRespect(ed, true);
     }
-    moveToBOF(filetypeTabs);
-    if (findString(filetypeTabs, pattern, false, NULL)) {
-      LinePtr line = getCurrentLine(filetypeTabs);
+    moveToBOF(PGMB_loc->filetypeTabs);
+    if (findString(PGMB_loc->filetypeTabs, pattern, false, NULL)) {
+      LinePtr line = getCurrentLine(PGMB_loc->filetypeTabs);
       int tabs[MAX_TAB_COUNT];
       int tabCount;
       bool someIgnored = parseTabs(&line->text[10], tabs, &tabCount);
@@ -524,11 +589,12 @@ void openFile(
     }
     moveToBOF(ed);
     switchToEditor(scr, ed);
-    fileCount++;
+    PGMB_loc->fileCount++;
   }
 }
 
 static int closeFile(ScreenPtr scr, char *msg) {
+  t_PGMB *PGMB_loc = CMSGetPG();
   EditorPtr ed = scr->ed;
   if (!ed) { return true; }
 
@@ -538,7 +604,7 @@ static int closeFile(ScreenPtr scr, char *msg) {
     }
   EditorPtr nextEd = getNextEd(ed);
   freeEditor(ed);
-  fileCount--;
+  PGMB_loc->fileCount--;
   if (nextEd == ed) {
     /* the current editor was the last one, so closing also closes EE */
     scr->ed = NULL;
@@ -557,8 +623,9 @@ static int closeFile(ScreenPtr scr, char *msg) {
 }
 
 static int closeAllFiles(ScreenPtr scr, bool saveModified, char *msg) {
+  t_PGMB *PGMB_loc = CMSGetPG();
   EditorPtr ed = scr->ed;
-  while(fileCount > 0) {
+  while(PGMB_loc->fileCount > 0) {
     EditorPtr nextEd = getNextEd(ed);
 
     if (getModified(ed) && saveModified && !isInternalEE(ed)) {
@@ -573,10 +640,10 @@ static int closeAllFiles(ScreenPtr scr, bool saveModified, char *msg) {
 
     if (!isInternalEE(ed)) {
       freeEditor(ed);
-      fileCount--;
+      PGMB_loc->fileCount--;
     } else {
       /* detachEditor(ed); */     /* DEBUG */
-      fileCount--;                /* DEBUG */
+      PGMB_loc->fileCount--;                /* DEBUG */
     }
     ed = nextEd;
   }
@@ -586,7 +653,8 @@ static int closeAllFiles(ScreenPtr scr, bool saveModified, char *msg) {
 }
 
 int _fcount() {
-  return fileCount;
+  t_PGMB *PGMB_loc = CMSGetPG();
+  return PGMB_loc->fileCount;
 }
 
 
@@ -816,6 +884,7 @@ static int CmdQQuit(ScreenPtr scr, char *params, char *msg) {
 }
 
 static int CmdRingPN(ScreenPtr scr, char *params, char *msg, bool backward) {
+  t_PGMB *PGMB_loc = CMSGetPG();
   if (!scr->ed) { return false; }
   EditorPtr ed;
   int count = 1;
@@ -828,7 +897,7 @@ static int CmdRingPN(ScreenPtr scr, char *params, char *msg, bool backward) {
   bool goto_binary   = false;
   bool goto_filtered = false;
 
-  if (fileCount == 1) {
+  if (PGMB_loc->fileCount == 1) {
     strcpy(msg, "1 file in ring");
   } else {
     if (!getToken(params, ' ')) {
@@ -865,12 +934,12 @@ static int CmdRingPN(ScreenPtr scr, char *params, char *msg, bool backward) {
         sprintf(msg, "Ring index is not numeric: %s", params);
         return _rc_error;
       }
-      if ((count < 1) || (count >= fileCount)) {
-        sprintf(msg, "Ring index number must be 1 .. %d",fileCount-1);
+      if ((count < 1) || (count >= PGMB_loc->fileCount)) {
+        sprintf(msg, "Ring index number must be 1 .. %d",PGMB_loc->fileCount-1);
         return _rc_error;
       }
     }
-    if (goto_filtered) { count = fileCount; }
+    if (goto_filtered) { count = PGMB_loc->fileCount; }
     for (i = 1; i <= count; i++)
     {
       if (backward) { switchToEditor(scr, ed = getPrevEd(scr->ed)); }
@@ -1245,6 +1314,7 @@ static int CmdAll(ScreenPtr scr, char *params, char *msg) {
 
 static int CmdLocate(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
+  t_PGMB *PGMB_loc = CMSGetPG();
   EditorPtr ed = scr->ed;
   LinePtr oldCurrentLine = getCurrentLine(ed);
 
@@ -1288,7 +1358,7 @@ static int CmdLocate(ScreenPtr scr, char *params, char *msg) {
       strcpy(tmpSearchPattern, buffer);
       /* printf("--> PATTERN '%s'\n", buffer); */
       if (!findString(ed, buffer, false, NULL)) {
-        sprintf(msg, "Pattern \"%s\" not found (downwards)", buffer);
+        sprintf(msg, "%s\nPattern \"%s\" not found (downwards)", msg, buffer);
         moveToLine(ed, oldCurrentLine);
         rc = _rc_not_found;
         break;
@@ -1299,7 +1369,7 @@ static int CmdLocate(ScreenPtr scr, char *params, char *msg) {
       strcpy(tmpSearchPattern, buffer);
       /* printf("--> PATTERN_UP '%s'\n", buffer); */
       if (!findString(ed, buffer, true, NULL)) {
-        sprintf(msg, "Pattern \"%s\" not found (upwards)", buffer);
+        sprintf(msg, "%s\nPattern \"%s\" not found (upwards)", msg, buffer);
         moveToLine(ed, oldCurrentLine);
         rc = _rc_not_found;
         break;
@@ -1317,10 +1387,10 @@ static int CmdLocate(ScreenPtr scr, char *params, char *msg) {
   }
 
   if (patternCount == 1 && othersCount == 0) {
-    searchUp = tmpSearchUp;
-    strcpy(searchPattern, tmpSearchPattern);
+    PGMB_loc->searchUp = tmpSearchUp;
+    strcpy(PGMB_loc->searchPattern, tmpSearchPattern);
   } else {
-    searchPattern[0] = '\0';
+    PGMB_loc->searchPattern[0] = '\0';
   }
 
   return rc;
@@ -1328,17 +1398,18 @@ static int CmdLocate(ScreenPtr scr, char *params, char *msg) {
 
 static int CmdSearchNext(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
+  t_PGMB *PGMB_loc = CMSGetPG();
   EditorPtr ed = scr->ed;
-  if (!*searchPattern) {
+  if (!*PGMB_loc->searchPattern) {
     sprintf(msg, "No current search pattern");
   } else {
     LinePtr oldCurrentLine = getCurrentLine(ed);
-    if (!findString(ed, searchPattern, searchUp, NULL)) {
+    if (!findString(ed, PGMB_loc->searchPattern, PGMB_loc->searchUp, NULL)) {
       sprintf(msg,
-        (searchUp)
+        (PGMB_loc->searchUp)
            ? "Pattern \"%s\" not found (upwards)"
            : "Pattern \"%s\" not found (downwards)",
-        searchPattern);
+        PGMB_loc->searchPattern);
       moveToLine(ed, oldCurrentLine);
       return _rc_not_found;
     }
@@ -1349,7 +1420,8 @@ static int CmdSearchNext(ScreenPtr scr, char *params, char *msg) {
 
 static int CmdReverseSearchNext(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return _rc_failure; }
-  searchUp = !searchUp;
+  t_PGMB *PGMB_loc = CMSGetPG();
+  PGMB_loc->searchUp = !PGMB_loc->searchUp;
   return CmdSearchNext(scr, params, msg);
 }
 
@@ -2073,12 +2145,14 @@ static CmdDef allowedCmsCommands[] = {
 
 static int CmdCms(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
+  t_PGMB *PGMB_loc = CMSGetPG();
   if (!params || !*params) {
     int rc = CMScommand("SUBSET", CMS_CONSOLE);
     return false;
   }
 
-  if (!findCommand(
+  /* no restrictions if EE is loaded in high memory */
+  if ((&LoadPoint == 0x020000) && !findCommand(
          params,
          allowedCmsCommands,
          sizeof(allowedCmsCommands) / sizeof(CmdDef))) {
@@ -2092,8 +2166,9 @@ static int CmdCms(ScreenPtr scr, char *params, char *msg) {
   /* CMS EXEC ? prepare for SC@ENTRY : see EESUBCOM ASSEMBLE */
   unsigned long R13;
   __asm__("LR %0,13"    : "=d" (R13));
-  savePGMB_loc->cmscrab = R13;
-/* preliminary */  saveScreenPtr = scr;
+  PGMB_loc->cmscrab = R13;
+/* preliminary */  PGMB_loc->saveScreenPtr = scr;
+/* preliminary */  PGMB_loc->saveMsgPtr    = msg;
 
   int rc = CMScommand(params, CMS_CONSOLE);
   int stacked = CMSstackQuery();
@@ -3098,12 +3173,14 @@ static int CmdSqmetCURLine(ScreenPtr scr, char sqmet, char *params, char *msg) {
 static int CmdSqmetCase(ScreenPtr scr, char sqmet, char *params, char *msg) {
   char case_um = '?';
   char case_ir = '?';
+  char buffer[4096] = "\0";
 
  if (sqmet == 'S') {
   params =  getCmdParam(params);   /* skip 'CASE' */
   char whatTokenLen = getToken(params, ' ');
   if (whatTokenLen == 0) {
-    strcpy(msg, "Missing operand for SET CASE: 'Upper' or 'Mixed' expected");
+    strcpy(buffer, "\nMissing operand for SET CASE: 'Upper' or 'Mixed' expected\n\0");
+    strcat(msg, buffer);
     return false;
   }
   if (isAbbrev(params, "Upper")) {
@@ -3117,7 +3194,8 @@ static int CmdSqmetCase(ScreenPtr scr, char sqmet, char *params, char *msg) {
     case_um = 'M';
     case_ir = 'R';
   } else {
-    strcpy(msg, "Invalid operand for SET CASE: 'Upper' or 'Mixed' expected");
+    strcpy(buffer, "\nInvalid operand for SET CASE: 'Upper' or 'Mixed' expected\n\0");
+    strcat(msg, buffer);
     return false;
   }
 
@@ -3130,7 +3208,8 @@ static int CmdSqmetCase(ScreenPtr scr, char sqmet, char *params, char *msg) {
   } else if (isAbbrev(params, "Respect")) {
     case_ir = 'R';
   } else {
-    strcpy(msg, "Invalid operand for SET CASE: 'Ignore' or 'Respect' expected");
+    strcpy(buffer, "\nInvalid operand for SET CASE: 'Ignore' or 'Respect' expected\n\0");
+    strcat(msg, buffer);
     return false;
   }
 
@@ -3138,7 +3217,8 @@ static int CmdSqmetCase(ScreenPtr scr, char sqmet, char *params, char *msg) {
   params =  getCmdParam(params);   /* skip 'Respect/Ignore' */
   whatTokenLen = getToken(params, ' ');
   if (whatTokenLen != 0) {
-    sprintf(msg, "KEDIT compatibility not implemented, too many operands for SET CASE: %s", params);
+    sprintf(buffer, "\nKEDIT compatibility not implemented, too many operands for SET CASE: %s\n\0", params);
+    strcat(msg, buffer);
     return false;
   }
 
@@ -3157,21 +3237,30 @@ static int CmdSqmetCase(ScreenPtr scr, char sqmet, char *params, char *msg) {
   if (edGcase(scr->ed))  { case_um = 'U'; }  else { case_um = 'M'; }
   if (edGcasR(scr->ed))  { case_ir = 'R'; }  else { case_ir = 'I'; }
 
-    if (sqmet == 'Q') sprintf(msg, "CASE %c %c", case_um, case_ir);
-    if (sqmet == 'T') sprintf(msg, "&STACK FIFO SET CASE %c %c", case_um, case_ir);
+    if (sqmet == 'Q') {
+      sprintf(buffer, "\nCASE %c %c\n\0", case_um, case_ir);
+      strcat (msg, buffer);
+    }
+
+
+    if (sqmet == 'T') {
+      sprintf(buffer, "%c %c", case_um, case_ir);
+      CMSstackLine(buffer, CMS_STACKLIFO);
+    }
+
     if (sqmet == 'M') {
-       sprintf(msg, "SET CASE %c %c", case_um, case_ir);
-       scr->cmdLinePrefill = msg;
-       /* sprintf(msg, ""); */
+       sprintf(buffer, "SET CASE %c %c", case_um, case_ir);
+       scr->cmdLinePrefill = buffer;
+       /* sprintf(buffer, ""); */
     }
 
     if (sqmet == 'E') {
       /*
-      strcpy(msg, "case.0 = 2");
-      if (case_um == 'U') sprintf(msg, "%s\ncase.1 = UPPER", msg)    ;
-      if (case_um == 'M') sprintf(msg, "%s\ncase.1 = MIXED", msg)    ;
-      if (case_ir == 'I') sprintf(msg, "%s\ncase.2 = IGNORE", msg)   ;
-      if (case_ir == 'R') sprintf(msg, "%s\ncase.2 = RESPECT", msg)  ;
+      strcpy(buffer, "case.0 = 2");
+      if (case_um == 'U') sprintf(buffer, "%s\ncase.1 = UPPER", buffer)    ;
+      if (case_um == 'M') sprintf(buffer, "%s\ncase.1 = MIXED", buffer)    ;
+      if (case_ir == 'I') sprintf(buffer, "%s\ncase.2 = IGNORE", buffer)   ;
+      if (case_ir == 'R') sprintf(buffer, "%s\ncase.2 = RESPECT", buffer)  ;
       */
 
       int rc = ExecCommSet(msg,"CASE.0","2", 0); /* the string "2", not the single char '2' */
@@ -3183,7 +3272,7 @@ static int CmdSqmetCase(ScreenPtr scr, char sqmet, char *params, char *msg) {
       return rc;
     } /* if (sqmet == 'E') */
     return _rc_success;
-}
+} /* int CmdSqmetCase */
 
 
 static int CmdSqmetNYI(ScreenPtr scr, char sqmet, char *params, char *msg) {
@@ -3442,6 +3531,31 @@ static int CmdCmsg(ScreenPtr scr, char *params, char *msg) {
   return _rc_success;
 }
 
+static int CmdMsg(ScreenPtr scr, char *params, char *msg) {
+/*
+  char c = *msg;
+  int  i = c;
+*/
+  char buffer[4096];
+
+  sprintf(buffer, "\n%s\n\0", params);
+  strcat(msg, buffer);
+/*
+  if (c != 255) { / * *msg not empty, then append * /
+    sprintf(buffer, "%d ",i);
+    strcat(buffer, msg);
+    strcat(buffer, "\n");
+    strcat(buffer, params);
+    strcat(buffer, "\n");
+    strcpy(msg, buffer);
+  } else {
+    strcpy(buffer, params);
+    strcpy(msg, buffer);
+  }
+*/
+  return _rc_success;
+}
+
 static int CmdSqmetDispatch(ScreenPtr scr, char sqmet, char *params, char *msg) {
 
   MySqmetDef *sqmetDef = (MySqmetDef*)fndsqmet(
@@ -3517,6 +3631,7 @@ static int CmdQuery(ScreenPtr scr, char *params, char *msg) {
 }
 
 static int CmdRingList(ScreenPtr scr, char *params, char *msg) {
+  t_PGMB *PGMB_loc = CMSGetPG();
   bool show_all      = false;
   bool show_hidden   = false;
   bool show_unhidden = true;
@@ -3586,7 +3701,7 @@ static int CmdRingList(ScreenPtr scr, char *params, char *msg) {
 
   /* checkNoParams(params, msg); */
   sprintf(currMarker, "====>");
-  sprintf(msg, "%s%5d FileName FileType FM Format   Size  Line Col         %d file(s) in ring ", msg, fileCount, fileCount);
+  sprintf(msg, "%s%5d FileName FileType FM Format   Size  Line Col         %d file(s) in ring ", msg, PGMB_loc->fileCount, PGMB_loc->fileCount);
   while(true) {
     getFnFtFm(ed, fn, ft, fm);
     getLineInfo(ed, &lineCount, &currLineNo);
@@ -3762,6 +3877,7 @@ static MyCmdDef eeCmds[] = {
 #endif
   {"MODify"                  , &CmdModify                           },
   {"MOVEHere"                , &CmdMoveHere                         },
+  {"MSG"                     , &CmdMsg                              },
 /*{"MSGLine"                 , &CmdImpSet                           },*/
   {"MSGLines"                , &CmdMsglines                         },
   {"MSGMode"                 , &CmdImpSet                           },
@@ -3885,55 +4001,59 @@ extern EditorPtr mkEdFil(
   mkEdFil(prevEd, fn, ft, fm, defLrecl, defRecfm, state, msg)
 */
 EditorPtr initCmds() {
+  t_PGMB *PGMB_loc = CMSGetPG();
   char *_dummy_msg[4096];
   int  _dummy_state;
-  memset(pfCmds, '\0', sizeof(pfCmds));
+  memset(PGMB_loc->pfCmds, '\0', sizeof(PGMB_loc->pfCmds));
 
-  commandHistory   = createEditorForFile(NULL,                        "HISTORY ", "EE$INTRN", "A0", CMDLINELENGTH + 2, 'V', &_dummy_state, _dummy_msg);
-  fileCount++;
-  filetypeDefaults = createEditorForFile(getPrevEd(commandHistory),   "DEFAULTS", "EE$INTRN", "A0", 24,                'F', &_dummy_state, _dummy_msg);
-  fileCount++;
-  filetypeTabs     = createEditorForFile(getPrevEd(filetypeDefaults), "TABS    ", "EE$INTRN", "A0", 80,                'F', &_dummy_state, _dummy_msg);
-  fileCount++;
-  macroLibrary     = createEditorForFile(getPrevEd(filetypeTabs),     "MACROS  ", "EE$INTRN", "A0", 255,               'V', &_dummy_state, _dummy_msg);
-  fileCount++;
+  PGMB_loc->commandHistory   = createEditorForFile(NULL,                        "HISTORY ", "EE$INTRN", "A0", CMDLINELENGTH + 2, 'V', &_dummy_state, _dummy_msg);
+  PGMB_loc->fileCount++;
+  PGMB_loc->filetypeDefaults = createEditorForFile(getPrevEd(PGMB_loc->commandHistory),   "DEFAULTS", "EE$INTRN", "A0", 24,                'F', &_dummy_state, _dummy_msg);
+  PGMB_loc->fileCount++;
+  PGMB_loc->filetypeTabs     = createEditorForFile(getPrevEd(PGMB_loc->filetypeDefaults), "TABS    ", "EE$INTRN", "A0", 80,                'F', &_dummy_state, _dummy_msg);
+  PGMB_loc->fileCount++;
+  PGMB_loc->macroLibrary     = createEditorForFile(getPrevEd(PGMB_loc->filetypeTabs),     "MACROS  ", "EE$INTRN", "A0", 255,               'V', &_dummy_state, _dummy_msg);
+  PGMB_loc->fileCount++;
 
-  setIsHidden(commandHistory  );
-  setIsHidden(filetypeDefaults);
-  setIsHidden(filetypeTabs    );
-  setIsHidden(macroLibrary    );
+  setIsHidden(PGMB_loc->commandHistory  );
+  setIsHidden(PGMB_loc->filetypeDefaults);
+  setIsHidden(PGMB_loc->filetypeTabs    );
+  setIsHidden(PGMB_loc->macroLibrary    );
 
 /*
-  commandHistory = createEditor(NULL, CMDLINELENGTH + 2, 'V');
-  filetypeDefaults = createEditor(NULL, 24, 'F');
-  filetypeTabs = createEditor(NULL, 80, 'F');
+  PGMB_loc->commandHistory = createEditor(NULL, CMDLINELENGTH + 2, 'V');
+  PGMB_loc->filetypeDefaults = createEditor(NULL, 24, 'F');
+  PGMB_loc->filetypeTabs = createEditor(NULL, 80, 'F');
 */
 
-  searchPattern[0] = '\0';
-  searchUp = false;
-  return macroLibrary;
+  PGMB_loc->searchPattern[0] = '\0';
+  PGMB_loc->searchUp = false;
+  return PGMB_loc->macroLibrary;
 
 }
 
 
 bool isInternalEE(EditorPtr ed) {
-  if (ed == commandHistory    ) return true;
-  if (ed == filetypeDefaults  ) return true;
-  if (ed == filetypeTabs      ) return true;
-  if (ed == macroLibrary      ) return true;
+  t_PGMB *PGMB_loc = CMSGetPG();
+  if (ed == PGMB_loc->commandHistory    ) return true;
+  if (ed == PGMB_loc->filetypeDefaults  ) return true;
+  if (ed == PGMB_loc->filetypeTabs      ) return true;
+  if (ed == PGMB_loc->macroLibrary      ) return true;
   return false;
 }
 
 void deinCmds() {
-  freeEditor(commandHistory);
-  freeEditor(filetypeDefaults);
-  freeEditor(filetypeTabs);
-  freeEditor(macroLibrary);
+  t_PGMB *PGMB_loc = CMSGetPG();
+  freeEditor(PGMB_loc->commandHistory);
+  freeEditor(PGMB_loc->filetypeDefaults);
+  freeEditor(PGMB_loc->filetypeTabs);
+  freeEditor(PGMB_loc->macroLibrary);
 }
 
 void setPF(int pfNo, char *cmdline) {
   if (pfNo < 1 || pfNo > 24) { return; }
-  char *pfCmd = pfCmds[pfNo];
+  t_PGMB *PGMB_loc = CMSGetPG();
+  char *pfCmd = PGMB_loc->pfCmds[pfNo];
   memset(pfCmd, '\0', CMDLINELENGTH+1);
   if (cmdline && *cmdline) {
     strncpy(pfCmd, cmdline, CMDLINELENGTH);
@@ -3945,35 +4065,40 @@ extern int execCmd(
     char *cmd,
     char *msg,
     bool addToHistory) {
+
+  /* char buffer[4096] = "\0"; */
+  t_PGMB *PGMB_loc = CMSGetPG();
+
   if (!cmd) { cmd = scr->cmdLine; }
   while(*cmd == ' ') { cmd++; }
   if (!*cmd) { return false; }
 
-/* preliminary */  saveScreenPtr = scr;
+/* preliminary */  PGMB_loc->saveScreenPtr = scr;
+/* preliminary */  PGMB_loc->saveMsgPtr    = msg;
 
   while (addToHistory) {
-    moveToBOF(commandHistory);
-    int i = getLineCount(commandHistory);
+    moveToBOF(PGMB_loc->commandHistory);
+    int i = getLineCount(PGMB_loc->commandHistory);
     int scanLines = (i < CMD_HISTORY_DUPE_CHECK)
                    ? i : CMD_HISTORY_DUPE_CHECK;
 
     for (i = 1; i <= scanLines; i++) {
-      LinePtr dupCmd = moveDown(commandHistory,1);
+      LinePtr dupCmd = moveDown(PGMB_loc->commandHistory,1);
       if (!strcmp(cmd, dupCmd->text)) {
-        deleteLine(commandHistory, dupCmd);
+        deleteLine(PGMB_loc->commandHistory, dupCmd);
         break; /* we do not expect more than one duplicate */
       }
     }
 
-    moveToBOF(commandHistory);
-    insertLine(commandHistory, cmd);
-    if (getLineCount(commandHistory) > CMD_HISTORY_LEN) {
-      LinePtr oldestCmd = moveToLastLine(commandHistory);
-      deleteLine(commandHistory, oldestCmd);
+    moveToBOF(PGMB_loc->commandHistory);
+    insertLine(PGMB_loc->commandHistory, cmd);
+    if (getLineCount(PGMB_loc->commandHistory) > CMD_HISTORY_LEN) {
+      LinePtr oldestCmd = moveToLastLine(PGMB_loc->commandHistory);
+      deleteLine(PGMB_loc->commandHistory, oldestCmd);
     }
     break;
   }
-  moveToBOF(commandHistory);
+  moveToBOF(PGMB_loc->commandHistory);
 
   /* check if we shall search for macros first : XEDIT - SET MACRO ON */
 
@@ -4001,8 +4126,9 @@ extern int execCmd(
     unsigned long R13;
     sprintf(cmsexeccmd,"EXEC EE$MACRO %s",cmd);
     __asm__("LR %0,13"    : "=d" (R13));
-    savePGMB_loc->cmscrab = R13;
-    /* preliminary */  saveScreenPtr = scr;
+    PGMB_loc->cmscrab = R13;
+    /* preliminary */  PGMB_loc->saveScreenPtr = scr;
+    /* preliminary */  PGMB_loc->saveMsgPtr    = msg;
     int rc = CMScommand(cmsexeccmd, CMS_CONSOLE);
     if (rc != -3) {
       if (rc != 0) {
@@ -4015,7 +4141,8 @@ extern int execCmd(
     return -3;
   }
 
-  msg = &msg[strlen(msg)];
+  /* msg = &msg[strlen(msg)]; */      /* why ??????? */
+
   CmdImpl impl = cmdDef->impl;
   char *params = cmd;
   char *cmdName = cmdDef->commandName;
@@ -4036,7 +4163,7 @@ extern int execCmd(
   } _endtry;
 
   if (rc != 0) {
-    if (!*msg) strcpy(msg, "Non-zero return code issued");
+    if (!*msg) strcat(msg, "\nNon-zero return code issued");
     sprintf(msg,"%s\n(RC=%d)", msg, rc);
   }
   return rc;
@@ -4045,30 +4172,32 @@ extern int execCmd(
 char* gPfCmd(char aidCode) {
   int idx = aidPfIndex(aidCode);
   if (idx < 1 || idx > 24) { return NULL; }
-  return pfCmds[idx];
+  t_PGMB *PGMB_loc = CMSGetPG();
+  return PGMB_loc->pfCmds[idx];
 }
 
 int tryExPf(ScreenPtr scr, char aidCode, char *msg) {
+  t_PGMB *PGMB_loc = CMSGetPG();
   int idx = aidPfIndex(aidCode);
   if (idx < 1 || idx > 24) { return false; }
-  char *pfCmd = pfCmds[idx];
+  char *pfCmd = PGMB_loc->pfCmds[idx];
   if ( (sncmp(pfCmd, "RECALL")   == 0) || (sncmp(pfCmd, "RECALL-")   == 0) ||
        (sncmp(pfCmd, "RETRIEVE") == 0) || (sncmp(pfCmd, "RETRIEVE-") == 0) ||
        (sncmp(pfCmd, "?")        == 0) || (sncmp(pfCmd, "?-")        == 0) ) {
-    LinePtr currCmd = getCurrentLine(commandHistory);
-    LinePtr nextCmd = moveDown(commandHistory, 1);
-    if (currCmd == nextCmd) { moveToBOF(commandHistory); }
+    LinePtr currCmd = getCurrentLine(PGMB_loc->commandHistory);
+    LinePtr nextCmd = moveDown(PGMB_loc->commandHistory, 1);
+    if (currCmd == nextCmd) { moveToBOF(PGMB_loc->commandHistory); }
     return false;
   } else if ( (sncmp(pfCmd, "RECALL+")   == 0) ||
               (sncmp(pfCmd, "RETRIEVE+") == 0) ||
               (sncmp(pfCmd, "?+")        == 0) ) {
-    LinePtr currCmd = getCurrentLine(commandHistory);
-    LinePtr prevCmd = moveUp(commandHistory, 1);
-    if (currCmd == prevCmd) { moveToBOF(commandHistory); }
+    LinePtr currCmd = getCurrentLine(PGMB_loc->commandHistory);
+    LinePtr prevCmd = moveUp(PGMB_loc->commandHistory, 1);
+    if (currCmd == prevCmd) { moveToBOF(PGMB_loc->commandHistory); }
     return false;
   } else if ( (sncmp(pfCmd, "RECALL=") == 0) || (sncmp(pfCmd, "RETRIEVE=") == 0) ||
               (sncmp(pfCmd, "CLRCMD")  == 0) || (sncmp(pfCmd, "?=")        == 0) ) {
-    moveToBOF(commandHistory);
+    moveToBOF(PGMB_loc->commandHistory);
     return false;
   } else if (*pfCmd) {
     return execCommand(scr, pfCmd, msg, false);
@@ -4077,13 +4206,15 @@ int tryExPf(ScreenPtr scr, char aidCode, char *msg) {
 }
 
 char* grccmd() {
-  LinePtr recalledCommand = getCurrentLine(commandHistory);
+  t_PGMB *PGMB_loc = CMSGetPG();
+  LinePtr recalledCommand = getCurrentLine(PGMB_loc->commandHistory);
   if (!recalledCommand) { return NULL; }
   return recalledCommand->text;
 }
 
 void unrHist() {
-  moveToBOF(commandHistory);
+  t_PGMB *PGMB_loc = CMSGetPG();
+  moveToBOF(PGMB_loc->commandHistory);
 }
 
 static int handleProfileLine(void *userdata, char *cmdline, char *msg) {

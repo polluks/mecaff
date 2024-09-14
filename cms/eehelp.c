@@ -20,20 +20,25 @@
 #include "glblpre.h"
 
 #include <stdio.h>
+#include <cmssys.h>
 #include <string.h>
 
 #include "eecore.h"
 #include "eeutil.h"
 #include "eescrn.h"
 #include "eemain.h"
+#include "ee_pgm.h"   /* Process Global Memory */
 
 #include "glblpost.h"
 
+/*
 static const char *headTemplate = "Help for %s\t\tFSHELP " VERSION;
 
 static const char* ExtraAllowed = "@#$+-_";
+*/
 
 static bool getWordUnderCursor(ScreenPtr scr, char *buffer, int maxLen) {
+  t_PGMB *PGMB_loc = CMSGetPG();
   if (scr->cElemType != 2) { return false; }
 
   bool result = false;
@@ -49,11 +54,11 @@ static bool getWordUnderCursor(ScreenPtr scr, char *buffer, int maxLen) {
   char *p = &line->text[pos];
 
   if (pos < 0 || pos >= lineLen) { return false; }
-  if (!(c_isalnum(*p) || strchr(ExtraAllowed, *p)) || *p == '\0') {
+  if (!(c_isalnum(*p) || strchr(PGMB_loc->ExtraAllowed, *p)) || *p == '\0') {
     return false;
   }
 
-  while(pos > 0 && (c_isalnum(*p) || strchr(ExtraAllowed, *p))) {
+  while(pos > 0 && (c_isalnum(*p) || strchr(PGMB_loc->ExtraAllowed, *p))) {
     p--;
     pos--;
   }
@@ -65,7 +70,7 @@ static bool getWordUnderCursor(ScreenPtr scr, char *buffer, int maxLen) {
 
   char *wordStart = p;
   int wordLen = 0;
-  while(pos < lineLen && (c_isalnum(*p) || strchr(ExtraAllowed, *p))) {
+  while(pos < lineLen && (c_isalnum(*p) || strchr(PGMB_loc->ExtraAllowed, *p))) {
     p++;
     pos++;
     wordLen++;
@@ -228,10 +233,11 @@ void initHlpPFKeys() {
     _hlpish(scr, topic, helptype)
 
 int _hlpish(ScreenPtr scr, char *topic, char *helptype) {
+    t_PGMB *PGMB_loc = CMSGetPG();
     char *msg = scr->msgText;
     char headline[80];
     s_upper(topic, topic);
-    sprintf(headline, headTemplate, topic);
+    sprintf(headline, PGMB_loc->headTemplate, topic);
     scr->headLine = headline;
 
     scr->footLine = fshelp_footline;
@@ -276,7 +282,7 @@ int _hlpish(ScreenPtr scr, char *topic, char *helptype) {
             if (candEd != NULL) {
               char fn[9];
               getFn(candEd, fn);
-              sprintf(headline, headTemplate, fn);
+              sprintf(headline, PGMB_loc->headTemplate, fn);
               scr->ed = candEd;
             } else {
               sprintf(msg, "No help found for '%s'", param);
@@ -313,7 +319,7 @@ int _hlpish(ScreenPtr scr, char *topic, char *helptype) {
           if (scr->ed) {
             char fn[9];
             getFn(scr->ed, fn);
-            sprintf(headline, headTemplate, fn);
+            sprintf(headline, PGMB_loc->headTemplate, fn);
           } else {
             break; /* closed the last topic, so don't rewrite the screen ... */
           }
@@ -329,7 +335,7 @@ int _hlpish(ScreenPtr scr, char *topic, char *helptype) {
             if (candEd != NULL) {
               char fn[9];
               getFn(candEd, fn);
-              sprintf(headline, headTemplate, fn);
+              sprintf(headline, PGMB_loc->headTemplate, fn);
               scr->ed = candEd;
             } else {
               sprintf(msg, "No help found for '%s'", cand);

@@ -19,6 +19,7 @@
 #include "glblpre.h"
 
 #include <stdio.h>
+#include <cmssys.h>
 #include <string.h>
 
 #include "errhndlg.h"
@@ -27,28 +28,31 @@
 #include "eeutil.h"
 #include "eescrn.h"
 #include "eemain.h"
+#include "ee_pgm.h"   /* Process Global Memory */
 
 #include "glblpost.h"
 
 /* set the filename for error messages from memory protection in EEUTIL */
 static const char *_FILE_NAME_ = "eeprefix.c";
 
-/* the single char prefix commands */
+/*
+/ * the single char prefix commands * /
 static const char *SingleCharPrefixes = "ID/\"*<>@";
 
-/* the structure holding blockmode operation data between screen roundtrips */
+/ * the structure holding blockmode operation data between screen roundtrips * /
 typedef struct _blockops {
   EditorPtr srcEd;
   LinePtr blockPos1;
   LinePtr blockPos2;
-  short blockEndsAvail; /* will be 2 if single line ops M / C were given */
-  char op; /* m , c , M , C , D , " , < , > , / (with: / for no op) */
+  short blockEndsAvail; / * will be 2 if single line ops M / C were given * /
+  char op; / * m , c , M , C , D , " , < , > , / (with: / for no op) * /
   int shiftBy;
   int shiftMode;
 } BlockOps, *BlockOpsPtr;
 
 static BlockOps blockOpsData;
 static BlockOpsPtr blockOps = NULL;
+*/
 
 static void resetPrefixMarks(ScreenPtr scr) {
   scr->prefixMarks[0].forLine = NULL;
@@ -58,13 +62,15 @@ static void resetPrefixMarks(ScreenPtr scr) {
 }
 
 static void resetBlockOps() {
-  blockOps = &blockOpsData;
-  memset(blockOps, '\0', sizeof(*blockOps));
-  blockOps->op = '/';
-  blockOps->shiftMode = SHIFTMODE_IFALL;
+  t_PGMB *PGMB_loc = CMSGetPG();
+  PGMB_loc->blockOps = &PGMB_loc->blockOpsData;
+  memset(PGMB_loc->blockOps, '\0', sizeof(*PGMB_loc->blockOps));
+  PGMB_loc->blockOps->op = '/';
+  PGMB_loc->blockOps->shiftMode = SHIFTMODE_IFALL;
 }
 
 static bool mayProcessPrefixes(ScreenPtr scr) {
+  t_PGMB *PGMB_loc = CMSGetPG();
   char *cmd = NULL;
 
   if (scr->aidCode == Aid_Enter && *scr->cmdLine) {
@@ -76,7 +82,7 @@ static bool mayProcessPrefixes(ScreenPtr scr) {
   while(*cmd == ' ') { cmd++; }
   if (isAbbrev(cmd, "RESet")
       || ((isAbbrev(cmd, "Quit") || isAbbrev(cmd, "QQuit"))
-          && (blockOps->op != '/' || scr->cmdPrefixesAvail > 0))) {
+          && (PGMB_loc->blockOps->op != '/' || scr->cmdPrefixesAvail > 0))) {
     resetPrefixMarks(scr);
     resetBlockOps();
     scr->cmdPrefixesAvail = 0;
@@ -90,6 +96,7 @@ static bool mayProcessPrefixes(ScreenPtr scr) {
 
 /* returns: cursorPlaced? */
 static bool processCurrlinePrefixCmd(ScreenPtr scr, bool cursorPlaced) {
+  t_PGMB *PGMB_loc = CMSGetPG();
   int i;
   for (i = 0; i < scr->cmdPrefixesAvail; i++) {
     PrefixInput *pi = &scr->cmdPrefixes[i];
@@ -300,24 +307,25 @@ static bool processBlockPrefixCmd(
     ScreenPtr scr,
     char *msg,
     bool cursorPlaced) {
+  t_PGMB *PGMB_loc = CMSGetPG();
   *msg = '\0';
 
   bool inconsistent = false;
   int cntTargets = 0;
-  int cntLimits = blockOps->blockEndsAvail;
+  int cntLimits = PGMB_loc->blockOps->blockEndsAvail;
 
-  LinePtr limit1 = blockOps->blockPos1;
-  LinePtr limit2 = blockOps->blockPos2;
-  char op = blockOps->op;
+  LinePtr limit1 = PGMB_loc->blockOps->blockPos1;
+  LinePtr limit2 = PGMB_loc->blockOps->blockPos2;
+  char op = PGMB_loc->blockOps->op;
   int shiftBy
         = (op == '<' || op == '>')
-        ? blockOps->shiftBy
+        ? PGMB_loc->blockOps->shiftBy
         : getShiftBy();
   int shiftMode
         = (op == '<' || op == '>')
-        ? blockOps->shiftMode
+        ? PGMB_loc->blockOps->shiftMode
         : getShiftMode();
-  EditorPtr blockEd = blockOps->srcEd;
+  EditorPtr blockEd = PGMB_loc->blockOps->srcEd;
 
   LinePtr target = NULL;
   char targetMode = '/'; /* or one of: P , F */
@@ -409,9 +417,9 @@ static bool processBlockPrefixCmd(
       targetMode = 'F';
       cntTargets++;
     } else if (   (strlen(prefixU) == 1
-                   && !strchr(SingleCharPrefixes, prefixU[0]))
+                   && !strchr(PGMB_loc->SingleCharPrefixes, prefixU[0]))
                || (strlen(prefixU) > 1
-                   && !(strchr(SingleCharPrefixes, prefixU[0])
+                   && !(strchr(PGMB_loc->SingleCharPrefixes, prefixU[0])
                         && prefixU[1] >= '0'
                         && prefixU[1] <= '9')) ) {
       sprintf(msg,
@@ -569,13 +577,13 @@ static bool processBlockPrefixCmd(
     strcpy(scr->prefixMarks[1].prefixPrefill, pendingOp);
 
     /* remember current partial state for next set of prefix cmds */
-    blockOps->srcEd = ed;
-    blockOps->blockPos1 = limit1;
-    blockOps->blockPos2 = limit2;
-    blockOps->blockEndsAvail = cntLimits;
-    blockOps->op = op;
-    blockOps->shiftBy = shiftBy;
-    blockOps->shiftMode = shiftMode;
+    PGMB_loc->blockOps->srcEd = ed;
+    PGMB_loc->blockOps->blockPos1 = limit1;
+    PGMB_loc->blockOps->blockPos2 = limit2;
+    PGMB_loc->blockOps->blockEndsAvail = cntLimits;
+    PGMB_loc->blockOps->op = op;
+    PGMB_loc->blockOps->shiftBy = shiftBy;
+    PGMB_loc->blockOps->shiftMode = shiftMode;
 
     return cursorPlaced;
   }
@@ -624,8 +632,9 @@ void inBlOps() {
 
 /* returns: cursorPlaced? */
 bool xcPrfxs(ScreenPtr scr, bool cursorPlaced) {
+  t_PGMB *PGMB_loc = CMSGetPG();
   _try {
-    if (blockOps == NULL) { resetBlockOps(); }
+    if (PGMB_loc->blockOps == NULL) { resetBlockOps(); }
     if (mayProcessPrefixes(scr)) {
       cursorPlaced = processSinglePrefixCmds(
                                scr, scr->msgText, cursorPlaced);
@@ -651,31 +660,33 @@ bool xcPrfxs(ScreenPtr scr, bool cursorPlaced) {
 }
 
 static void getPendingOp(char *to) {
+  t_PGMB *PGMB_loc = CMSGetPG();
   char *pendingOp = "??";
-  if (blockOps->op == 'C') { pendingOp = "CC"; }
-  else if (blockOps->op == 'M') { pendingOp = "MM"; }
-  else if (blockOps->op == 'D') { pendingOp = "DD"; }
-  else if (blockOps->op == '>') { pendingOp = ">>"; }
-  else if (blockOps->op == '<') { pendingOp = "<<"; }
-  else if (blockOps->op == '"') { pendingOp = "\"\""; }
-  else if (blockOps->op == 'c') { pendingOp = "C"; }
-  else if (blockOps->op == 'm') { pendingOp = "M"; }
+  if (PGMB_loc->blockOps->op == 'C') { pendingOp = "CC"; }
+  else if (PGMB_loc->blockOps->op == 'M') { pendingOp = "MM"; }
+  else if (PGMB_loc->blockOps->op == 'D') { pendingOp = "DD"; }
+  else if (PGMB_loc->blockOps->op == '>') { pendingOp = ">>"; }
+  else if (PGMB_loc->blockOps->op == '<') { pendingOp = "<<"; }
+  else if (PGMB_loc->blockOps->op == '"') { pendingOp = "\"\""; }
+  else if (PGMB_loc->blockOps->op == 'c') { pendingOp = "C"; }
+  else if (PGMB_loc->blockOps->op == 'm') { pendingOp = "M"; }
   strcpy(to, pendingOp);
 }
 
 void swPrfxs(ScreenPtr scr, EditorPtr newEd) {
-  if (!blockOps->srcEd || !newEd || scr->ed == newEd) { return; }
+  t_PGMB *PGMB_loc = CMSGetPG();
+  if (!PGMB_loc->blockOps->srcEd || !newEd || scr->ed == newEd) { return; }
 
   char pendingOp[4];
   getPendingOp(pendingOp);
 
-  if (blockOps->srcEd == newEd) {
+  if (PGMB_loc->blockOps->srcEd == newEd) {
     /* switching back to the block-originating editor */
-    scr->prefixMarks[0].forLine = blockOps->blockPos1;
+    scr->prefixMarks[0].forLine = PGMB_loc->blockOps->blockPos1;
     strcpy(scr->prefixMarks[0].prefixPrefill, pendingOp);
-    scr->prefixMarks[1].forLine = blockOps->blockPos2;
+    scr->prefixMarks[1].forLine = PGMB_loc->blockOps->blockPos2;
     strcpy(scr->prefixMarks[1].prefixPrefill, pendingOp);
-  } else if (blockOps->blockEndsAvail < 2) {
+  } else if (PGMB_loc->blockOps->blockEndsAvail < 2) {
     /* source block definition not completed -> drop uncomplete information */
     resetBlockOps();
     resetPrefixMarks(scr);
@@ -686,7 +697,8 @@ void swPrfxs(ScreenPtr scr, EditorPtr newEd) {
 }
 
 void addPrMsg(ScreenPtr scr) {
-  if (!blockOps->srcEd || blockOps->blockEndsAvail == 0) { return; }
+  t_PGMB *PGMB_loc = CMSGetPG();
+  if (!PGMB_loc->blockOps->srcEd || PGMB_loc->blockOps->blockEndsAvail == 0) { return; }
 
   char *msg = scr->msgText;
   if (!msg) { return; }
@@ -699,7 +711,7 @@ void addPrMsg(ScreenPtr scr) {
   char pendingOp[4];
   getPendingOp(pendingOp);
 
-  if (blockOps->srcEd == scr->ed) {
+  if (PGMB_loc->blockOps->srcEd == scr->ed) {
     /* selected block belongs to current displayed editor */
     sprintf(msg, "'%s' pending...", pendingOp);
   } else {
@@ -707,7 +719,7 @@ void addPrMsg(ScreenPtr scr) {
     char fn[9];
     char ft[9];
     char fm[3];
-    getFnFtFm(blockOps->srcEd, fn, ft, fm);
+    getFnFtFm(PGMB_loc->blockOps->srcEd, fn, ft, fm);
     sprintf(msg, "'%s' pending (from %s %s %s)...",
       pendingOp, fn, ft, fm);
   }

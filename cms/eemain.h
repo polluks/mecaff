@@ -21,7 +21,7 @@
 #define _EEMAINimported
 
 /* the version information for the tools, displayed in header/footer lines */
-#define VERSION "V1.3.2.0007_240818-0315" /* git branch AGPLv3_WIP */
+#define VERSION "V1.3.2.0009_240914-1129" /* git branch AGPLv3_WIP */
 
 /**************************************************************************************************/
 /* Two functions to help C programs avoid having any non-const static or global                   */
@@ -39,12 +39,15 @@
 /*                                                                                                */
 /**************************************************************************************************/
 
-#define PGMB_size 16384; /* 2**14 */
+/* moved to EE_PGM.H 2024-09-03 1056 */
+/*
+#define PGMB_size 16384; / * 2**14 * /
 typedef struct t_PGMB {
   unsigned long GPR_SUBCOM[16] ;
   unsigned long cmscrab        ;
   unsigned long sc_block       ;
 } t_PGMB;
+*/
 
 /*
 ** -- SUBCOM interface
