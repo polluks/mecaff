@@ -324,7 +324,7 @@ int ExecCommSet(char *msg, char *var_name, char *value, unsigned long len) {
 
 static int CmdSqmetVersion(ScreenPtr scr, char sqmet, char *params, char *msg) {
   t_PGMB *PGMB_loc = CMSGetPG();
-  sprintf(msg, "version --- 2024-09-05 08:04 %d --- " VERSION, PGMB_loc->versionCount);
+  sprintf(msg, "version --- 2024-09-17 21:58 %d --- " VERSION, PGMB_loc->versionCount);
   return false;
 }
 
@@ -602,21 +602,30 @@ static int closeFile(ScreenPtr scr, char *msg) {
       sprintf(msg, "Cannot close internal file HISTORY/DEFAULT/TABS/MACROS");
       return false;
     }
-  EditorPtr nextEd = getNextEd(ed);
+
+/* 2024-09-17-2152 switch to previous file in ring as XEDIT, KEDIT do */
+
+/*EditorPtr nextEd = getNextEd(ed);*/
+  EditorPtr prevEd = getPrevEd(ed);
   freeEditor(ed);
   PGMB_loc->fileCount--;
-  if (nextEd == ed) {
+/*if (nextEd == ed) {*/
+  if (prevEd == ed) {
     /* the current editor was the last one, so closing also closes EE */
     scr->ed = NULL;
     return true;
   }
-  EditorPtr guardEd = nextEd;
+/*EditorPtr guardEd = nextEd;*/
+  EditorPtr guardEd = prevEd;
   while true {
-    switchToEditor(scr, nextEd);
+/*  switchToEditor(scr, nextEd);*/
+    switchToEditor(scr, prevEd);
     ed = scr->ed;
     if (!isInternalEE(ed)) { break; }
-    nextEd = getNextEd(ed);
-    if (nextEd == guardEd) { return closeAllFiles(scr, false, msg); }
+/*  nextEd = getNextEd(ed);*/
+    prevEd = getPrevEd(ed);
+/*  if (nextEd == guardEd) { return closeAllFiles(scr, false, msg); }*/
+    if (prevEd == guardEd) { return closeAllFiles(scr, false, msg); }
   }
 
   return false;

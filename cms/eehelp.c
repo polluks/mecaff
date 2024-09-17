@@ -27,6 +27,7 @@
 #include "eeutil.h"
 #include "eescrn.h"
 #include "eemain.h"
+#include "fsio.h"
 #include "ee_pgm.h"   /* Process Global Memory */
 
 #include "glblpost.h"

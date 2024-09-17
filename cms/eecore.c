@@ -40,6 +40,7 @@
 #include "eescrn.h"
 #include "eemain.h"
 #include "eeutil.h"
+#include "fsio.h"
 #include "ee_pgm.h"   /* Process Global Memory */
 
 #include "glblpost.h"
