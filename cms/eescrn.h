@@ -94,13 +94,13 @@ enum DisplayAttr {
    in field specific comments)
 */
 typedef struct _eescreen_public {
-
+/* yyy_ : migration from global(scr) level to view level */
     /* general directives for screen construction */
-    char prefixMode; /* 0 = off, 1 = left, >1 right */
-    bool prefixNumbered;
-    char prefixChar; /* standard prefix filler, default: = */
-    short prefixLen; /* 1..5, will be forced to this range in _scrio() !! */
-    char fileToPrefixFiller; /* fill char after file line if prefixMode > 1 */
+    char yyy_prefixMode; /* 0 = off, 1 = left, >1 right */
+    bool yyy_prefixNumbered;
+    char yyy_prefixChar; /* standard prefix filler, default: = */
+    short yyy_prefixLen; /* 1..5, will be forced to this range in _scrio() !! */
+    char yyy_fileToPrefixFiller; /* fill char after file line if prefixMode > 1 */
     bool wrapOverflow; /* automatic true if readOnly==false */
     bool showTofBof; /* show "Top of file" / "Bottom of file" ? */
     bool readOnly; /* is the file area readonly? */

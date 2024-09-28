@@ -199,8 +199,10 @@ ScreenPtr _scrmk(char *msgBuffer) {
   ScreenPublPtr pub = SCREENPUBL(screen);
   ScreenPrivPtr priv = SCREENPRIV(screen);
   pub->cmdLinePos = 1;
+/*
   pub->prefixLen = 5;
   pub->prefixChar = '=';
+*/
   pub->fillChar = ' ';
   pub->showTofBof = true;
   if (!PGMB_loc->canColors) {
@@ -283,11 +285,11 @@ static int _scrio_inner(ScreenPtr screen) {
   }
 
   /* compute screen characteristics */
-  pub->prefixLen = maxShort(1,minShort(5,pub->prefixLen));
+  pub->ed->view->prefixLen = maxShort(1,minShort(5,pub->ed->view->prefixLen));
   short lineOverhead
-    = (pub->prefixMode == 0)
+    = (pub->ed->view->prefixMode == 0)
     ? 1 /* field start */
-    : pub->prefixLen + 2; /* prefix + 2xfieldstarts */
+    : pub->ed->view->prefixLen + 2; /* prefix + 2xfieldstarts */
   pub->hShift
     = maxShort(
         0,
@@ -775,7 +777,7 @@ static int _scrio_inner(ScreenPtr screen) {
   pub->cRowAbs = cursorRow;
   pub->cColAbs = cursorCol;
   int lineOffset = scrLinesPerEdLine - 1;
-  int prefixLen = pub->prefixLen;
+  int prefixLen = pub->ed->view->prefixLen;
   if (cursorRow == priv->cmdRow
       && (cursorCol >= priv->cmdCol && cursorCol <= priv->cmdCol + maxCmdLen)) {
       pub->cElemType = 0; /* cmd */
@@ -793,7 +795,7 @@ static int _scrio_inner(ScreenPtr screen) {
       if (cursorRow == li->prefixRow
           && (cursorCol >= li->prefixCol
               && cursorCol < (li->prefixCol + prefixLen))
-          && pub->prefixMode != 0) {
+          && pub->ed->view->prefixMode != 0) {
         pub->cElemType = 1; /* prefix */
         pub->cElem = li->edLine;
         pub->cElemLineNo = li->edLineNo;
@@ -850,7 +852,7 @@ static int _scrio_inner(ScreenPtr screen) {
           }
           li->newTextLength = fldLen;
           break;
-        } else if (pub->prefixMode > 0
+        } else if (pub->ed->view->prefixMode > 0
                    && fldRow == edp->prefixRow && fldCol == edp->prefixCol) {
           /* text in prefix area for an ed line */
           PrefixInput *pi = &pub->cmdPrefixes[pub->cmdPrefixesAvail++];
@@ -1085,7 +1087,7 @@ static void writeScale(ScreenPublPtr scr) {
   t_PGMB *PGMB_loc = CMSGetPG();
   int i;
   int inset
-    = (scr->prefixMode) ? scr->prefixLen + 1 : 0;
+    = (scr->ed->view->prefixMode) ? scr->ed->view->prefixLen + 1 : 0;
   int lrecl = getWorkLrecl(scr->ed);
   int scaleWidth
     = (!scr->readOnly || scr->wrapOverflow)
@@ -1104,7 +1106,7 @@ static void writeScale(ScreenPublPtr scr) {
 
   startField2(scr->attrScaleLine, scr->HiLitScaleLine, true, false);
 
-  if (scr->prefixMode == 1) {
+  if (scr->ed->view->prefixMode == 1) {
     for (i = 0; i < inset; i++) {
       appendChar(' ');
     }
@@ -1170,14 +1172,14 @@ static void writePrefix(
     strncpy(tmp, PGMB_loc->prefixLocked, 5);
     tmp[5] = '\0';
     memcpy(tmp, prefixPrefill, minInt(strlen(prefixPrefill),5));
-  } else if (pub->prefixNumbered) {     /* assume "(SET) PREfix Nulls" */
+  } else if (pub->ed->view->prefixNumbered) {     /* assume "(SET) PREfix Nulls" */
     sprintf(tmp, "%5d", lineNo);        /* was "sprintf(tmp, "%05d", lineNo);" */
   } else {
-    memset(tmp, pub->prefixChar, 5);
+    memset(tmp, pub->ed->view->prefixChar, 5);
     tmp[5] = '\0';
   }
   memset(lineInfo->prefixFill, '\0', sizeof(lineInfo->prefixFill));
-  strncpy(lineInfo->prefixFill, tmp + 5 - pub->prefixLen, pub->prefixLen);
+  strncpy(lineInfo->prefixFill, tmp + 5 - pub->ed->view->prefixLen, pub->ed->view->prefixLen);
   GBA(&lineInfo->prefixRow, &lineInfo->prefixCol);
   if (pub->cursorLine == lineInfo->edLine
       && pub->cursorPlacement == 1
@@ -1194,7 +1196,7 @@ static void writePrefix(
     SBA(
       lineInfo->prefixRow,
       lineInfo->prefixCol
-      + maxInt(minInt(pub->cursorOffset, pub->prefixLen), 0));
+      + maxInt(minInt(pub->cursorOffset, pub->ed->view->prefixLen), 0));
     doIC();
     SBA(tmpRow, tmpCol);
   }
@@ -1224,7 +1226,7 @@ static void writeFileLine(
   if (isExcluded) { attr = pub->attrShadow; HiLit = pub->HiLitShadow; }
 
   /* prefix before file line text ? */
-  if (pub->prefixMode == 1) {
+  if (pub->ed->view->prefixMode == 1) {
     startField2(attr, HiLit, pub->prefixReadOnly || isLocked, false);
     writePrefix(pub, priv, lineInfo, lineNo, pfixPrefill);
   }
@@ -1255,7 +1257,7 @@ static void writeFileLine(
   /* compute end coordinates before writing the file line text out */
   int lastLineCol
     = PGMB_loc->lastCol
-    - ((pub->prefixMode > 1) ? pub->prefixLen + 1 : 0);
+    - ((pub->ed->view->prefixMode > 1) ? pub->ed->view->prefixLen + 1 : 0);
   int endRow = lineInfo->txtRow + scrLinesPerEdLine - 1;
   if (pub->readOnly && !pub->wrapOverflow) {
     /* r/o truncated to a single line */
@@ -1301,16 +1303,16 @@ static void writeFileLine(
     int fileLineEndCol
       = lrecl
       - ((scrLinesPerEdLine - 1) * PGMB_loc->cols)
-      + ((pub->prefixMode == 1) ? pub->prefixLen + 1 : 0);
+      + ((pub->ed->view->prefixMode == 1) ? pub->ed->view->prefixLen + 1 : 0);
     /* possibly write ending field, if not closed by lineend-prefix */
     if (fileLineEndCol < lastLineCol) {
       int lengthBetween = lastLineCol - fileLineEndCol;
       SBA(endRow, fileLineEndCol);
       startField2(pub->attrFileToPrefix, pub->HiLitFileToPrefix, true, false);
       /* show filler char if requested */
-      if (pub->fileToPrefixFiller) {
+      if (pub->ed->view->fileToPrefixFiller) {
         while (lengthBetween > 0) {
-          appendChar(pub->fileToPrefixFiller);
+          appendChar(pub->ed->view->fileToPrefixFiller);
           lengthBetween--;
         }
       }
@@ -1328,7 +1330,7 @@ static void writeFileLine(
   }
 
   /* prefix after file line text ? */
-  if (pub->prefixMode > 1) {
+  if (pub->ed->view->prefixMode > 1) {
     attr  = (isCurrentLine) ?  pub->attrCurLine :  pub->attrPrefix;
     HiLit = (isCurrentLine) ? pub->HiLitCurLine : pub->HiLitPrefix;
     if (isExcluded) { attr = pub->attrShadow; HiLit = pub->HiLitShadow; }
@@ -1359,13 +1361,13 @@ static void writeTextAsFileMarker(
   unsigned char HiLitFilearea = ((isCurrentLine) ? pub->HiLitCTofeof : pub->HiLitTofeof) ;
 
 
-  if (pub->prefixMode == 1) {
+  if (pub->ed->view->prefixMode == 1) {
     if (allowPrefix) {
       startField2(attrPrefix, HiLitPrefix, pub->prefixReadOnly, false);
       writePrefix(pub, priv, lineInfo, lineNo, NULL);
       hadPrefix = true;
     } else {
-      appendStringWithLength(" ", pub->prefixLen + 1, ' ');
+      appendStringWithLength(" ", pub->ed->view->prefixLen + 1, ' ');
     }
   }
 
@@ -1374,15 +1376,15 @@ static void writeTextAsFileMarker(
 
   int lastLineCol
     = PGMB_loc->lastCol
-    - ((pub->prefixMode > 1) ? pub->prefixLen + 1 : 0);
+    - ((pub->ed->view->prefixMode > 1) ? pub->ed->view->prefixLen + 1 : 0);
   int endRow = lineInfo->txtRow + scrLinesPerEdLine - 1;
 
   appendStringWithLength(
     fileMarker,
-    PGMB_loc->lastCol - pub->prefixLen - 1,
+    PGMB_loc->lastCol - pub->ed->view->prefixLen - 1,
     (char)0x00);
 
-  if (pub->prefixMode > 1 && allowPrefix) {
+  if (pub->ed->view->prefixMode > 1 && allowPrefix) {
     SBA(endRow, lastLineCol);
     startField2(attrPrefix, HiLitPrefix, pub->prefixReadOnly, false);
     writePrefix(pub, priv, lineInfo, lineNo, NULL);

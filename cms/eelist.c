@@ -112,6 +112,8 @@ void setFSLPrefix(bool on) {
   t_PGMB *PGMB_loc = CMSGetPG();
   PGMB_loc->fslistPrefixOn = on;
   if (!PGMB_loc->fslistScreen) { return; }
+/* temporarily disabled */
+/*
   if (on) {
     PGMB_loc->fslistScreen->prefixMode = 1;
     PGMB_loc->fslistScreen->prefixChar = ' ';
@@ -119,6 +121,7 @@ void setFSLPrefix(bool on) {
   } else {
     PGMB_loc->fslistScreen->prefixMode = 0;
   }
+*/
 }
 
 void initFSPFKeys() {
@@ -198,7 +201,7 @@ static ScreenPtr initScreen(ScreenPtr tmpl, char *msg) {
   scr->wrapOverflow = false;
   scr->cmdLinePos = 1; /* at bottom */
   scr->msgLinePos = 1; /* at bottom */
-  scr->prefixMode = 0; /* off */
+  /* scr->prefixMode = 0; */ /* off */
   scr->currLinePos = 0; /* first avail line */
   scr->scaleLinePos = 0; /* off */
   scr->showTofBof = false;
@@ -268,9 +271,9 @@ static void extractFilename(char *line, char *fn, char *ft, char *fm) {
 static deltaHShift(ScreenPtr scr, short by) {
   short newHSHift = scr->hShift + by;
   short lineOverhead
-    = (scr->prefixMode == 0)
+    = (scr->ed->view->prefixMode == 0)
     ? 1 /* field start */
-    : scr->prefixLen + 2; /* prefix + 2xfieldstart */
+    : scr->ed->view->prefixLen + 2; /* prefix + 2xfieldstart */
   scr->hShift
     = maxShort(
         0,
@@ -985,7 +988,7 @@ int doFSList(
   int i;
 
   if (!PGMB_loc->fslistScreen) { return -1; }
-
+/*
   if (PGMB_loc->fslistPrefixOn) {
     PGMB_loc->fslistScreen->prefixMode = 1;
     PGMB_loc->fslistScreen->prefixChar = ' ';
@@ -993,7 +996,7 @@ int doFSList(
   } else {
     PGMB_loc->fslistScreen->prefixMode = 0;
   }
-
+*/
   char fnDefault[9];
   char ftDefault[9];
   char fmDefault[3];
@@ -1037,7 +1040,7 @@ int doFSList(
   char *lhp0 = &listHeader[2];
   char *lhp1 = listHeader;
 #define setFileListHeader() \
-  { scr->infoLines[0] = (scr->prefixMode) ? lhp1 : lhp0; }
+  { scr->infoLines[0] = (scr->ed->view->prefixMode) ? lhp1 : lhp0; }
 
   setFileListHeader();
 
@@ -1218,12 +1221,12 @@ int doFSList(
       } else if (isAbbrev(cmd, "PREFIX")) {
         char *param = getCmdParam(cmd);
         if (isAbbrev(param, "ON")) {
-          scr->prefixMode = 1;
-          scr->prefixChar = ' ';
-          scr->prefixLen = 1;
+          scr->ed->view->prefixMode = 1;
+          scr->ed->view->prefixChar = ' ';
+          scr->ed->view->prefixLen = 1;
           param = getCmdParam(param);
         } else if (isAbbrev(param, "OFf")) {
-          scr->prefixMode = 0;
+          scr->ed->view->prefixMode = 0;
           param = getCmdParam(param);
         } else if (!param || !*param) {
           strcpy(msg, "Missing parameter ON or OFF for PREFIX command");

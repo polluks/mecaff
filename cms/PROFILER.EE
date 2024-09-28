@@ -1,0 +1,57 @@
+/* REXX */
+
+/**********************************************************************
+***********************************************************************
+**                                                                   **
+** This sample macro shows how to customise user interface elements  **
+** depending on file type.                                           **
+**                                                                   **
+** As a proof of concept, the PREFIX and the NUMBER commands have    **
+** been implemented to be effective on "view" level, which           **
+** currently looks like to be effective on "file" level.             **
+**                                                                   **
+** Named PROFILER EE, this macro is a repeatable profile which       **
+** is called by EE after a file has been loaded into storage.        **
+**                                                                   **
+** Arguments: parse arg fn ft fm extra                               **
+**                                                                   **
+** filetype        PREFIX      NUMBER                                **
+** -----------------------------------                               **
+** ASSEMBLE        RIGHT       ON                                    **
+** EE              LEFT        ON                                    **
+** EXEC            LEFT        OFF                                   **
+** MAP             RIGHT       OFF                                   **
+** otherwise       OFF         ---                                   **
+**                                                                   **
+** These settings are tied to one specific file/view.                **
+**                                                                   **
+***********************************************************************
+**********************************************************************/
+
+parse arg fn ft fm extra
+upper fn
+upper ft
+upper fm
+
+select
+  when ft = "ASSEMBLE" then
+    do
+      "PREFIX RIGHT" ; "NUMBER ON"
+    end
+  when ft = "EE" then
+    do
+      "PREFIX LEFT"  ; "NUMBER ON"
+    end
+  when ft = "EXEC" then
+    do
+      "PREFIX LEFT"  ; "NUMBER OFF"
+    end
+  when ft = "MAP" then
+    do
+      "PREFIX RIGHT"  ; "NUMBER OFF"
+    end
+otherwise
+    do
+      "PREFIX OFF"
+    end
+end

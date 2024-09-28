@@ -232,8 +232,8 @@ void doInputM(ScreenPtr scr) {
   bool wasModified = getModified(ed);
 
   /* remember and override screen settings */
-  char oldPrefixMode = scr->prefixMode;
-  scr->prefixMode = 0; /* off */
+  char oldPrefixMode = scr->ed->view->prefixMode;
+  scr->ed->view->prefixMode = 0; /* off */
   scr->cmdLinePrefill = " * * * input mode * * *";
   scr->cmdLineReadOnly = true;
   char *infoL0 = scr->infoLines[0];
@@ -381,7 +381,7 @@ void doInputM(ScreenPtr scr) {
   setModified(ed, wasModified);
 
   /* revert to initial screen state */
-  scr->prefixMode = oldPrefixMode;
+  scr->ed->view->prefixMode = oldPrefixMode;
   scr->infoLines[0] = infoL0;
   scr->infoLines[1] = infoL1;
   scr->cmdLinePrefill = NULL;
@@ -466,9 +466,9 @@ void doPInpM(ScreenPtr scr) {
   bool wasModified = getModified(ed);
 
   /* remember and override screen settings */
-  char oldPrefixMode = scr->prefixMode;
-  char fillChar = scr->fileToPrefixFiller;
-  scr->prefixMode = 0; /* off */
+  char oldPrefixMode = scr->ed->view->prefixMode;
+  char fillChar = scr->ed->view->fileToPrefixFiller;
+  scr->ed->view->prefixMode = 0; /* off */
   char *infoL0 = scr->infoLines[0];
   char *infoL1 = scr->infoLines[1];
   scr->infoLines[0] =
@@ -477,7 +477,7 @@ void doPInpM(ScreenPtr scr) {
          "06=SPLTJoin   "
          "10=Move PInput here";
   scr->infoLines[1] = NULL;
-  scr->fileToPrefixFiller = ' '; /*(char)0xBF;*/
+  scr->ed->view->fileToPrefixFiller = ' '; /*(char)0xBF;*/
   scr->cmdLinePrefill = " * * * programmer's input mode * * *";
   scr->cmdLineReadOnly = true;
 
@@ -603,10 +603,10 @@ void doPInpM(ScreenPtr scr) {
   setModified(ed, wasModified);
 
   /* revert to initial screen state */
-  scr->prefixMode = oldPrefixMode;
+  scr->ed->view->prefixMode = oldPrefixMode;
   scr->infoLines[0] = infoL0;
   scr->infoLines[1] = infoL1;
-  scr->fileToPrefixFiller = fillChar;
+  scr->ed->view->fileToPrefixFiller = fillChar;
   scr->cmdLinePrefill = NULL;
   scr->cmdLineReadOnly = false;
 }
@@ -746,7 +746,7 @@ void tmpInfShow(
   scr->wrapOverflow = false;
   scr->cmdLinePos = 1; /* at bottom */
   scr->msgLinePos = 1; /* at bottom */
-  scr->prefixMode = 0; /* off */
+  /* scr->ed->view->prefixMode = 0; */  /* off */
   scr->currLinePos = 0; /* first avail line */
   scr->scaleLinePos = 0; /* off */
   scr->showTofBof = false;
@@ -1114,8 +1114,8 @@ int main9(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc) {
 
     scr->cmdLinePos = 1; /* at bottom */
     scr->msgLinePos = 0; /* at top */
-    scr->prefixMode = 1; /* left */
-    scr->prefixNumbered = false;
+/*    scr->prefixMode = 1; */ /* left */
+/*    scr->prefixNumbered = false; */
     scr->currLinePos = 1; /* middle */
     scr->scaleLinePos = 1; /* before currline */
 
@@ -1154,7 +1154,7 @@ int main9(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc) {
                         "12=Recall";
     scr->attrInfoLines = DA_Pink;
 
-    scr->fileToPrefixFiller = (char)0x00;
+/*    scr->fileToPrefixFiller = (char)0x00; */
     scr->msgText = messages;
 
     /* init prefix operations */

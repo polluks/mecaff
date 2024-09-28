@@ -1,0 +1,41 @@
+  /* REXX */
+
+  /*
+    A demonstration how a macro can modify file contents
+
+       "extract line"      retrieves editor status information
+       "extract curline"   file contensts in curline.3
+       "input ..."         adds new content to file
+  */
+
+  signal on syntax
+  "extract line"
+  "top"
+  /* "extract size" */ size.1 = 41 /* not yet implemented */
+  do i = 1 to size.1
+    "locate 1"
+    "extract curline"
+    text = curline.3
+    if text = "" then do /* blank line ? */
+      "input ."
+    end
+    else if substr(text,1,1) = " " then do /* leading blank ? */
+      do j = 1 to length(text)
+        if substr(text,j,1) ^= " " then leave
+      end
+      text1 = substr(text,2,j-2)
+      text2 = substr(text,j)
+      "input ."text1""reverse(text2)
+    end
+    else do /* 1st char is non-blank */
+       "input" reverse(text)
+    end
+  end
+  "locate :"||(line.1*2-1)
+  exit
+
+abc
+ def
+
+  syntax:
+  exit 7000+sigl

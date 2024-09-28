@@ -324,7 +324,7 @@ int ExecCommSet(char *msg, char *var_name, char *value, unsigned long len) {
 
 static int CmdSqmetVersion(ScreenPtr scr, char sqmet, char *params, char *msg) {
   t_PGMB *PGMB_loc = CMSGetPG();
-  sprintf(msg, "version --- 2024-09-17 21:58 %d --- " VERSION, PGMB_loc->versionCount);
+  sprintf(msg, "version --- 2024-09-17 23:45 %d --- " VERSION, PGMB_loc->versionCount);
   return false;
 }
 
@@ -590,6 +590,9 @@ void openFile(
     moveToBOF(ed);
     switchToEditor(scr, ed);
     PGMB_loc->fileCount++;
+    char buffer[255];
+    sprintf (buffer, "PROFILER %s %s %2s \n\0", fn, ft, fm);
+    execCmd(scr, buffer , msg, false);
   }
 }
 
@@ -1090,13 +1093,13 @@ static int CmdPrefix(ScreenPtr scr, char *params, char *msg) {
   }
   if (isAbbrev(params, "OFf")) {
     if (forFsList) { setFSLPrefix(false); return false; }
-    scr->prefixMode = 0;
+    scr->ed->view->prefixMode = 0;
   } else if (isAbbrev(params, "LEft") || isAbbrev(params, "ON")) {
     if (forFsList) { setFSLPrefix(true); return false; }
-    scr->prefixMode = 1;
+    scr->ed->view->prefixMode = 1;
   } else if (isAbbrev(params, "RIght")) {
     if (forFsList) { setFSLPrefix(true); return false; }
-    scr->prefixMode = 2;
+    scr->ed->view->prefixMode = 2;
   } else {
     sprintf(msg, "invalid parameter for PREFIX: '%s'", params);
     return false;
@@ -1108,9 +1111,9 @@ static int CmdPrefix(ScreenPtr scr, char *params, char *msg) {
 
 static int CmdNumbers(ScreenPtr scr, char *params, char *msg) {
   if (isAbbrev(params, "ON")) {
-    scr->prefixNumbered = true;
+    scr->ed->view->prefixNumbered = true;
   } else if (isAbbrev(params, "OFf")) {
-    scr->prefixNumbered = false;
+    scr->ed->view->prefixNumbered = false;
   } else {
     sprintf(msg, "invalid parameter for NUMBERS: '%s'", params);
     return false;
@@ -2138,7 +2141,7 @@ static int CmdGapFill(ScreenPtr scr, char *params, char *msg) {
     return false;
   }
   checkNoParams(params, msg);
-  scr->fileToPrefixFiller = fillChar;
+  scr->ed->view->fileToPrefixFiller = fillChar;
   return false;
 }
 

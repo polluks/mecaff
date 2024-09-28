@@ -1,0 +1,74 @@
+What is in this archive ?
+
+README   MEMO     A1
+this file, same as README   HELPEE   A1
+
+EE$D     MODULE   A1
+executable module, DYNAMICally linked, runs in user area at 0x020000
+
+EE$S     MODULE   A1
+executable module, STATICally linked, runs in user area at 0x020000
+
+EE$D     MAP      A5
+EE$S     MAP      A5
+load maps for DYNAMICally linked and STATICally linked module
+
+EERESLIB TEXT     A1
+relocatable object code to load EE in high memory via RESLIB
+
+EER$LOAD EXEC     A1
+REXX exec to load EE in high memory via RESLIB
+
+EE$MACRO EXEC     A1
+REXX exec that handles EE's new macro facility, necessary for REXX integration
+
+SYSPROF  EE       A1
+PROFILE  EE       A1
+simple EE macros run once at startup
+
+PROFILER EE       A1
+repeatable profile, called after file has been loaded into storage
+
+LISTFILE EE       A1
+REXX macro: load output of CMS LISTFILE into the editor
+
+REVERSER EE       A1
+REXX macro: A demonstration how a macro can modify file contents
+
+$EE      HELP$EE  A1
+README   HELPEE   A1
+CURSOR   HELPEE   A1
+EE$BUGS  HELPEE   A1
+EE$HELP  HELPEE   A1
+EE$IBM   HELPEE   A1
+EE$NEW   HELPEE   A1
+EE$NOTES HELPEE   A1
+EE$WISH  HELPEE   A1
+work in progress, small help files for EE's internal help
+Note: CMS HELP can be called when EE is loaded into high memory
+
+/* work in progress, numbers may differ */
+Filename Filetype Fm  Format    Recs Blocks     Date    Time   Label
+README   MEMO     A1  V    78     74      4  2024-09-26 12:22  MCF191
+EE$D     MODULE   A1  V 65535      6    322  2024-09-24 12:25  MCF191
+EE$S     MODULE   A1  V 65535      8    452  2024-09-24 12:25  MCF191
+EE$D     MAP      A5  F   100    460     58  2024-09-24 12:25  MCF191
+EE$S     MAP      A5  F   100    466     59  2024-09-24 12:25  MCF191
+EERESLIB TEXT     A1  F    80   5570    557  2024-09-24 12:25  MCF191
+EER$LOAD EXEC     A1  V    70     36      2  2024-09-14 11:59  MCF191
+EE$MACRO EXEC     A1  V   109    194      7  2024-09-25 11:50  MCF191
+SYSPROF  EE       A1  V    34      9      1  2024-09-14  9:47  MCF191
+PROFILE  EE       A1  V    42     38      1  2024-08-13 11:20  MCF191
+PROFILER EE       A1  V    71     57      4  2024-09-25  9:43  MCF191
+LISTFILE EE       A1  V    52     30      1  2024-09-04  9:51  MCF191
+REVERSER EE       A1  V    64     41      2  2024-09-26 11:23  MCF191
+$EE      HELP$EE  A1  V    84     27      2  2024-08-08 21:28  MCF191
+README   HELPEE   A1  V    78     74      4  2024-09-26 12:22  MCF191
+CURSOR   HELPEE   A1  V    75      4      1  2024-08-10  5:33  MCF191
+EE$BUGS  HELPEE   A1  V   114    120      6  2024-08-10  6:03  MCF191
+EE$HELP  HELPEE   A1  V     8      1      1  2024-08-08 20:19  MCF191
+EE$IBM   HELPEE   A1  V    51     14      1  2024-08-08 22:13  MCF191
+EE$NEW   HELPEE   A1  V    76     38      2  2024-08-09  1:46  MCF191
+EE$NOTES HELPEE   A1  V     7      1      1  2024-08-08 21:25  MCF191
+EE$WISH  HELPEE   A1  V     6      1      1  2024-08-08 21:25  MCF191
+

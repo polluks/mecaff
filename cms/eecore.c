@@ -99,7 +99,8 @@ typedef struct _editor {
   void *clientdata1;
   void *clientdata2;
   void *clientdata3;
-  void *clientdata4;
+/*void *clientdata4;*/
+  ViewPtr view;      /* pointer to first view */
 
     /*
     ** internal ee-core data
@@ -699,6 +700,14 @@ EditorPtr mkEd(EditorPtr prevEd, int lrecl, char recfm) {
     emitEmergencyMessage("unable to allocate editor (OUT OF MEMORY)");
     return NULL;
   }
+  ed->view     = (ViewPtr) allocMem(sizeof(Editor)); /* ToDo: error checking */
+  memset(ed->view, '\0', sizeof(struct _publicView));
+
+  ed->view->prefixMode = 1;          /* 0 = off, 1 = left, >1 right */
+  ed->view->prefixNumbered = false;
+  ed->view->prefixChar = '=';          /* standard prefix filler, default: = */
+  ed->view->prefixLen = 5;           /* 1..5, will be forced to this range in _scrio() !! */
+
   ed->isBinary = false;
   ed->isHidden = false;
   ed->fileLrecl = lrecl;
@@ -775,7 +784,8 @@ void frEd(EditorPtr ed) {
       ed->nextEd->prevEd = zePrevEd;
     }
   }
-
+  memset(ed->view, '\0', sizeof(struct _publicView));
+  freeMem(ed->view);  /* ToDo: check for multiple views */
   memset(ed, '\0', sizeof(Editor));
   freeMem(ed);
 }

@@ -40,6 +40,9 @@
 ** and
 **   the line-handle holding exactly one line of the editor.
 */
+
+typedef struct _publicView *ViewPtr;
+
 #ifdef _eecore_implementation
 
 /* when included into the implementation, the complete internal structures are
@@ -63,7 +66,8 @@ typedef struct _editor_public {
     void *clientdata1;
     void *clientdata2;
     void *clientdata3;
-    void *clientdata4;
+/*  void *clientdata4; */
+    ViewPtr view;      /* pointer to first view */
 } *EditorPtr;
 
 /* the LinePtr is not fully opaque to allow faster access to the string in
@@ -80,6 +84,19 @@ typedef struct _publicLine {
 } *LinePtr;
 
 #endif
+
+typedef struct _publicView {
+  struct _publicView *prevView;        /* previous view to editor/file */
+  struct _publicView *nextView;        /* next view to editor/file */
+  EditorPtr backEditor;                /* back link to editor */
+/* ScreenPtr */ void *backLScreen;     /* back link to logical screen */
+  bool prefixNumbered;
+  char prefixMode; /* 0 = off, 1 = left, >1 right */
+  char prefixChar; /* standard prefix filler, default: = */
+  char fileToPrefixFiller; /* fill char after file line if prefixMode > 1 */
+  short prefixLen; /* 1..5, will be forced to this range in _scrio() !! */
+} *ViewPtr2;
+
 
 /*
 ** WARNING: depending on the compilation mode for EECORE (paranoic mode), all
