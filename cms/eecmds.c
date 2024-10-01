@@ -687,9 +687,55 @@ typedef struct _mysqmetdef {
 
 static int CmdInput(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
-  /*checkNoParams(params, msg);*/
-  if (params && *params) {
-    insertLine(scr->ed, params);
+  /* we are called from Input, INPUTB, REPLace, REPLACEB */
+  bool replace    = false;
+  bool blank_line = false;
+  bool no_blank   = false;
+  bool input_mode = false;
+  char *check     = params;
+  char c;
+
+  if (!params) { input_mode = true; }  /* NULL pointer -> cannot check command name */
+  else {
+    if (!*params) { /* end of string after command ? */
+      input_mode = true;  /* input mode assumed, but check for blank line later */
+      int count_blanks = 0;
+      while (*(--params) == ' ') {count_blanks++;};
+      if ( *params == 'B' || *params == 'b' || count_blanks >= 2) {
+        /* INPUTB or REPLACEB or 2+ blanks: allow insertion of blank line */
+        blank_line = true;
+        input_mode = false;
+        params--;
+      };
+    } else {
+      if (*(--params) != ' ') { no_blank = true; }
+        /* check for something like "INPUT123ABC", there might be no blank between */
+      else {
+        while (*(--params) == ' ') {};
+        /* skip back to command token like "INPUT", care for leading blanks */
+        check = params+2;  /* input line including leading blanks */
+      };
+      /* now we are at the last character of command name */
+      if ( *params == 'B' || *params == 'b' ) {
+        /* INPUTB or REPLACEB : allow insertion of blank line */
+        blank_line = true;
+        input_mode = false;
+        params--;
+      };
+      /* is it REPLace ? last character can be l,a,c,e  -> cannot be Input */
+      c = *params;
+      if (   c == 'l' || c == 'L' || c == 'a' || c == 'A'
+          || c == 'c' || c == 'C' || c == 'e' || c == 'E' ) {replace = true;};
+    };
+  };
+
+  if (!input_mode) {
+    if (replace) {
+      LinePtr line = getCurrentLine(scr->ed);
+      updateLine(scr->ed, line, check, strlen(check));
+    } else {
+      insertLine(scr->ed, check);
+    }
   } else {
     processInputMode(scr);
   }
@@ -3136,6 +3182,28 @@ static int CmdSqmetHighlight(ScreenPtr scr, char sqmet, char *params, char *msg)
   return false;
 }
 
+static int CmdSqmetSize(ScreenPtr scr, char sqmet, char *params, char *msg) {
+  char buffer[10];
+  int currLineNo = -1;
+  int lineCnt = 0;
+  getLineInfo(scr->ed, &lineCnt, &currLineNo);
+
+  if (sqmet == 'E') {
+    sprintf(buffer, "%d\0",lineCnt);
+    int rc = ExecCommSet(msg,"SIZE.0", "1", 0);
+    if (rc) return rc;
+    ExecCommSet(msg,"SIZE.1", buffer, 0);
+  }
+
+  if (sqmet == 'Q') {
+    sprintf(msg, "SIZE %d\0",lineCnt);
+  }
+
+  params = getCmdParam(params);
+  checkNoParams(params, msg);
+  return _rc_success;
+}
+
 
 
 
@@ -3370,7 +3438,7 @@ static MySqmetDef sqmetCmds[] = {
   {"SERial"                  , "sqmet" , &CmdSqmetNYI               },
   {"SHADow"                  , "sqmet" , &CmdSqmetNYI               },
   {"SIDcode"                 , "sqmet" , &CmdSqmetNYI               },
-  {"SIZe"                    , "-q-et" , &CmdSqmetNYI               },
+  {"SIZe"                    , "-Q-Et" , &CmdSqmetSize              },
   {"SPAN"                    , "sqmet" , &CmdSqmetNYI               },
   {"SPILL"                   , "sqmet" , &CmdSqmetNYI               },
   {"STAY"                    , "sqmet" , &CmdSqmetNYI               },
@@ -3863,6 +3931,7 @@ static MyCmdDef eeCmds[] = {
   {"INFOLines"               , &CmdInfolines                        },
   {"INPmode"                 , &CmdImpSet                           },
   {"Input"                   , &CmdInput                            },
+  {"INPUTB"                  , &CmdInput                            },
   {"Kedit"                   , &CmdEditFile                         },
   {"LASTLorc"                , &CmdImpSet                           },
   {"LASTmsg"                 , &CmdImpSet                           },
@@ -3926,6 +3995,8 @@ static MyCmdDef eeCmds[] = {
 /*{"RECFm"                   , &CmdImpSet                           },*/
   {"RECFM"                   , &CmdRecfm                            },
   {"REMOte"                  , &CmdImpSet                           },
+  {"REPLace"                 , &CmdInput                            },
+  {"REPLACEB"                , &CmdInput                            },
   {"RESERved"                , &CmdImpSet                           },
   {"RESet"                   , &CmdReset                            },
   {"RETURNCode"              , &CmdSetReturnCode                    },
