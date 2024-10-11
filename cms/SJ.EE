@@ -1,0 +1,24 @@
+/* REXX */
+
+"extract /line/cursor/fname/ftype"
+
+if (ftype.1 = "LISTING" & fname.1 = "LISTFILE") then do
+  if cursor.7 < 0 then exit cursor.7
+  "locate :"cursor.7
+  "extract /curline/"
+  parse var curline.3 fn ft fm .
+  "xedit" fn ft fm
+  exit rc
+end
+
+if (ftype.1 = "LISTING" & fname.1 = "RDRLIST") then do
+  if cursor.7 < 0 then exit cursor.7
+  "locate :"cursor.7
+  "extract /curline/"
+  parse var curline.3 spoolid .
+  "peek" spoolid
+  exit rc
+end
+
+"spltjoin"
+exit rc

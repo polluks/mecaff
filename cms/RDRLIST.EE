@@ -1,0 +1,91 @@
+/* REXX */
+
+signal on novalue
+signal on syntax
+
+false = 0
+true  = 1
+
+spool_userid = "*"
+address "COMMAND" "EXECIOT * CP ( STEM CP_Q_FILES. STRING QUERY FILES" spool_userid
+rc_save = rc
+if (rc_save = 0) then do
+  spool_operater_privilege = true
+  address "COMMAND" "EXECIOT * CP ( STEM CP_Q_FILES_SYSTEM. STRING QUERY FILES"
+end
+else do
+  spool_operater_privilege = false
+  spool_userid = ""
+  CP_Q_FILES_SYSTEM.0 = 0
+  CP_Q_FILES_SYSTEM.1 = ""
+  address "COMMAND" "EXECIOT * CP ( STEM CP_Q_FILES. STRING QUERY FILES"
+end
+
+/*
+address "EE" "input" rc_save spool_operater_privilege spool_userid
+address "EE" "input" CP_Q_FILES.0 CP_Q_FILES_SYSTEM.0
+address "EE" "input" CP_Q_FILES.1 CP_Q_FILES_SYSTEM.1
+exit rc_save
+*/
+
+address "COMMAND" "SENTRIES"
+stacked_old = rc
+address "COMMAND" "MAKEBUF"
+new_buffer_id = rc
+
+/*
+address "COMMAND" "QUERY RDR ALL ( FIFO"
+address "COMMAND" "QUERY RDR     ( FIFO"
+*/
+address "COMMAND" "EXECUTIL QREADER"
+rc_executil = rc
+if rc_executil <> 0 then do
+  address "COMMAND" "DROPBUF" new_buffer_id
+  exit rc_executil
+end
+
+address "COMMAND" "SENTRIES"
+stacked_new = rc
+address "EE" "X RDRLIST  LISTING A1"
+address "EE" "EXTRACT /line/"
+line_old = line.1
+
+/*
+ORIGINID FILE CLASS RECDS  CPY HOLD DATE  TIME     NAME        TYPE     DIST
+MECAFF   1685 N PUN 000531  99 NONE 10/06 14:50:31 RXUSERFN    ASSEMBLE DISTCODE
+....+....1....+....2....+....3....+....4....+....5....+....6....+....7....+....8
+1685 N 531    99 RDR NONE MECAFF   10/06/24 14:50:31 DISTCODE RXUSERFN ASSEMBLE
+1435 T 6      1  CON NONE MAINT    10/14/22 06:39:01 MAINT
+1436 T 22     1  CON NONE MAINT    10/14/22 06:39:52 MAINT
+1656 A 226    1  PRT NONE MVS      10/03/24 16:43:46 MVS
+*/
+
+do i = 1 to stacked_new-stacked_old
+  parse pull from_executil.i
+  parse var  from_executil.i =1 spoolid.i =5 b1.i =6 class.i =7 b2.i =8 records.i ,
+    =14 b3.i =15 copies.i =17 b4.i =18 device.i =21 b5.i =22 hold.i =26 b6.i ,
+    =27 origin.i =35 b7.i =36 mm.i =38 s8.i =39 dd.i =41 s9.i =42 yy.i =44 b10.i ,
+    =45 hh_mm_ss.i =53 b11.i =54 distcode.i =62 b12.i =63 fname.i =71 b13 ,
+    =72 ftype.i =80 extra.i
+  records.i = right("      "||records.i+0,6)
+  copies.i  = right("  "||copies.i+0,2)
+  if (yy.i >= 70) then yyyy.i = yy.i + 1900; else yyyy.i = yy.i + 2000
+
+/*address "EE" "INPUT" from_executil.i */
+  address "EE" "INPUT" spoolid.i class.i records.i copies.i device.i hold.i origin.i" ",
+                       yyyy.i"-"mm.i"-"dd.i hh_mm_ss.i fname.i ftype.i distcode.i
+end
+address "COMMAND" "DROPBUF" new_buffer_id
+
+address "EE" "LOCATE :"line_old
+exit rc_executil
+
+novalue:
+exit 1000+sigl
+
+syntax:
+exit 2000+sigl
+
+
+
+

@@ -45,6 +45,8 @@
 #define _rc_unspecific 3
 #define _rc_invalid    5
 #define _rc_failure   -1
+#define _rc_unknown   -3
+#define _rc_NYI       -5 /* not yet implemented */
 
 /* set the filename for error messages from memory protection in EEUTIL */
 static const char *_FILE_NAME_ = "eecmds.c";
@@ -3182,6 +3184,88 @@ static int CmdSqmetHighlight(ScreenPtr scr, char sqmet, char *params, char *msg)
   return false;
 }
 
+static int CmdSqmetCursor(ScreenPtr scr, char sqmet, char *params, char *msg) {
+  char buffer[10];
+
+  if (sqmet == 'E') {
+
+    int rc = ExecCommSet(msg,"CURSOR.0", "9", 0);
+    if (rc) return rc;
+    ExecCommSet(msg,"CURSOR.1", "_rc_NYI", 0);
+    ExecCommSet(msg,"CURSOR.2", "_rc_NYI", 0);
+    ExecCommSet(msg,"CURSOR.3", "_rc_NYI", 0);
+    ExecCommSet(msg,"CURSOR.4", "_rc_NYI", 0);
+    ExecCommSet(msg,"CURSOR.5", "_rc_NYI", 0);
+    ExecCommSet(msg,"CURSOR.6", "_rc_NYI", 0);
+/*
+    ExecCommSet(msg,"CURSOR.7", "_rc_NYI", 0);
+    ExecCommSet(msg,"CURSOR.8", "_rc_NYI", 0);
+*/
+    ExecCommSet(msg,"CURSOR.9", "_rc_NYI", 0);
+
+    if (scr->cElemType == 2) {
+      LinePtr line = scr->cElem;
+      sprintf(buffer, "%d\0",getlinum(line));
+      ExecCommSet(msg,"CURSOR.7", buffer, 0);
+      sprintf(buffer, "%d\0",1+scr->cElemOffset);
+      ExecCommSet(msg,"CURSOR.8", buffer, 0);
+
+    } else {
+      ExecCommSet(msg,"CURSOR.7", "-1", 0);
+      ExecCommSet(msg,"CURSOR.8", "-1", 0);
+    }
+  }
+
+  if (sqmet == 'Q') {
+    sprintf(msg, "CURSOR -5 (NYI)");
+  }
+
+  params = getCmdParam(params);
+  checkNoParams(params, msg);
+  return _rc_success;
+}
+
+
+static int CmdSqmetFileid(ScreenPtr scr, char sqmet, char *params, char *msg) {
+  EditorPtr ed = scr->ed;
+  if (!ed) { return _rc_failure; }
+
+  char fn[9];
+  char ft[9];
+  char fm[3];
+  char buffer[22];
+  getFnFtFm(ed, fn, ft, fm);
+
+  if (sqmet == 'E') {
+    int rc = ExecCommSet(msg,"FILEID.0", "1", 0);
+    if (rc) return rc;
+    sprintf(buffer, "%s.%s.%s\0", fn, ft, fm);
+    ExecCommSet(msg,"FILEID.1", buffer, 0);
+
+    ExecCommSet(msg,"FNAME.0", "1", 0);
+    sprintf(buffer, "%s\0",fn);
+    ExecCommSet(msg,"FNAME.1", buffer, 0);
+
+    ExecCommSet(msg,"FTYPE.0", "1", 0);
+    sprintf(buffer, "%s\0",ft);
+    ExecCommSet(msg,"FTYPE.1", buffer, 0);
+
+    ExecCommSet(msg,"FMODE.0", "1", 0);
+    sprintf(buffer, "%s\0",fm);
+    ExecCommSet(msg,"FMODE.1", buffer, 0);
+
+  }
+
+  if (sqmet == 'Q') {
+    sprintf(msg, "FNAME %s   FTYPE %s   FMODE %s   FILEID %s.%s.%s\0", fn, ft, fm, fn, ft, fm);
+  }
+
+  params = getCmdParam(params);
+  checkNoParams(params, msg);
+  return _rc_success;
+}
+
+
 static int CmdSqmetSize(ScreenPtr scr, char sqmet, char *params, char *msg) {
   char buffer[10];
   int currLineNo = -1;
@@ -3378,7 +3462,7 @@ static MySqmetDef sqmetCmds[] = {
   {"COLumn"                  , "sqmet" , &CmdSqmetNYI               },
   {"CTLchar"                 , "sqmet" , &CmdSqmetNYI               },
   {"CURLine"                 , "SQMET" , &CmdSqmetCURLine           },
-  {"CURSor"                  , "sqmet" , &CmdSqmetNYI               },
+  {"CURSor"                  , "-Q-Et" , &CmdSqmetCursor            },
   {"DISPlay"                 , "SQMET" , &CmdSqmetDisplay           },
   {"EFMode"                  , "sqmet" , &CmdSqmetNYI               },
   {"EFName"                  , "sqmet" , &CmdSqmetNYI               },
@@ -3389,11 +3473,12 @@ static MySqmetDef sqmetCmds[] = {
   {"ESCape"                  , "sqmet" , &CmdSqmetNYI               },
   {"ETARBCH"                 , "sqmet" , &CmdSqmetNYI               },
   {"ETMODE"                  , "sqmet" , &CmdSqmetNYI               },
+  {"FILEid"                  , "sQmEt" , &CmdSqmetFileid            },
   {"FILler"                  , "sqmet" , &CmdSqmetNYI               },
   {"FLscreen"                , "sqmet" , &CmdSqmetNYI               },
-  {"FMode"                   , "sqmet" , &CmdSqmetNYI               },
-  {"FName"                   , "sqmet" , &CmdSqmetNYI               },
-  {"FType"                   , "sqmet" , &CmdSqmetNYI               },
+  {"FMode"                   , "sQmEt" , &CmdSqmetFileid            },
+  {"FName"                   , "sQmEt" , &CmdSqmetFileid            },
+  {"FType"                   , "sQmEt" , &CmdSqmetFileid            },
   {"FULLread"                , "sqmet" , &CmdSqmetNYI               },
   {"HEX"                     , "sqmet" , &CmdSqmetNYI               },
   {"HIGHlight"               , "SQMET" , &CmdSqmetHighlight         },
@@ -3637,26 +3722,86 @@ static int CmdMsg(ScreenPtr scr, char *params, char *msg) {
 }
 
 static int CmdSqmetDispatch(ScreenPtr scr, char sqmet, char *params, char *msg) {
-
-  MySqmetDef *sqmetDef = (MySqmetDef*)fndsqmet(
-    params,
-    (MySqmetDef*)sqmetCmds,
-    sizeof(sqmetCmds) / sizeof(MySqmetDef));
-
   int  c_index = 0;
   int  s_index = 0;
+  int  rc = 0;
+  char c;
+  char *extract_option_end;
   char c_temp = '?';
   char s_temp = '?';
+  bool extract_multiple  = false;
+  char extract_delimiter = '\0';
+  char extract_option[255] = "\0";
   char *p_s_temp = "SsQqMmEeTt*-=+ ";
   char *p_c_temp = &c_temp;
   void *p_v_temp = p_c_temp;
   int  *p_i_temp = p_v_temp;
-
+  /* int *params_debug = params; */
+/*
   if (sqmet == 'S')  { c_index = 0;    s_index = 0; }
   if (sqmet == 'Q')  { c_index = 2;    s_index = 1; }
   if (sqmet == 'M')  { c_index = 4;    s_index = 2; }
   if (sqmet == 'E')  { c_index = 6;    s_index = 3; }
   if (sqmet == 'T')  { c_index = 8;    s_index = 4; }
+*/
+
+  switch (sqmet) {
+     case 'E' : c_index = 6; s_index = 3;  /* fast path to EXTRACT /ABC/DEF/ */
+                c = *params;
+
+                if (c == '/') { extract_delimiter = c; extract_multiple = true; }
+                else if (isalnum(c)) /* alphanumeric, no delimiter assumed */ {;}
+                else { extract_delimiter = c; extract_multiple = true; }
+
+                if (extract_multiple) {
+                  while (true) { /* scan for multiple EXTRACT options */
+                    /* Example:   EXTRACT   /  size  /  line/ftype/   color  *  /case    */
+                    while (*(++params) == ' ') {;} /* skip leading blanks */
+                    extract_option_end = params;
+                    while (true) {
+                      c = *(++extract_option_end);
+                      if ((c == extract_delimiter) || (c == '\0')) {
+                        *extract_option_end = '\0';
+                        break;
+                      }
+                    }
+                    if (*params == '\0'             ) {return _rc_success;} /* end   ? */
+                    if (*params == extract_delimiter) {return _rc_invalid;} /* empty ? */
+
+                    MySqmetDef *sqmetDef = (MySqmetDef*)fndsqmet(
+                      params,
+                      (MySqmetDef*)sqmetCmds,
+                      sizeof(sqmetCmds) / sizeof(MySqmetDef));
+
+                    if (sqmetDef) {
+                      p_c_temp = sqmetDef->sqmetFlag;
+                      c_temp = p_c_temp[s_index];
+                      if (c_temp == sqmet) {
+                        rc = (*(sqmetDef->sqmetImpl))(scr, sqmet, params, msg);
+                        if (rc) {return rc;}
+                      }
+                    } else {return _rc_invalid;}
+                    if (!c) return; /* end of command string reached */
+
+                    params = extract_option_end;
+                  }
+                }
+                break;
+     case 'S' : c_index = 0; s_index = 0;
+                break;
+     case 'Q' : c_index = 2; s_index = 1;
+                break;
+     case 'M' : c_index = 4; s_index = 2;
+                break;
+     case 'T' : c_index = 8; s_index = 4;
+                break;
+     default: return _rc_failure; /* this should not happen */
+  };
+
+  MySqmetDef *sqmetDef = (MySqmetDef*)fndsqmet(
+    params,
+    (MySqmetDef*)sqmetCmds,
+    sizeof(sqmetCmds) / sizeof(MySqmetDef));
 
     if (sqmetDef) {
       p_c_temp = sqmetDef->sqmetFlag;
