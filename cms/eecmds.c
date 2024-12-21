@@ -3586,6 +3586,32 @@ static int CmdCallstack(ScreenPtr scr, char *params, char *msg) {
 }
 
 
+static int CmdSortfile(ScreenPtr scr, char *params, char *msg) {
+  t_PGMB *PGMB_loc = CMSGetPG();
+  if (!scr->ed) { return false; }
+
+  int c1,c2 = 0;
+  bool sortDescending = false;
+  tryParseInt(params, &c1);
+  params =  getCmdParam(params);
+  tryParseInt(params, &c2);
+
+  if (c1 < 0) {
+    c1 = -c1;
+    sortDescending = true;
+  }
+  PGMB_loc->sortSpecCount = 1;
+  PGMB_loc->sortSpecs[0].sortDescending = sortDescending;
+  PGMB_loc->sortSpecs[0].offset = c1 - 1;
+  PGMB_loc->sortSpecs[0].length = c2 - c1 +1;
+  PGMB_loc->sortSpecs[1].sortDescending = false;
+  PGMB_loc->sortSpecs[1].offset = 0;
+  PGMB_loc->sortSpecs[1].length = 0;
+  sort(scr->ed,PGMB_loc->sortSpecs);
+  return 0 /* (1000*(c2-c1))+(c1-1) */ ;
+}
+
+
 
 static int CmdPull(ScreenPtr scr, char *params, char *msg) {
   if (!scr->ed) { return false; }
@@ -4172,6 +4198,7 @@ static MyCmdDef eeCmds[] = {
   {"SHIFTCONFig"             , &CmdShiftConfig                      },
   {"SIDcode"                 , &CmdImpSet                           },
   {"SIZe"                    , &CmdImpSet                           },
+  {"SORTFILE"                , &CmdSortfile                         },
   {"SPAN"                    , &CmdImpSet                           },
   {"SPILL"                   , &CmdImpSet                           },
   {"SPLTJoin"                , &CmdSplitjoin                        },

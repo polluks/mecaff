@@ -76,7 +76,7 @@ if rest <> "" then
   exit 1
   end
 
-"cp spool rdr class * hold nocont"
+"CP SPOOL RDR CLASS * HOLD NOCONT"
 if datatype(spoolid) = "NUM" then
   do
   "executil qreader" spoolid

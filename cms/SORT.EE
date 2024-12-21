@@ -1,0 +1,77 @@
+/* REXX */
+
+"extract /line/cursor/fname/ftype"
+parse arg argstring
+parse upper var argstring token .
+
+false = 0
+true  = 1
+c1 = 0
+c2 = 0
+descending = false
+
+if substr(token,1,1) = "-" then do
+  descending = true
+  token = substr(token,2)
+end
+
+if (ftype.1 = "LISTING" & fname.1 = "RDRLIST") then do
+  select
+    when abbrev("-TS"      , token, 0) = 1 then do; c1 = 37; c2 = 55; descending = true; end
+    when abbrev("TS"       , token, 1) = 1 then do; c1 = 37; c2 = 55; end
+    when abbrev("SPOOLID"  , token, 2) = 1 then do; c1 =  1; c2 =  4; end
+    when abbrev("SIZE"     , token, 1) = 1 then do; c1 =  8; c2 = 13; end
+    when abbrev("FILEID"   , token, 1) = 1 then do; c1 = 57; c2 = 73; end
+    when abbrev("DEVICE"   , token, 1) = 1 then do; c1 = 18; c2 = 20; end
+    when abbrev("ORIGIN"   , token, 1) = 1 then do; c1 = 27; c2 = 34; end
+    when abbrev("HOLD"     , token, 1) = 1 then do; c1 = 22; c2 = 25; end
+    when abbrev("CLASS"    , token, 1) = 1 then do; c1 =  6; c2 =  6; end
+    when abbrev("DISTCODE" , token, 2) = 1 then do; c1 = 75; c2 = 82; end
+/*
+    when abbrev("1"        , token, 1) = 1 then do; c1 =  1; c2 =  1; end
+    when abbrev("2"        , token, 1) = 1 then do; c1 =  2; c2 =  2; end
+    when abbrev("3"        , token, 1) = 1 then do; c1 =  3; c2 =  3; end
+    when abbrev("4"        , token, 1) = 1 then do; c1 =  4; c2 =  4; end
+    when abbrev("5"        , token, 1) = 1 then do; c1 =  5; c2 =  5; end
+    when abbrev("6"        , token, 1) = 1 then do; c1 =  6; c2 =  6; end
+    when abbrev("7"        , token, 1) = 1 then do; c1 =  7; c2 =  7; end
+*/
+  end
+end
+
+if (ftype.1 = "LISTING" & fname.1 = "LISTFILE") then do
+  select
+    when abbrev("-TS"      , token, 0) = 1 then do; c1 = 46; c2 = 61; descending = true; end
+    when abbrev("TS"       , token, 1) = 1 then do; c1 = 46; c2 = 61; end
+    when abbrev("FNAME"    , token, 2) = 1 then do; c1 =  1; c2 =  8; end
+    when abbrev("FTYPE"    , token, 2) = 1 then do; c1 = 10; c2 = 17; end
+    when abbrev("FM1"      , token, 3) = 1 then do; c1 = 19; c2 = 19; end
+    when abbrev("FM2"      , token, 3) = 1 then do; c1 = 20; c2 = 20; end
+    when abbrev("FMODE"    , token, 2) = 1 then do; c1 = 19; c2 = 20; end
+    when abbrev("FILEID"   , token, 2) = 1 then do; c1 =  1; c2 = 20; end
+    when abbrev("RECFM"    , token, 4) = 1 then do; c1 = 22; c2 = 24; end
+    when abbrev("LRECL"    , token, 2) = 1 then do; c1 = 25; c2 = 29; end
+    when abbrev("RECORDS"  , token, 1) = 1 then do; c1 = 31; c2 = 36; end
+    when abbrev("SIZE"     , token, 1) = 1 then do; c1 = 31; c2 = 36; end
+    when abbrev("BLOCKS"   , token, 1) = 1 then do; c1 = 38; c2 = 43; end
+    when abbrev("DISK"     , token, 2) = 1 then do; c1 = 38; c2 = 43; end
+    when abbrev("DATE"     , token, 1) = 1 then do; c1 = 46; c2 = 55; end
+    when abbrev("TIME"     , token, 1) = 1 then do; c1 = 57; c2 = 61; end
+    when abbrev("LABEL"    , token, 1) = 1 then do; c1 = 64; c2 = 69; end
+
+    when abbrev("1"        , token, 1) = 1 then do; c1 =  1; c2 =  1; end
+    when abbrev("2"        , token, 1) = 1 then do; c1 =  2; c2 =  2; end
+    when abbrev("3"        , token, 1) = 1 then do; c1 =  3; c2 =  3; end
+    when abbrev("4"        , token, 1) = 1 then do; c1 =  4; c2 =  4; end
+    when abbrev("5"        , token, 1) = 1 then do; c1 =  5; c2 =  5; end
+    when abbrev("6"        , token, 1) = 1 then do; c1 =  6; c2 =  6; end
+    when abbrev("7"        , token, 1) = 1 then do; c1 =  7; c2 =  7; end
+  end
+end
+
+
+if descending = true then c1 = -c1
+address "EE" "SORTFILE" c1 c2
+rc_save = rc
+address "EE" "LOCATE :"line.1
+exit rc_save
