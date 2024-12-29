@@ -23,6 +23,7 @@
 #include <cmssys.h>
 #include <string.h>
 
+#include "ee_first.h"
 #include "eecore.h"
 #include "eeutil.h"
 #include "eescrn.h"

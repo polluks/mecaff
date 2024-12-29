@@ -29,6 +29,7 @@
 #include <cmssys.h>
 #include <string.h>
 
+#include "ee_first.h"
 #define _eescrn_implementation
 #include "eescrn.h"
 #include "eeutil.h"

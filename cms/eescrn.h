@@ -40,7 +40,7 @@
 #define RESFIELDCOUNT 64
 
 /* max. length of the command line text the user can enter */
-#define CMDLINELENGTH 120
+/* #define CMDLINELENGTH 120 */      /* moved from EESCRN.H to EE_FIRST.H */
 
 /* max. length of the prefix commands */
 #define PREFIXLENGTH 5

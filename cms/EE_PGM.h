@@ -1,13 +1,4 @@
-#define SUBCOM_DELETE -1
-#define SUBCOM_QUERY   0
-#define SUBCOM_SET     1
 
-#define CMD_HISTORY_LEN 1024
-#define CMD_HISTORY_DUPE_CHECK 32
-
-#define LINES_LEN 132
-
-#define PGMB_size 16384; /* 2**14 */
 
 /* the structure holding blockmode operation data between screen roundtrips */
 
@@ -108,8 +99,8 @@ typedef struct t_PGMB {
   char *bottomOfFileText ;
   char *prefixLocked     ;
 
-
-
+  /* new stuff */
+  struct _publicView global_view;
 
 } t_PGMB;
 

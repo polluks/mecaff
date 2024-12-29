@@ -34,6 +34,7 @@
 
 #include "errhndlg.h"
 
+#include "ee_first.h"
 #define _eecore_implementation
 #include "eecore.h"
 
@@ -301,7 +302,7 @@ static void returnFreeLine(EditorPtr ed, LinePtr line) {
 ** common internal file i/o routines
 */
 
-static int fileLineLength(EditorPtr ed, LinePtr line) {
+int edllF(EditorPtr ed, LinePtr line) { /* made external 2024-12-21 22:44 CET */
   return minInt(line->lineinfo & 0x000000FF, ed->fileLrecl);
 }
 
@@ -695,13 +696,22 @@ static bool copyRange(
    createEditor(lrecl, recfm)
 */
 EditorPtr mkEd(EditorPtr prevEd, int lrecl, char recfm) {
+
+/*printf("CRASH DEBUG: mked() entry\n");          */
+
   EditorPtr ed = (EditorPtr) allocMem(sizeof(Editor));
   if (!ed) { /* OUT OF MEMORY */
     emitEmergencyMessage("unable to allocate editor (OUT OF MEMORY)");
     return NULL;
   }
-  ed->view     = (ViewPtr) allocMem(sizeof(Editor)); /* ToDo: error checking */
+  ed->view     = (ViewPtr) allocMem(sizeof(struct _publicView)); /* 2024-12-27 bug fixed */
+  if (!ed->view) { /* OUT OF MEMORY */
+    emitEmergencyMessage("unable to allocate editor sub-structure VIEW (OUT OF MEMORY)");
+    return NULL;
+  }
   memset(ed->view, '\0', sizeof(struct _publicView));
+
+/*printf("CRASH DEBUG: mked() EECORE.C:710\n");   */
 
   ed->view->prefixMode = 1;          /* 0 = off, 1 = left, >1 right */
   ed->view->prefixNumbered = false;
@@ -713,6 +723,9 @@ EditorPtr mkEd(EditorPtr prevEd, int lrecl, char recfm) {
   ed->fileLrecl = lrecl;
   ed->workLrecl = lrecl;
   ed->recfm = recfm;
+
+/*printf("CRASH DEBUG: mked() EECORE.C:723\n");   */
+
   _try {
     allocBufferpage(ed);
   } _catchall() { /* OUT OF MEMORY */
@@ -720,6 +733,8 @@ EditorPtr mkEd(EditorPtr prevEd, int lrecl, char recfm) {
     emitEmergencyMessage("unable to initialize new editor");
     return NULL;
   } _endtry;
+
+/*printf("CRASH DEBUG: mked() EECORE.C:730\n");   */
 
   if (prevEd != NULL) {
     if (prevEd->nextEd != NULL) {
@@ -736,6 +751,8 @@ EditorPtr mkEd(EditorPtr prevEd, int lrecl, char recfm) {
       prevEd->nextEd = ed;
     }
   }
+
+/*printf("CRASH DEBUG: mked() EECORE.C:744\n");   */
 
   int fcount = 0;
   LinePtr fptr = ed->lineFirstFree;
@@ -755,6 +772,8 @@ EditorPtr mkEd(EditorPtr prevEd, int lrecl, char recfm) {
   ed->lineCurrent = ed->lineBOF;
   ed->lineCount = 0;
   ed->lineCurrentNo = 0;
+
+/*printf("CRASH DEBUG: mked() exit\n");           */
 
   return ed;
 }
@@ -1152,17 +1171,35 @@ void updline(EditorPtr ed, LinePtr line, char *txt, unsigned int txtLen) {
   }
 
   /* ensure the internal structures are not destroyed (-> truncate silently) */
-  txtLen = minInt(ed->workLrecl, txtLen);
+/*txtLen = minInt(ed->workLrecl, txtLen);*/ /* 2024-12-21 22:44 CET --- for RDRLIST, FILELIST */
+  txtLen = minInt(ed->fileLrecl, txtLen);   /* treat workLrecl like XEDIT's "SET VERIFY 1 x"  */
   line->lineinfo |= txtLen;
 
   /* copy the line content */
   if (txtLen > 0) {
-    if (ed->caseU) {
+    if (ed->caseU) {  /* NOTE: XEDIT does not uppercase commands issued from macros */
       snupper(txt, line->text, txtLen);
     } else {
       strncpy(line->text, txt, txtLen);
     }
   }
+  /*
+  / * REXX * /
+  "QUERY CASE"
+  "extract /case/"
+       "input" "Macro:" "mIxEd" "UPPER" "lower" case.1 case.2
+  push "input" "Stack:" "mIxEd" "UPPER" "lower" case.1 case.2
+  / *
+  Macro: mIxEd UPPER lower MIXED IGNORE
+  Stack: mIxEd UPPER lower MIXED IGNORE
+  Macro: mIxEd UPPER lower UPPER IGNORE
+  STACK: MIXED UPPER LOWER UPPER IGNORE
+  Macro: mIxEd UPPER lower UPPER RESPECT
+  STACK: MIXED UPPER LOWER UPPER RESPECT
+  Macro: mIxEd UPPER lower MIXED RESPECT
+  Stack: mIxEd UPPER lower MIXED RESPECT
+  * /
+  */
 }
 
 void edScase(EditorPtr ed, bool uppercase) {

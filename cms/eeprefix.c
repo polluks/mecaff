@@ -24,6 +24,7 @@
 
 #include "errhndlg.h"
 
+#include "ee_first.h"
 #include "eecore.h"
 #include "eeutil.h"
 #include "eescrn.h"

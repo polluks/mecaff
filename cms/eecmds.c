@@ -26,6 +26,7 @@
 
 #include "errhndlg.h"
 
+#include "ee_first.h"
 #include "eecore.h"
 #include "eeutil.h"
 #include "fs3270.h"
@@ -1722,8 +1723,8 @@ static int CmdPf(ScreenPtr scr, char *params, char *msg) {
     strcpy(msg, "PF-Key number must be numeric");
     return false;
   }
-  if (pfNo < 1 || pfNo > 24) {
-    strcpy(msg, "PF-Key number must be 1 .. 24");
+  if (pfNo < 0 || pfNo > 24) {
+    strcpy(msg, "PF-Key number must be 0 .. 24 (0=ENTER)");
     return false;
   }
 
@@ -1735,7 +1736,7 @@ static int CmdPf(ScreenPtr scr, char *params, char *msg) {
     } else if (forFsHelp) {
       setFSHPFKey(pfNo, NULL);
     } else {
-      setPF(pfNo, NULL);
+      setPF(scr, pfNo, NULL);
     }
     checkNoParams(params, msg);
     return false;
@@ -1754,7 +1755,7 @@ static int CmdPf(ScreenPtr scr, char *params, char *msg) {
   } else if (forFsHelp) {
     setFSHPFKey(pfNo, params);
   } else {
-    setPF(pfNo, params);
+    setPF(scr, pfNo, params);
   }
   return false;
 }
@@ -2035,8 +2036,9 @@ static int CmdLrecl(ScreenPtr scr, char *params, char *msg) {
     return _rc_error;
   }
   bool truncated = setLrecl(scr->ed, lrecl);
-  sprintf(msg, "LRECL changed to %d%s",
-          lrecl, (truncated) ? ", some line(s) were truncated" : "");
+  /* 2024-12-27 do not show confirmation message if nothing was truncated */
+  if (truncated) { sprintf(msg, "LRECL changed to %d%s",
+                           lrecl, ", some line(s) were truncated"); }
   checkNoParams(params, msg);
   return false;
 }
@@ -2057,8 +2059,8 @@ static int CmdWorkLrecl(ScreenPtr scr, char *params, char *msg) {
     strcpy(msg, "WORKLRECL must be 1 .. 255");
     return _rc_error;
   }
-  setWorkLrecl(scr->ed, lrecl);
-  sprintf(msg, "Working LRECL changed to %d", getWorkLrecl(scr->ed));
+  setWorkLrecl(scr->ed, lrecl); /* 2024-12-27 do not show confirmation message */
+  /* sprintf(msg, "Working LRECL changed to %d", getWorkLrecl(scr->ed)); */
   checkNoParams(params, msg);
   return false;
 }
@@ -2955,7 +2957,7 @@ static int CmdMemoryDump(ScreenPtr scr, char *params, char *msg) {
 
 
 static int CmdDebug(ScreenPtr scr, char *params, char *msg) {
-
+  t_PGMB *PGMB_loc = CMSGetPG();
   char msg_temp[2048];
   msg_temp[0] = '\0';
 
@@ -3009,6 +3011,13 @@ static int CmdDebug(ScreenPtr scr, char *params, char *msg) {
 /*
   sprintf(msg,"CmdDebug 2022-11-11-0321 : &EE_DIRTY = X'%08x'   &EE_PLIST = X'%08x'\n%s",v,p,msg_temp);
 */
+
+  int i;
+  for (i=0;i<25;i++) {
+    printf("%d global %s\n",i,PGMB_loc->pfCmds[i]) ;
+    printf("%d view   %s\n",i,scr->ed->view->pfCmds[i]) ;
+  }
+
 
   return false;
 
@@ -3319,9 +3328,9 @@ static int CmdSqmetCURLine(ScreenPtr scr, char sqmet, char *params, char *msg) {
     if (rc) return rc;
     ExecCommSet(msg,"CURLINE.1", "-1", 0);
     ExecCommSet(msg,"CURLINE.2", "-1", 0);
-    ExecCommSet(msg,"CURLINE.3", curLine->text, lineLength(scr->ed, curLine));
-    ExecCommSet(msg,"CURLINE.4", "-1", 0);
-    ExecCommSet(msg,"CURLINE.5", "-1", 0);
+    ExecCommSet(msg,"CURLINE.3", curLine->text, fileLineLength(scr->ed, curLine));
+    ExecCommSet(msg,"CURLINE.4", "-1", 0); /* 2024-12-22 */
+    ExecCommSet(msg,"CURLINE.5", "-1", 0); /* was 'lineLength(scr->ed, curLine)' before */
     return rc;
   }
 
@@ -4305,14 +4314,27 @@ void deinCmds() {
   freeEditor(PGMB_loc->macroLibrary);
 }
 
-void setPF(int pfNo, char *cmdline) {
-  if (pfNo < 1 || pfNo > 24) { return; }
+void setPF(ScreenPtr scr, int pfNo, char *cmdline) {
+  if (pfNo < 0 || pfNo > 24) { return; }
   t_PGMB *PGMB_loc = CMSGetPG();
-  char *pfCmd = PGMB_loc->pfCmds[pfNo];
+
+  char *pfCmd = PGMB_loc->pfCmds[pfNo]; /* 2024-12-27 old global location */
+  printf ("%d %x %s \n", pfNo, pfCmd, pfCmd);  /* 2024-12-28-2200 DEBUG */
+
+  if (scr) {
+    if (scr->ed) {
+      if (scr->ed->view) {
+        pfCmd = scr->ed->view->pfCmds[pfNo];  /* 2024-12-27 set PF key per view */
+        printf ("%d %x %s \n", pfNo, pfCmd, pfCmd);  /* 2024-12-28-2200 DEBUG */
+      }
+    }
+  }
+
   memset(pfCmd, '\0', CMDLINELENGTH+1);
   if (cmdline && *cmdline) {
-    strncpy(pfCmd, cmdline, CMDLINELENGTH);
-  }
+    strncpy(pfCmd, cmdline, CMDLINELENGTH);   /* 2024-12-26 ToDo: check CMDLINELENGTH */
+    printf ("%d %x %s \n", pfNo, pfCmd, pfCmd);  /* 2024-12-28-2200 DEBUG */
+ }
 }
 
 extern int execCmd(
@@ -4424,9 +4446,10 @@ extern int execCmd(
   return rc;
 }
 
+/* is this used anywhere ? QUERY PF ?*/
 char* gPfCmd(char aidCode) {
   int idx = aidPfIndex(aidCode);
-  if (idx < 1 || idx > 24) { return NULL; }
+  if (idx < 0 || idx > 24) { return NULL; }
   t_PGMB *PGMB_loc = CMSGetPG();
   return PGMB_loc->pfCmds[idx];
 }
@@ -4434,8 +4457,20 @@ char* gPfCmd(char aidCode) {
 int tryExPf(ScreenPtr scr, char aidCode, char *msg) {
   t_PGMB *PGMB_loc = CMSGetPG();
   int idx = aidPfIndex(aidCode);
-  if (idx < 1 || idx > 24) { return false; }
+  if (idx < 0 || idx > 24) { return false; }
+
   char *pfCmd = PGMB_loc->pfCmds[idx];
+
+  if (scr) {
+    if (scr->ed) {
+      if (scr->ed->view) {
+        if (scr->ed->view->pfCmds[idx][0]) {   /* 2024-12-28 PF key defined at view level ? */
+          pfCmd = scr->ed->view->pfCmds[idx];  /* 2024-12-27 set PF key per view */
+        }
+      }
+    }
+  }
+
   if ( (sncmp(pfCmd, "RECALL")   == 0) || (sncmp(pfCmd, "RECALL-")   == 0) ||
        (sncmp(pfCmd, "RETRIEVE") == 0) || (sncmp(pfCmd, "RETRIEVE-") == 0) ||
        (sncmp(pfCmd, "?")        == 0) || (sncmp(pfCmd, "?-")        == 0) ) {

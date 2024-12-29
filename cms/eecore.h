@@ -95,6 +95,11 @@ typedef struct _publicView {
   char prefixChar; /* standard prefix filler, default: = */
   char fileToPrefixFiller; /* fill char after file line if prefixMode > 1 */
   short prefixLen; /* 1..5, will be forced to this range in _scrio() !! */
+
+  char pfCmds[25][CMDLINELENGTH+1];    /* additional PF key definitions on VIEW level */
+
+  char infoline0[LINES_LEN + 1];
+  char infoline1[LINES_LEN + 1];
 } *ViewPtr2;
 
 
@@ -504,6 +509,9 @@ extern int edWrRng(
 extern int edll(EditorPtr ed, LinePtr line);
 #define lineLength(ed, line) \
   edll(ed, line)
+extern int edllF(EditorPtr ed, LinePtr line); /* added 2024-12-21 */
+#define fileLineLength(ed, line) \
+  edllF(ed, line)
 
 
 /* get the line number of the current line of 'ed'.

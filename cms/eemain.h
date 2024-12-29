@@ -21,7 +21,7 @@
 #define _EEMAINimported
 
 /* the version information for the tools, displayed in header/footer lines */
-#define VERSION "V1.3.2.0017_241012-0700" /* git branch AGPLv3_WIP */
+#define VERSION "V1.3.2.0020_241228-2235" /* git branch AGPLv3_WIP */
 
 /**************************************************************************************************/
 /* Two functions to help C programs avoid having any non-const static or global                   */
@@ -221,8 +221,9 @@ extern int gshmode();
 
 
 /* bind the 'cmdLine' text to the PF key 'pfNo'.
+   2024-12-27 --- PF keys can be individual per view
 */
-extern void setPF(int pfNo, char *cmdline);
+extern void setPF(ScreenPtr scr,int pfNo, char *cmdline);
 
 
 /* execute an EE command, with parameters and possibly abbreviated.

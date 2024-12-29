@@ -33,6 +33,26 @@ upper fn
 upper ft
 upper fm
 
+"PREFIX LEFT"  ; "NUMBER ON"
+
+/*
+"PF 01 ringprev"
+"PF 02 ringnext"
+"PF 03 quit"
+"PF 04 save"
+"PF 05 Next -10"
+"PF 06 Next  10"
+"PF 07 PGUP   -5"
+"PF 08 PGDOwn -5"
+"PF 09 SEArchnext"
+"PF 10 REVSEArchnext"
+"PF 11 SPLTJoin"
+"PF 11 SJ"
+"PF 12 RETRIEVE-"
+"PF 24 RETRIEVE+"
+*/
+
+/*
 select
   when ft = "ASSEMBLE" then
     do
@@ -55,3 +75,4 @@ otherwise
       "PREFIX OFF"
     end
 end
+*/

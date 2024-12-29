@@ -28,6 +28,7 @@
 
 #include "errhndlg.h"
 
+#include "ee_first.h"
 #include "eecore.h"
 #include "eeutil.h"
 #include "eescrn.h"
@@ -1126,22 +1127,22 @@ int main9(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc) {
     scr->ed = initCmds();
 
     /* set default pfkeys, overridable by profile, set infoLines accordingly */
-    setPF( 1, "TABFORWARD");
-    setPF( 2, "RINGNEXT");
-    setPF( 3, "QUIT");
-    setPF( 4, "SEARCHNEXT");
-    setPF( 6, "SPLTJOIN");
-    setPF( 7, "PGUP");
-    setPF( 8, "PGDOWN");
-    setPF( 9, "MOVEHERE");
-    setPF(10, "PINPUT");
-    setPF(11, "CLRCMD");
-    setPF(12, "RECALL");
+    setPF(/*scr*/ NULL,  1, "TABFORWARD");
+    setPF(/*scr*/ NULL,  2, "RINGNEXT");
+    setPF(/*scr*/ NULL,  3, "QUIT");
+    setPF(/*scr*/ NULL,  4, "SEARCHNEXT");
+    setPF(/*scr*/ NULL,  6, "SPLTJOIN");
+    setPF(/*scr*/ NULL,  7, "PGUP");
+    setPF(/*scr*/ NULL,  8, "PGDOWN");
+    setPF(/*scr*/ NULL,  9, "MOVEHERE");
+    setPF(/*scr*/ NULL, 10, "PINPUT");
+    setPF(/*scr*/ NULL, 11, "CLRCMD");
+    setPF(/*scr*/ NULL, 12, "RECALL");
 
-    setPF(13, "TABBACKWARD");
-    setPF(16, "REVSEARCHNEXT");
-    setPF(19, "PGUP 66");
-    setPF(20, "PGDOWN 66");
+    setPF(/*scr*/ NULL, 13, "TABBACKWARD");
+    setPF(/*scr*/ NULL, 16, "REVSEARCHNEXT");
+    setPF(/*scr*/ NULL, 19, "PGUP 66");
+    setPF(/*scr*/ NULL, 20, "PGDOWN 66");
 
     scr->infoLinesPos = 2; /* max. 2 on bottom */
     scr->infoLines[0] = "02=RingNext "
@@ -1230,13 +1231,17 @@ int doEdit(char *fn, char *ft, char *fm, char *messages) {
       scr->cmdLinePrefill = NULL;
       Printf2("## entering read-eval loop (rc=%d, aid='%s')\n",
         rc, aidTran(scr->aidCode));
-      while(rc == 0) {
+
+/*====================================================================*/
+      while(rc == 0) {  /* enter read-eval loop */
         Printf0("## preparing screen structure based on last input\n");
 
         bool cursorPlaced = false;
         bool currentMoved = false;
         int i,j;
-
+        int WorkLrecl = getWorkLrecl(scr->ed);
+        int fll;
+        char temp_buffer[255];
         /* process overwrites in file content, ignoring lines with @-prefix */
         for (i = 0; i < scr->cmdPrefixesAvail; i++) {
           PrefixInput *pi = &scr->cmdPrefixes[i];
@@ -1255,7 +1260,20 @@ int doEdit(char *fn, char *ft, char *fm, char *messages) {
         for (i = 0; i < scr->inputLinesAvail; i++) {
           LineInput *li = &scr->inputLines[i];
           if (li->line != NULL) {
-            updateLine(scr->ed, li->line, li->newText, li->newTextLength);
+            fll = fileLineLength(scr->ed, li->line);
+            if (fll  > WorkLrecl) {
+              /* RDRLIST, FILELIST : is there "hidden" content to be preserved ? */
+                /* line length is 'ffl' and will not change */
+                /* 'newTextLength' ... (blanks if needed) ... 'WorkLrecl+1' to 'ffl' */
+                memset(temp_buffer, ' ', sizeof(temp_buffer));
+                for (j=0; j<li->newTextLength; j++)
+                  { temp_buffer[j] = li->newText[j]; }
+                for (j=WorkLrecl; j<fll; j++)
+                  { temp_buffer[j] = li->line->text[j]; }
+                updateLine(scr->ed, li->line, temp_buffer, fll);
+            } else {
+              updateLine(scr->ed, li->line, li->newText, li->newTextLength);
+            }
           }
         }
 
@@ -1309,7 +1327,8 @@ int doEdit(char *fn, char *ft, char *fm, char *messages) {
 
         Printf2("## writeReadScreen -> rc = %d, aid = '%s'\n",
           rc, aidTran(scr->aidCode));
-      }
+      } /* iterate read-eval loop */
+/*====================================================================*/
 
       if (rc == FS_SESSION_LOST) {
         rescueCommandLoop(scr, messages);

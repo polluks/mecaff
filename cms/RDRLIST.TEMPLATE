@@ -1,0 +1,24 @@
+ LORENZO  RDRLIST  A0  V 108  Trunc=108 Size=5 Line=1 Col=1 Alt=0
+Cmd   Filename Filetype Class User  at Node     Hold  Records  Date      Time
+      TEST0001 NETDATA  PUN A LORENZO  SDFVM    NONE       65 10/05    06:11:06
+      RXUSERFN ASSEMBLE PUN A LORENZO  SDFVM    NONE      531 10/06    07:34:06
+      HELPXED  XEDIT    PUN A LORENZO  SDFVM    NONE      699 10/10    12:16:30
+      (none)   (none)   CON T LORENZO  SDFVM    NONE      176 10/31    09:24:47
+      (none)   (none)   CON T LORENZO  SDFVM    NONE       45 11/04    20:47:24
+
+
+
+
+
+
+
+
+
+
+
+
+1= Help      2= Refresh  3= Quit      4= Sort(type) 5= Sort(date) 6= Sort(user)
+7= Backward  8= Forward  9= Receive  10=           11= Peek      12= Cursor
+
+====>
+                                                             X E D I T  1 File

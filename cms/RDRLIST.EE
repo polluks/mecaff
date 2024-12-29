@@ -6,6 +6,16 @@ signal on syntax
 false = 0
 true  = 1
 
+address "COMMAND" "IDENTIFY ( LIFO"
+parse pull user_id . local_node . rscs_id .
+if strip(user_id) <> strip(userid()) then exit -777 /* IDENTIFY failure ? */
+rscs_id     = left(rscs_id    || '        ',8)
+local_node  = left(local_node || '        ',8)
+/*
+MECAFF   AT VM370CE  VIA RSCS     13:05:31 12/25/24 GMT     WEDNESDAY
+....+....1....+....2....+....3....+....4....+....5....+....6....+....7....+....8....
+*/
+
 spool_userid = "*"
 address "COMMAND" "EXECIOT * CP ( STEM CP_Q_FILES. STRING QUERY FILES" spool_userid
 rc_save = rc
@@ -46,9 +56,17 @@ end
 
 address "COMMAND" "SENTRIES"
 stacked_new = rc
-address "EE" "X RDRLIST  LISTING A1"
+address "EE" "X" userid() "RDRLIST  A1"
+address "EE" "LRECL 255"
+address "EE" "WORKL 79"
 address "EE" "EXTRACT /line/"
 line_old = line.1
+
+address "EE" "infolines clear"
+address "EE" "infolines top"
+address "EE" "infolines add 13/14=-+TS  15/16=-+SIZE  17/18=+-FILEID  19/20=+-CLASS  21/22=+-ORIGIN  23=+SPOOLID"
+address "EE" "infolines add Cmd   Filename Filetype Class User  at Node     Hold  Records  Date      Time  "
+address "EE" "cmdline bottom"
 
 /*
 ORIGINID FILE CLASS RECDS  CPY HOLD DATE  TIME     NAME        TYPE     DIST
@@ -59,6 +77,17 @@ MECAFF   1685 N PUN 000531  99 NONE 10/06 14:50:31 RXUSERFN    ASSEMBLE DISTCODE
 1436 T 22     1  CON NONE MAINT    10/14/22 06:39:52 MAINT
 1656 A 226    1  PRT NONE MVS      10/03/24 16:43:46 MVS
 */
+
+/*
+Cmd   Filename Filetype Class User  at Node     Hold  Records  Date      Time
+      TEST0001 NETDATA  PUN A LORENZO  SDFVM    NONE       65 10/05    06:11:06
+....+....1....+....2....+....3....+....4....+....5....+....6....+....7....+....8
+      RXUSERFN ASSEMBLE PUN A LORENZO  SDFVM    NONE      531 10/06    07:34:06
+      HELPXED  XEDIT    PUN A LORENZO  SDFVM    NONE      699 10/10    12:16:30
+      (none)   (none)   CON T LORENZO  SDFVM    NONE      176 10/31    09:24:47
+      (none)   (none)   CON T LORENZO  SDFVM    NONE       45 11/04    20:47:24
+*/
+
 
 do i = 1 to stacked_new-stacked_old
   parse pull from_executil.i
@@ -72,8 +101,51 @@ do i = 1 to stacked_new-stacked_old
   if (yy.i >= 70) then yyyy.i = yy.i + 1900; else yyyy.i = yy.i + 2000
 
 /*address "EE" "INPUT" from_executil.i */
+/*
   address "EE" "INPUT" spoolid.i class.i records.i copies.i device.i hold.i origin.i" ",
                        yyyy.i"-"mm.i"-"dd.i hh_mm_ss.i fname.i ftype.i distcode.i
+*/
+  if fname.i = "" then fname.i = "(none)  "
+  if ftype.i = "" then ftype.i = "(none)  "
+  node.i = local_node
+
+  /* has this spool file been sent from a remote node ? */
+  if origin.i = rscs_id then do
+    address "COMMAND" "EXECIOT" "1 CP ( VAR cp_tag_query STRING TAG QUERY FILE" spoolid.i
+/*  parse var cp_tag_query . =20 node.i =28 . =29 origin.i =37 . */
+    parse var cp_tag_query . =20 from_node =28 . =29 from_user =37 .
+    if strip(from_node) = "" then do; from_node = "*"; from_user = origin.i; end
+    if strip(from_user) = "" then do; from_user = "*";                       end
+    origin.i = left(from_user    || '        ',8)
+    node.i   = left(from_node    || '        ',8)
+  end
+
+
+
+/*
+....+....1....+....2....+....3....+....4....+....5....+....6....+....7....+....8....
+....+....1....+... SDFVM    LORENZO  ..4....+....5....+....6....+....7....+....8....
+CMS cp tag FILE 1752 ....+....1....+... SDFVM    LORENZO  ..4....+....5....+....6....+....7....+....8....
+CMS execio * cp (lifo string TAG QUERY FILE 1752
+
+ RDRLIST  EXEC     S2  V 130  Trunc=130 Size=216 Line=98 Col=1 Alt=0
+====>
+   98   &IF &ORG ^= &RSCS &GOTO -NOTAG
+   99   EXECIO 1 CP ( LIFO STRING TAG QUERY FILE &SPID
+  100 * VM18798 has modified the following 6 lines for blank USERIDS
+  101   &READ STRING  &T
+  102   &FROMNODE = &SUBSTR OF &T 20 8
+  103   &FROMUID = &SUBSTR OF &T 29 8
+  104   &IF .&FROMNODE  = . &FROMUID  = &ORG
+  105   &IF .&FROMNODE = . &FROMNODE = *
+*/
+
+
+  visible.i = fname.i ftype.i device.i class.i origin.i node.i hold.i records.i ,
+              yyyy.i"-"mm.i"-"dd.i hh_mm_ss.i spoolid.i copies.i distcode.i
+  shadow.i  = visible.i
+  address "EE" "INPUT" "     " visible.i shadow.i
+
 end
 address "COMMAND" "DROPBUF" new_buffer_id
 
