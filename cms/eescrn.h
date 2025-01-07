@@ -37,7 +37,7 @@
 #include "aid3270.h"
 
 /* EESCRN supports up to RESFIELDCOUNT modifiable line content lines */
-#define RESFIELDCOUNT 64
+#define RESFIELDCOUNT 256                      /* 2025-01-07 DEBUG: was 64, now 256 */
 
 /* max. length of the command line text the user can enter */
 /* #define CMDLINELENGTH 120 */      /* moved from EESCRN.H to EE_FIRST.H */
@@ -206,8 +206,8 @@ typedef struct _eescreen_public {
     char cmdLine[CMDLINELENGTH + 1]; /* null terminated */
     unsigned int inputLinesAvail; /* modified lines => #entries in inputLines */
     unsigned int cmdPrefixesAvail; /* prefix commands in cmdPrefixes */
-    LineInput inputLines[RESFIELDCOUNT];
-    PrefixInput cmdPrefixes[RESFIELDCOUNT];
+    LineInput inputLines[RESFIELDCOUNT];       /* 2025-01-07 DEBUG: was 64, now 256 */
+    PrefixInput cmdPrefixes[RESFIELDCOUNT];    /* 2025-01-07 DEBUG: was 64, now 256 */
 
 } ScreenPublic;
 

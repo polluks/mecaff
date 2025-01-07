@@ -43,7 +43,7 @@
 static const char *_FILE_NAME_ = "eescrn.c";
 
 /* constants defining the basic limits of EE screens */
-#define MAX_ED_LINES 64
+#define MAX_ED_LINES 256                                   /* 2025-01-07 DEBUG: was 64, now 256 */
 #define MAX_MSG_LINES 13
 
 /* each displayed line is recorded in the following structure before the
@@ -66,7 +66,7 @@ typedef struct _eescreen_private {
   unsigned int cmdCol;
   unsigned int hShiftEffective;
   unsigned int edLinesUsed;
-  EdLinePlace edLinePlaces[MAX_ED_LINES];
+  EdLinePlace edLinePlaces[MAX_ED_LINES];                  /* 2025-01-07 DEBUG: was 64, now 256 */
 } ScreenPrivate;
 
 /* the complete ScreenPtr structure seen by the implementation */
@@ -447,9 +447,9 @@ static int _scrio_inner(ScreenPtr screen) {
 #endif
 
   /* fetch the lines to be displayed from the editor */
-  LinePtr uplines[64];
+  LinePtr uplines[MAX_ED_LINES];                           /* 2025-01-07 DEBUG: was 64, now 256 */
   unsigned int uplinesCount = 0;
-  LinePtr downlines[64];
+  LinePtr downlines[MAX_ED_LINES];                         /* 2025-01-07 DEBUG: was 64, now 256 */
   unsigned int downlinesCount = 0;
   LinePtr currLine;
   unsigned int currLineNo = 0;
@@ -458,8 +458,8 @@ static int _scrio_inner(ScreenPtr screen) {
   Printf1(" -- preparing for getLineFrame, sizeof(LinePtr) = %d\n",
     sizeof(LinePtr));
 
-  memset(uplines, '\0', 64 * sizeof(LinePtr));
-  memset(downlines, '\0', 64 * sizeof(LinePtr));
+  memset(uplines, '\0', MAX_ED_LINES * sizeof(LinePtr));   /* 2025-01-07 DEBUG: was 64, now 256 */
+  memset(downlines, '\0', MAX_ED_LINES * sizeof(LinePtr)); /* 2025-01-07 DEBUG: was 64, now 256 */
   currLine = NULL;
 
   Printf2(" -- doing getLineFrame(ed, %d, ..., %d, ...)\n",
