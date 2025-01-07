@@ -96,6 +96,7 @@ typedef struct _publicView {
   char fileToPrefixFiller; /* fill char after file line if prefixMode > 1 */
   short prefixLen; /* 1..5, will be forced to this range in _scrio() !! */
 
+  int pfMode[25];
   char pfCmds[25][CMDLINELENGTH+1];    /* additional PF key definitions on VIEW level */
 
   char infoline0[LINES_LEN + 1];

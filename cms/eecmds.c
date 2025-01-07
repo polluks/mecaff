@@ -38,17 +38,6 @@
 
 #include "glblpost.h"
 
-#define _rc_success    0
-#define _rc_limit      1
-#define _rc_tof_eof    1
-#define _rc_error      2
-#define _rc_not_found  2
-#define _rc_unspecific 3
-#define _rc_invalid    5
-#define _rc_failure   -1
-#define _rc_unknown   -3
-#define _rc_NYI       -5 /* not yet implemented */
-
 /* set the filename for error messages from memory protection in EEUTIL */
 static const char *_FILE_NAME_ = "eecmds.c";
 
@@ -1693,40 +1682,137 @@ static int CmdSplitjoin(ScreenPtr scr, char *params, char *msg) {
 }
 
 static int CmdPf(ScreenPtr scr, char *params, char *msg) {
-  int pfNo = -1;
+  int pfNo    = -1;
+  int pfScope = PFSCOPE_GLOBAL;
+  int pfMode  = PFMODE_BEFORE;
+  bool have_pfScreen = false;
+  bool have_pfScope  = false;
+  bool have_pfMode   = false;
+  bool have_pfNo     = false;
   bool clear = false;
   bool forFsList = false;
   bool forFsView = false;
   bool forFsHelp = false;
 
+  /* if "pfScreen" is present it must be the first token */
   if (isAbbrev(params, "FSLIST")) {
     forFsList = true;
+    have_pfScreen = true;
     params = getCmdParam(params);
   } else if (isAbbrev(params, "FSVIEW")) {
     forFsView = true;
+    have_pfScreen = true;
     params = getCmdParam(params);
   } else if (isAbbrev(params, "FSHELP")) {
     forFsHelp = true;
+    have_pfScreen = true;
     params = getCmdParam(params);
   } else if (isAbbrev(params, "EE")) {
-    /* EE is the default */
-  }
-
-  if (isAbbrev(params, "CLEAR")) {
-    clear = true;
+    /* EE is the default, skip over if present */
     params = getCmdParam(params);
   }
 
-  if (tryParseInt(params, &pfNo)) {
-    params = getCmdParam(params);
-  } else {
-    strcpy(msg, "PF-Key number must be numeric");
-    return false;
-  }
-  if (pfNo < 0 || pfNo > 24) {
-    strcpy(msg, "PF-Key number must be 0 .. 24 (0=ENTER)");
-    return false;
-  }
+  while (true) { /* option loop */
+    if  (!have_pfScope) {
+      if        (isAbbrev(params, "GLOBAL")) {
+        pfScope = PFSCOPE_GLOBAL;
+        have_pfScope = true;
+        params = getCmdParam(params);
+        continue;
+      } else if (isAbbrev(params, "VIEW"))   {
+        pfScope = PFSCOPE_VIEW;
+        have_pfScope = true;
+        params = getCmdParam(params);
+/*        strcpy(msg, "DEBUG: 1737 VIEW CmdPf(ScreenPtr scr, char *params, char *msg)");    */
+/*        return _rc_invalid;                                                               */
+
+        continue;
+      } else if (isAbbrev(params, "PERM"))   {
+        pfScope = PFSCOPE_GLOBAL;
+        have_pfScope = true;
+        params = getCmdParam(params);
+        continue;
+      } else if (isAbbrev(params, "FILE"))   {
+        pfScope = PFSCOPE_VIEW;
+        have_pfScope = true;
+        params = getCmdParam(params);
+        continue;
+      } else if (isAbbrev(params, "AUTO"))   {
+        pfScope = PFSCOPE_VIEW;
+        have_pfScope = true;
+        params = getCmdParam(params);
+        continue;
+      } else if (isAbbrev(params, "SCREEN")) {
+        pfScope = PFSCOPE_GLOBAL;
+        have_pfScope = true;
+        params = getCmdParam(params);
+        continue;
+      } else {
+        ; /* nop */
+      }
+    }  /* if (!have_pfScope) */
+    if (!have_pfMode) {
+      if        (isAbbrev(params, "BEFORE")) {
+        pfMode  = PFMODE_BEFORE;
+        have_pfMode = true;
+        params = getCmdParam(params);
+        continue;
+      } else if (isAbbrev(params, "AFTER" ))   {
+        pfMode  = PFMODE_AFTER ;
+        have_pfMode = true;
+        params = getCmdParam(params);
+/*        strcpy(msg, "DEBUG: 1774 AFTER CmdPf(ScreenPtr scr, char *params, char *msg)");   */
+/*        return _rc_invalid;                                                               */
+
+        continue;
+      } else if (isAbbrev(params, "ONLY"  ))   {
+        pfMode  = PFMODE_ONLY  ;
+        have_pfMode = true;
+        params = getCmdParam(params);
+        continue;
+      } else if (isAbbrev(params, "IGNORE"))   {
+        pfMode  = PFMODE_IGNORE;
+        have_pfMode = true;
+        params = getCmdParam(params);
+        continue;
+      } else if (isAbbrev(params, "CLEAR" ))   {
+        clear = true;
+        pfMode  = PFMODE_CLEAR ;
+        have_pfMode = true;
+        params = getCmdParam(params);
+        continue;
+      } else if (isAbbrev(params, "BOTH" ))   {
+        pfMode  = PFMODE_BOTH ;
+        have_pfMode = true;
+        params = getCmdParam(params);
+        continue;
+      } else if (isAbbrev(params, "TWICE" ))   {
+        pfMode  = PFMODE_TWICE ;
+        have_pfMode = true;
+        params = getCmdParam(params);
+        continue;
+      } else {
+        ; /* nop */
+      }
+    } /* if (!have_pfMode) */
+    if (!have_pfNo) {
+      /* no option word recognized in this iteration, must be PF Key number now */
+      if (tryParseInt(params, &pfNo)) {
+        have_pfNo     = true;
+        params = getCmdParam(params);
+      } else {
+        strcpy(msg, "PF Key number must be numeric");
+        return _rc_invalid;
+      }
+      if (pfNo < 0 || pfNo > 24) {
+        strcpy(msg, "PF Key number must be 0 .. 24 (0=ENTER)");
+        return _rc_invalid;
+      }
+      continue;
+    }
+    /* nothing recognized ? then we are done */
+    break;
+  /* option loop */ }
 
   if (clear) {
     if (forFsList) {
@@ -1736,16 +1822,16 @@ static int CmdPf(ScreenPtr scr, char *params, char *msg) {
     } else if (forFsHelp) {
       setFSHPFKey(pfNo, NULL);
     } else {
-      setPF(scr, pfNo, NULL);
+      setPF(scr, pfScope, pfMode, pfNo, NULL);
     }
     checkNoParams(params, msg);
-    return false;
+    return _rc_success;
   }
 
   if (strlen(params) > CMDLINELENGTH) {
-    sprintf(msg, "Command line for PF-Key too long (max. %d chars)",
+    sprintf(msg, "Command line for PF Key too long (max. %d chars)",
             CMDLINELENGTH);
-    return false;
+    return _rc_invalid;
   }
 
   if (forFsList) {
@@ -1755,9 +1841,9 @@ static int CmdPf(ScreenPtr scr, char *params, char *msg) {
   } else if (forFsHelp) {
     setFSHPFKey(pfNo, params);
   } else {
-    setPF(scr, pfNo, params);
+    setPF(scr, pfScope, pfMode, pfNo, params);
   }
-  return false;
+  return _rc_success;
 }
 
 static int CmdSqmetColor(ScreenPtr scr, char sqmet, char *params, char *msg) {
@@ -3013,7 +3099,7 @@ static int CmdDebug(ScreenPtr scr, char *params, char *msg) {
 */
 
   int i;
-  for (i=0;i<25;i++) {
+  for (i=0;i</*25*/13;i++) {
     printf("%d global %s\n",i,PGMB_loc->pfCmds[i]) ;
     printf("%d view   %s\n",i,scr->ed->view->pfCmds[i]) ;
   }
@@ -4028,7 +4114,7 @@ static int CmdCancel(ScreenPtr scr, char *params, char *msg) {
 
 
 static int CmdAbort(ScreenPtr scr, char *params, char *msg) {
-  return 7777;
+  return _rc_ABORT;
 }
 
 static int CmdSetReturnCode(ScreenPtr scr, char *params, char *msg) {
@@ -4314,26 +4400,30 @@ void deinCmds() {
   freeEditor(PGMB_loc->macroLibrary);
 }
 
-void setPF(ScreenPtr scr, int pfNo, char *cmdline) {
+void setPF(ScreenPtr scr, int pfScope, int pfMode, int pfNo, char *cmdline) {
   if (pfNo < 0 || pfNo > 24) { return; }
   t_PGMB *PGMB_loc = CMSGetPG();
 
+  int *store_pfMode = &PGMB_loc->pfMode[pfNo];
   char *pfCmd = PGMB_loc->pfCmds[pfNo]; /* 2024-12-27 old global location */
-  printf ("%d %x %s \n", pfNo, pfCmd, pfCmd);  /* 2024-12-28-2200 DEBUG */
+  /* printf ("%d %x %s \n", pfNo, pfCmd, pfCmd);  */ /* 2024-12-28-2200 DEBUG */
 
-  if (scr) {
-    if (scr->ed) {
-      if (scr->ed->view) {
-        pfCmd = scr->ed->view->pfCmds[pfNo];  /* 2024-12-27 set PF key per view */
-        printf ("%d %x %s \n", pfNo, pfCmd, pfCmd);  /* 2024-12-28-2200 DEBUG */
+  if (pfScope == PFSCOPE_VIEW) {
+    if (scr) {
+      if (scr->ed) {
+        if (scr->ed->view) {
+          store_pfMode = &scr->ed->view->pfMode[pfNo];
+          pfCmd  = scr->ed->view->pfCmds[pfNo];  /* 2024-12-27 set PF key per view */
+          /* printf ("%d %x %s \n", pfNo, pfCmd, pfCmd); */  /* 2024-12-28-2200 DEBUG */
+        }
       }
     }
   }
-
+  *store_pfMode = pfMode;
   memset(pfCmd, '\0', CMDLINELENGTH+1);
   if (cmdline && *cmdline) {
     strncpy(pfCmd, cmdline, CMDLINELENGTH);   /* 2024-12-26 ToDo: check CMDLINELENGTH */
-    printf ("%d %x %s \n", pfNo, pfCmd, pfCmd);  /* 2024-12-28-2200 DEBUG */
+    /* printf ("%d %x %s \n", pfNo, pfCmd, pfCmd); */  /* 2024-12-28-2200 DEBUG */
  }
 }
 
@@ -4373,9 +4463,10 @@ extern int execCmd(
       LinePtr oldestCmd = moveToLastLine(PGMB_loc->commandHistory);
       deleteLine(PGMB_loc->commandHistory, oldestCmd);
     }
+    moveToBOF(PGMB_loc->commandHistory); /* 2025-01-05 should this be moved to here ? */
     break;
   }
-  moveToBOF(PGMB_loc->commandHistory);
+  /* moveToBOF(PGMB_loc->commandHistory); */ /* 2025-01-05 should this be moved up ? */
 
   /* check if we shall search for macros first : XEDIT - SET MACRO ON */
 
@@ -4445,31 +4536,38 @@ extern int execCmd(
   }
   return rc;
 }
-
-/* is this used anywhere ? QUERY PF ?*/
-char* gPfCmd(char aidCode) {
+/**********************************************************************/
+/* is this used anywhere ? See EEPREFIX ... */
+/* char* gPfCmd(char aidCode) { */
+char* gPfCmd(ScreenPtr scr, char aidCode, int *store_pfMode) {
   int idx = aidPfIndex(aidCode);
   if (idx < 0 || idx > 24) { return NULL; }
   t_PGMB *PGMB_loc = CMSGetPG();
-  return PGMB_loc->pfCmds[idx];
-}
-
-int tryExPf(ScreenPtr scr, char aidCode, char *msg) {
-  t_PGMB *PGMB_loc = CMSGetPG();
-  int idx = aidPfIndex(aidCode);
-  if (idx < 0 || idx > 24) { return false; }
 
   char *pfCmd = PGMB_loc->pfCmds[idx];
+  *store_pfMode = PGMB_loc->pfMode[idx];
 
   if (scr) {
     if (scr->ed) {
       if (scr->ed->view) {
         if (scr->ed->view->pfCmds[idx][0]) {   /* 2024-12-28 PF key defined at view level ? */
           pfCmd = scr->ed->view->pfCmds[idx];  /* 2024-12-27 set PF key per view */
+          *store_pfMode = scr->ed->view->pfMode[idx];
         }
       }
     }
   }
+  /* return PGMB_loc->pfCmds[idx]; */
+  if (*pfCmd) { return pfCmd; } else { return NULL; }
+}
+
+/**********************************************************************/
+/* was before 2025-01-05 int tryExPf(ScreenPtr scr, char aidCode, char *msg) { */
+  bool tryRecPf(char *pfCmd) {
+  t_PGMB *PGMB_loc = CMSGetPG();
+
+  if  (!pfCmd) return false;
+  if (!*pfCmd) return false;
 
   if ( (sncmp(pfCmd, "RECALL")   == 0) || (sncmp(pfCmd, "RECALL-")   == 0) ||
        (sncmp(pfCmd, "RETRIEVE") == 0) || (sncmp(pfCmd, "RETRIEVE-") == 0) ||
@@ -4477,22 +4575,23 @@ int tryExPf(ScreenPtr scr, char aidCode, char *msg) {
     LinePtr currCmd = getCurrentLine(PGMB_loc->commandHistory);
     LinePtr nextCmd = moveDown(PGMB_loc->commandHistory, 1);
     if (currCmd == nextCmd) { moveToBOF(PGMB_loc->commandHistory); }
-    return false;
+    return true; /* 2024-01-05 tell caller that we have executed a recall command */
   } else if ( (sncmp(pfCmd, "RECALL+")   == 0) ||
               (sncmp(pfCmd, "RETRIEVE+") == 0) ||
               (sncmp(pfCmd, "?+")        == 0) ) {
     LinePtr currCmd = getCurrentLine(PGMB_loc->commandHistory);
     LinePtr prevCmd = moveUp(PGMB_loc->commandHistory, 1);
     if (currCmd == prevCmd) { moveToBOF(PGMB_loc->commandHistory); }
-    return false;
+    return true; /* 2024-01-05 tell caller that we have executed a recall command */
   } else if ( (sncmp(pfCmd, "RECALL=") == 0) || (sncmp(pfCmd, "RETRIEVE=") == 0) ||
               (sncmp(pfCmd, "CLRCMD")  == 0) || (sncmp(pfCmd, "?=")        == 0) ) {
     moveToBOF(PGMB_loc->commandHistory);
-    return false;
-  } else if (*pfCmd) {
-    return execCommand(scr, pfCmd, msg, false);
+    return true; /* 2024-01-05 tell caller that we have executed a recall command */
+  } else {
+      /* NOP */ ;
   }
-  return false;
+  return false;  /* 2024-01-05 tell caller that we did not execute any recall command
+                    execCommand(scr, pfCmd, msg, false) is done elsewhere */
 }
 
 char* grccmd() {

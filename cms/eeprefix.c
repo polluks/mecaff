@@ -75,10 +75,12 @@ static bool mayProcessPrefixes(ScreenPtr scr) {
   t_PGMB *PGMB_loc = CMSGetPG();
   char *cmd = NULL;
 
+  /* ToDo: 2025-01-05 adapt to new PF key handling - ENTER = Pf0 */
+  int dummy;
   if (scr->aidCode == Aid_Enter && *scr->cmdLine) {
     cmd = scr->cmdLine;
   } else {
-    cmd = getPFCommand(scr->aidCode);
+    cmd = getPFCommand(scr, scr->aidCode, &dummy);
   }
 
   while(*cmd == ' ') { cmd++; }

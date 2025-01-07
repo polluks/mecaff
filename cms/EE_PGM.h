@@ -32,6 +32,7 @@ typedef struct t_PGMB {
   EditorPtr filetypeDefaults   ;
   EditorPtr filetypeTabs       ;
   EditorPtr macroLibrary       ;
+  int pfMode[25]               ;
   char pfCmds[25][CMDLINELENGTH+1];
   int fileCount                ;
   char searchPattern[CMDLINELENGTH + 1];

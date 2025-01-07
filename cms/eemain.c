@@ -1127,22 +1127,22 @@ int main9(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc) {
     scr->ed = initCmds();
 
     /* set default pfkeys, overridable by profile, set infoLines accordingly */
-    setPF(/*scr*/ NULL,  1, "TABFORWARD");
-    setPF(/*scr*/ NULL,  2, "RINGNEXT");
-    setPF(/*scr*/ NULL,  3, "QUIT");
-    setPF(/*scr*/ NULL,  4, "SEARCHNEXT");
-    setPF(/*scr*/ NULL,  6, "SPLTJOIN");
-    setPF(/*scr*/ NULL,  7, "PGUP");
-    setPF(/*scr*/ NULL,  8, "PGDOWN");
-    setPF(/*scr*/ NULL,  9, "MOVEHERE");
-    setPF(/*scr*/ NULL, 10, "PINPUT");
-    setPF(/*scr*/ NULL, 11, "CLRCMD");
-    setPF(/*scr*/ NULL, 12, "RECALL");
+    setPF(/*scr*/ NULL, PFSCOPE_GLOBAL, PFMODE_ONLY,    1, "TABFORWARD");
+    setPF(/*scr*/ NULL, PFSCOPE_GLOBAL, PFMODE_BEFORE,  2, "RINGNEXT");
+    setPF(/*scr*/ NULL, PFSCOPE_GLOBAL, PFMODE_ONLY,    3, "QUIT");
+    setPF(/*scr*/ NULL, PFSCOPE_GLOBAL, PFMODE_BEFORE,  4, "SEARCHNEXT");
+    setPF(/*scr*/ NULL, PFSCOPE_GLOBAL, PFMODE_BEFORE,  6, "SPLTJOIN");
+    setPF(/*scr*/ NULL, PFSCOPE_GLOBAL, PFMODE_BEFORE,  7, "PGUP");
+    setPF(/*scr*/ NULL, PFSCOPE_GLOBAL, PFMODE_BEFORE,  8, "PGDOWN");
+    setPF(/*scr*/ NULL, PFSCOPE_GLOBAL, PFMODE_BEFORE,  9, "MOVEHERE");
+    setPF(/*scr*/ NULL, PFSCOPE_GLOBAL, PFMODE_ONLY,   10, "PINPUT");
+    setPF(/*scr*/ NULL, PFSCOPE_GLOBAL, PFMODE_ONLY,   11, "CLRCMD");
+    setPF(/*scr*/ NULL, PFSCOPE_GLOBAL, PFMODE_ONLY,   12, "RECALL");
 
-    setPF(/*scr*/ NULL, 13, "TABBACKWARD");
-    setPF(/*scr*/ NULL, 16, "REVSEARCHNEXT");
-    setPF(/*scr*/ NULL, 19, "PGUP 66");
-    setPF(/*scr*/ NULL, 20, "PGDOWN 66");
+    setPF(/*scr*/ NULL, PFSCOPE_GLOBAL, PFMODE_ONLY,   13, "TABBACKWARD");
+    setPF(/*scr*/ NULL, PFSCOPE_GLOBAL, PFMODE_BEFORE, 16, "REVSEARCHNEXT");
+    setPF(/*scr*/ NULL, PFSCOPE_GLOBAL, PFMODE_BEFORE, 19, "PGUP 66");
+    setPF(/*scr*/ NULL, PFSCOPE_GLOBAL, PFMODE_BEFORE, 20, "PGDOWN 66");
 
     scr->infoLinesPos = 2; /* max. 2 on bottom */
     scr->infoLines[0] = "02=RingNext "
@@ -1287,35 +1287,132 @@ int doEdit(char *fn, char *ft, char *fm, char *messages) {
         }
 
         scr->cmdLinePrefill = NULL;
-        int aidIdx = aidPfIndex(scr->aidCode);
-        if (aidIdx == 0){
-          if (*scr->cmdLine) {
-            bool doneWithEE = (7777 == execCommand(scr, NULL, scr->msgText, true));
-            if (doneWithEE) {
-              rc = RC_CLOSEALL;
-              break;
+
+/* =================== PF key and command line ======================= */
+
+        /* getPFCommand(...)                                            */
+        /* char* gPfCmd(ScreenPtr scr, char aidCode, int *store_pfMode) */
+        int pfMode = PFMODE_CLEAR;
+        char *pfCmd = getPFCommand(scr, scr->aidCode, &pfMode);
+        /* ToDo: do not call getPFCommand(...) twice ...
+           see execPrefixesCmds(scr, cursorPlaced); */
+
+        bool pfPhases[3];  /* pfPhases[0] not used */
+        pfPhases[PF_PHASE_BEFORE] = pfPhases[PF_PHASE_COMMAND] = pfPhases[PF_PHASE_AFTER] = false;
+
+        /* do we have something in the command line ? */
+        bool haveCmd = false;
+        if (*scr->cmdLine) { haveCmd = pfPhases[PF_PHASE_COMMAND] = true; }
+
+        /* do we have a PF key definition ? */
+        bool recallPF = false;
+        bool havePF = false;
+        if (pfCmd) {
+          if (pfMode != PFMODE_CLEAR) {
+            if (*pfCmd) {
+              havePF = true;
+              /* check if PF key is set to recall command family */
+              if (recallPF = tryRecallPf(pfCmd)) {
+                /* recall command ? then nothing else will be executed */
+                havePF = false;
+                haveCmd = false;
+                pfPhases[PF_PHASE_BEFORE] = pfPhases[PF_PHASE_COMMAND] = pfPhases[PF_PHASE_AFTER] = false;
+                char *recalledCommand = getCurrentRecalledCommand();
+                if (recalledCommand) {
+                  scr->cmdLinePrefill = recalledCommand;
+                  if (scr->cursorPlacement != 1 && scr->cursorPlacement != 2) {
+                    scr->cursorOffset = strlen(recalledCommand);
+                  }
+                } else if (*scr->cmdLine) {
+                  scr->cmdLinePrefill = scr->cmdLine;
+                }
+              }
             }
-            if (scr->ed == NULL) { break; }
-          } else {
-            unrecallHistory();
-          }
-        } else if (aidIdx > 0 && aidIdx < 25) {
-          bool doneWithEE = (7777 == tryExecPf(scr, scr->aidCode, scr->msgText));
-          if (doneWithEE) {
-            rc = RC_CLOSEALL;
-            break;
-          }
-          if (scr->ed == NULL) { break; }
-          char *recalledCommand = getCurrentRecalledCommand();
-          if (recalledCommand) {
-            scr->cmdLinePrefill = recalledCommand;
-            if (scr->cursorPlacement != 1 && scr->cursorPlacement != 2) {
-              scr->cursorOffset = strlen(recalledCommand);
-            }
-          } else if (*scr->cmdLine) {
-            scr->cmdLinePrefill = scr->cmdLine;
           }
         }
+
+        /* see IBM documentation 'HELP SET PF' for BEFORE, AFTER, ONLY and IGNORE */
+        if (havePF) switch (pfMode) {
+          case PFMODE_BEFORE : pfPhases[PF_PHASE_BEFORE]   = true;
+                               break;
+          case PFMODE_AFTER  : pfPhases[PF_PHASE_AFTER]    = true;
+                               break;
+          case PFMODE_ONLY   : pfPhases[PF_PHASE_BEFORE]   = true;
+                               pfPhases[PF_PHASE_COMMAND]  = false;
+                               break;
+          case PFMODE_IGNORE : if (!haveCmd) { pfPhases[PF_PHASE_BEFORE] = true; }
+                               break;
+          case PFMODE_BOTH   : if (haveCmd) {
+                                 pfPhases[PF_PHASE_BEFORE] = true;
+                                 pfPhases[PF_PHASE_AFTER]  = true;
+                               }
+                               break;
+          case PFMODE_TWICE  : pfPhases[PF_PHASE_BEFORE]   = true;
+                               pfPhases[PF_PHASE_AFTER]    = true;
+                               break;
+          case PFMODE_CLEAR  : /* this should not happen */ break;
+          default : /* this should not happen */ /* NOP */ ;
+        }
+
+        if (!recallPF) {
+          int phase;
+          for (phase=1; phase<4; phase++) {
+             int rc_temp = _rc_success;
+             if (pfPhases[phase]) {
+               if (phase == PF_PHASE_COMMAND) {
+                 /* execute command line */
+                 rc_temp = execCommand(scr, NULL, scr->msgText, true);
+                 unrecallHistory();
+               } else {
+                 /* execute PF key */
+                 rc_temp = execCommand(scr, pfCmd, scr->msgText, false);
+               }
+
+               if (rc_temp == _rc_ABORT) {
+                 rc = RC_CLOSEALL;
+                 break; /* for */
+               }
+             }
+          }
+          if (rc == RC_CLOSEALL) break; /* while - leave read-eval loop */
+        }
+
+        /* ToDo: check getCurrentRecalledCommand() */
+
+/* old code prior to 2025-01-03 */     /* C++ comments not allowed */
+/*
+//      int aidIdx = aidPfIndex(scr->aidCode);
+//      if (aidIdx == 0){
+//        if (*scr->cmdLine) {
+//          bool doneWithEE = (7777 == execCommand(scr, NULL, scr->msgText, true));
+//          if (doneWithEE) {
+//            rc = RC_CLOSEALL;
+//            break;
+//          }
+//          if (scr->ed == NULL) { break; }
+//        } else {
+//          unrecallHistory();
+//        }
+//      } else if (aidIdx > 0 && aidIdx < 25) {
+//        bool doneWithEE = (7777 == tryExecPf(scr, scr->aidCode, scr->msgText));
+//        if (doneWithEE) {
+//          rc = RC_CLOSEALL;
+//          break;
+//        }
+//        if (scr->ed == NULL) { break; }
+//        char *recalledCommand = getCurrentRecalledCommand();
+//        if (recalledCommand) {
+//          scr->cmdLinePrefill = recalledCommand;
+//          if (scr->cursorPlacement != 1 && scr->cursorPlacement != 2) {
+//            scr->cursorOffset = strlen(recalledCommand);
+//          }
+//        } else if (*scr->cmdLine) {
+//          scr->cmdLinePrefill = scr->cmdLine;
+//        }
+//      }
+*/
+
+/* =================== PF key and command line : DONE ================ */
 
         Printf0("## invoking writeReadScreen()\n");
         buildHeadFootlines();

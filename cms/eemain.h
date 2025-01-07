@@ -21,7 +21,7 @@
 #define _EEMAINimported
 
 /* the version information for the tools, displayed in header/footer lines */
-#define VERSION "V1.3.2.0020_241228-2235" /* git branch AGPLv3_WIP */
+#define VERSION "V1.3.2.0020_250105-2110" /* git branch AGPLv3_WIP */
 
 /**************************************************************************************************/
 /* Two functions to help C programs avoid having any non-const static or global                   */
@@ -223,8 +223,8 @@ extern int gshmode();
 /* bind the 'cmdLine' text to the PF key 'pfNo'.
    2024-12-27 --- PF keys can be individual per view
 */
-extern void setPF(ScreenPtr scr,int pfNo, char *cmdline);
-
+/* extern void setPF(ScreenPtr scr,                          int pfNo, char *cmdline); */
+extern    void setPF(ScreenPtr scr, int pfScope, int pfMode, int pfNo, char *cmdline);
 
 /* execute an EE command, with parameters and possibly abbreviated.
    If 'addToHistory' is true, the the command line is added to the history.
@@ -242,18 +242,28 @@ extern int execCmd(
 /* get the command string bound to the PF key identified by the 'aidCode' or
    NULL, if none is associated.
 */
-extern char* gPfCmd(char aidCode);
-#define getPFCommand(aidCode) \
-  gPfCmd(aidCode)
+/* extern char* gPfCmd(char aidCode); */
+extern char* gPfCmd(ScreenPtr scr, char aidCode, int *store_pfMode);
+/* #define getPFCommand(aidCode) \   */
+/*   gPfCmd(aidCode)                 */
+#define getPFCommand(scr, aidCode, store_pfMode) \
+  gPfCmd(scr, aidCode, store_pfMode)
 
 
 /* execute the command associated with the PF key identified by 'aidCode', if
    a command is bound.
 */
-extern int tryExPf(ScreenPtr scr, char aidCode, char *msg);
-#define tryExecPf(scr, aidCode, msg) \
-  tryExPf(scr, aidCode, msg)
+/* extern int tryExPf(ScreenPtr scr, char aidCode, char *msg); */
 
+/*
+extern int tryExPf(ScreenPtr scr, char *pfCmd, char *msg);
+ # define tryExecPf(scr, pfCmd, msg) \
+  tryExPf(scr, pfCmd, msg)
+*/
+/* 2025-01-05 behavior and interface changed, handle recall only */
+extern bool tryRecPf(char *pfCmd);
+#define tryRecallPf(pfCmd) \
+   tryRecPf(pfCmd)
 
 /* recall the previous command, each call will step backward in the command
    history until no command is available, returning NULL.
