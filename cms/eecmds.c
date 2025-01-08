@@ -3279,6 +3279,60 @@ static int CmdSqmetHighlight(ScreenPtr scr, char sqmet, char *params, char *msg)
   return false;
 }
 
+static int CmdSqmetWorklrecl(ScreenPtr scr, char sqmet, char *params, char *msg) {
+  t_PGMB *PGMB_loc = CMSGetPG();
+
+  /* physical screen = ONE logical screen */   /* Split screen is NYI */
+  char buffer[10];
+
+  if (sqmet == 'E') {
+    int rc = ExecCommSet(msg,"WORKLRECL.0", "1", 0);
+    if (rc) return rc;
+    sprintf(buffer, "%d\0", getWorkLrecl(scr->ed));
+    ExecCommSet(msg,"WORKLRECL.1", buffer, 0);
+  }
+
+  if (sqmet == 'Q') {
+    sprintf(msg, "WORKLRECL %d", getWorkLrecl(scr->ed));
+  }
+
+  params = getCmdParam(params);
+  checkNoParams(params, msg);
+  return _rc_success;
+}
+
+static int CmdSqmetLscreen(ScreenPtr scr, char sqmet, char *params, char *msg) {
+  t_PGMB *PGMB_loc = CMSGetPG();
+
+  /* physical screen = ONE logical screen */   /* Split screen is NYI */
+  char buffer[10];
+
+  if (sqmet == 'E') {
+    int rc = ExecCommSet(msg,"LSCREEN.0", "6", 0);
+    if (rc) return rc;
+    ExecCommSet(msg,"LSCREEN.3", "1", 0);
+    ExecCommSet(msg,"LSCREEN.4", "1", 0);
+
+    sprintf(buffer, "%d\0",PGMB_loc->rows);
+    ExecCommSet(msg,"LSCREEN.1", buffer, 0);
+    ExecCommSet(msg,"LSCREEN.5", buffer, 0);
+
+    sprintf(buffer, "%d\0",PGMB_loc->cols);
+    ExecCommSet(msg,"LSCREEN.2", buffer, 0);
+    ExecCommSet(msg,"LSCREEN.6", buffer, 0);
+  }
+
+  if (sqmet == 'Q') {
+    sprintf(msg, "LSCREEN %d %d %d %d %d %d", PGMB_loc->rows, PGMB_loc->cols, 1, 1,
+                                              PGMB_loc->rows, PGMB_loc->cols);
+  }
+
+  params = getCmdParam(params);
+  checkNoParams(params, msg);
+  return _rc_success;
+}
+
+
 static int CmdSqmetCursor(ScreenPtr scr, char sqmet, char *params, char *msg) {
   char buffer[10];
 
@@ -3588,7 +3642,7 @@ static MySqmetDef sqmetCmds[] = {
   {"LIne"                    , "SQMET" , &CmdSqmetLine              },
   {"LINENd"                  , "sqmet" , &CmdSqmetNYI               },
   {"LRecl"                   , "sqmet" , &CmdSqmetNYI               },
-  {"LScreen"                 , "sqmet" , &CmdSqmetNYI               },
+  {"LScreen"                 , "-Q-Et" , &CmdSqmetLscreen           },
   {"MACRO"                   , "sqmet" , &CmdSqmetNYI               },
   {"MASK"                    , "sqmet" , &CmdSqmetNYI               },
   {"MEMber"                  , "sqmet" , &CmdSqmetNYI               },
@@ -3644,6 +3698,7 @@ static MySqmetDef sqmetCmds[] = {
   {"VERSIon"                 , "SQMEt" , &CmdSqmetVersion           },
   {"Width"                   , "sqmet" , &CmdSqmetNYI               },
   {"WINdow"                  , "sqmet" , &CmdSqmetNYI               },
+  {"WORKLrecl"               , "-Q-Et" , &CmdSqmetWorklrecl         },
   {"WRap"                    , "sqmet" , &CmdSqmetNYI               },
   {"Zone"                    , "sqmet" , &CmdSqmetNYI               },
   {"ZZzz"                    , "-Q-et" , &CmdSqmetNYI               }
