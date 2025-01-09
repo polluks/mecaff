@@ -2306,9 +2306,9 @@ void sort(EditorPtr ed, SortItem *sortItems) {
 
   /* remove out of range items resp. adjust compare ranges */
   for (i = 0; i < itemCount; i++) {
-    if (sortItems[i].offset >= ed->workLrecl) { continue; }
-    if ((sortItems[i].offset + sortItems[i].length) > ed->workLrecl) {
-      sortItems[i].length = ed->workLrecl - sortItems[i].offset;
+    if (sortItems[i].offset >= ed->fileLrecl) { continue; }
+    if ((sortItems[i].offset + sortItems[i].length) > ed->fileLrecl) {
+      sortItems[i].length = ed->fileLrecl - sortItems[i].offset;
     }
     if (i > to) { sortItems[to] = sortItems[i]; }
     to++;
