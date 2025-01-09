@@ -518,8 +518,8 @@ static int _scrio_inner(ScreenPtr screen) {
 
   int currRow = 0;
   SBA(currRow++, PGMB_loc->lastCol);
-
-  /* infolines on top ? */
+/*
+  / * infolines on top ? * /
   if (pub->infoLinesPos < 0) {
     for (i = 0; i < infoLineCount; i++) {
       startField2(pub->attrInfoLines, pub->HiLitInfoLines, true, false);
@@ -529,6 +529,7 @@ static int _scrio_inner(ScreenPtr screen) {
     }
   }
   startField2(pub->attrEMPTY, pub->HiLitEMPTY, true, false);
+*/
   /* commandline on top ? */
   if (pub->cmdLinePos <= 0) {
     startField2(pub->attrArrow, pub->HiLitArrow, true, false);
@@ -553,6 +554,17 @@ static int _scrio_inner(ScreenPtr screen) {
     SBA(currRow++, PGMB_loc->lastCol);
     startField2(pub->attrEMPTY, pub->HiLitEMPTY, true, false);
   }
+
+  /* infolines on top ? */
+  if (pub->infoLinesPos < 0) {
+    for (i = 0; i < infoLineCount; i++) {
+      startField2(pub->attrInfoLines, pub->HiLitInfoLines, true, false);
+      appendStringWithLength(
+        infoLines[i], maxInt(strlen(infoLines[i]), PGMB_loc->lastCol), (char)0x00);
+      SBA(currRow++, PGMB_loc->lastCol);
+    }
+  }
+  startField2(pub->attrEMPTY, pub->HiLitEMPTY, true, false);
 
   /* message line(s) on top ? */
   if (pub->msgLinePos <= 0) {
