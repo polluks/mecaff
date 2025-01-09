@@ -6,6 +6,14 @@ signal on syntax
 false = 0
 true  = 1
 
+address "EE" "EXTRACT /lscreen/"
+screen_width = lscreen.6
+if screen_width < 80 then do
+  address "EE" "MSG" "RDRLIST: Screen width must be 80 or larger"
+  exit -2
+end
+
+
 address "COMMAND" "IDENTIFY ( LIFO"
 parse pull user_id . local_node . rscs_id .
 if strip(user_id) <> strip(userid()) then exit -777 /* IDENTIFY failure ? */
@@ -59,14 +67,55 @@ stacked_new = rc
 address "EE" "X" userid() "RDRLIST  A1"
 address "EE" "LRECL 255"
 address "EE" "WORKL 79"
+address "EE" "PREFIX OFF"
+address "EE" "SCALE OFF"
 address "EE" "EXTRACT /line/"
 line_old = line.1
 
+
 address "EE" "infolines clear"
 address "EE" "infolines top"
-address "EE" "infolines add 13/14=-+TS  15/16=-+SIZE  17/18=+-FILEID  19/20=+-CLASS  21/22=+-ORIGIN  23=+SPOOLID"
-address "EE" "infolines add Cmd   Filename Filetype Class User  at Node     Hold  Records  Date      Time  "
+address "EE" "infolines add 13/14=-+TS 15/16=-+SIZE 17/18=+-FILEID 19/20=+-CLASS 21/22=UserNode 23=-SPOOLID"
+address "EE" "infolines add Cmd   Filename Filetype Class User  at Node     Hold Records    Date     Time  "
 address "EE" "cmdline bottom"
+
+address "EE" "PF 13 VIEW BEFORE" "SORTFILE -61 79"
+address "EE" "PF 14 VIEW BEFORE" "SORTFILE  61 79"
+address "EE" "PF 15 VIEW BEFORE" "SORTFILE -54 59"
+address "EE" "PF 16 VIEW BEFORE" "SORTFILE  54 59"
+address "EE" "PF 17 VIEW BEFORE" "SORTFILE  7  23"
+address "EE" "PF 18 VIEW BEFORE" "SORTFILE -7  23"
+address "EE" "PF 19 VIEW BEFORE" "SORTFILE  29 29"
+address "EE" "PF 20 VIEW BEFORE" "SORTFILE -29 29"
+address "EE" "PF 21 VIEW BEFORE" "SORTFILE  31 38"
+address "EE" "PF 22 VIEW BEFORE" "SORTFILE  40 47"
+address "EE" "PF 23 VIEW BEFORE" "SORTFILE -81 84"
+
+address "EE" "PF 00 VIEW IGNORE" "EXECUTE CURSOR"
+
+
+/**/
+address "EE" "prefix left"
+address "EE" "number on"
+address "EE" "workl 96"
+address "EE" "infolines clear"
+address "EE" "infolines top"
+address "EE" "infolines add ===== ....+....1....+....2....+....3....+....4....+....5....+....6....+....7....+....8....+....9....+."
+address "EE" "infolines add Prefx Cmd   Filename Filetype Class User  at Node     Hold Records    Date     Time   SpID Cy Distcode"
+/**/
+
+
+
+
+
+/*
+Cmd   Filename Filetype Class User  at Node     Hold Records    Date     Time
+      AXSLINKS COPY     PUN A LORENZO  SDFVM    NONE      5 2024-12-25 01:24:44 1752  1 RSCS
+....+....1....+....2....+....3....+....4....+....5....+....6....+....7....+....8....+....9....+..
+      (none)   (none)   CON T MECAFF   VM370CE  NONE   4874 2024-08-14 12:22:22 1588  1 MECAFF
+      RECEIVE  TEMP     RDR N MECAFF   VM370CE  NONE   1934 2024-10-06 04:05:55 1676  1 MECAFF
+      SENDFILE TEMP     RDR N MAINT    VM370CE  NONE   2383 2022-10-09 16:56:28 1331  1 MAINT
+*/
 
 /*
 ORIGINID FILE CLASS RECDS  CPY HOLD DATE  TIME     NAME        TYPE     DIST

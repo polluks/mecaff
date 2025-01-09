@@ -3301,6 +3301,30 @@ static int CmdSqmetWorklrecl(ScreenPtr scr, char sqmet, char *params, char *msg)
   return _rc_success;
 }
 
+static int CmdSqmetFlscreen(ScreenPtr scr, char sqmet, char *params, char *msg) {
+  t_PGMB *PGMB_loc = CMSGetPG();
+
+  /* physical screen = ONE logical screen */   /* Split screen is NYI */
+  char buffer[10];
+
+  if (sqmet == 'E') {
+    int rc = ExecCommSet(msg,"FLSCREEN.0", "2", 0);
+    if (rc) return rc;
+    sprintf(buffer, "%d\0",scr->ed->view->flscreen1);
+    ExecCommSet(msg,"FLSCREEN.1", buffer, 0);
+    sprintf(buffer, "%d\0",scr->ed->view->flscreen2);
+    ExecCommSet(msg,"FLSCREEN.2", buffer, 0);
+  }
+
+  if (sqmet == 'Q') {
+    sprintf(msg, "FLSCREEN %d %d", scr->ed->view->flscreen1, scr->ed->view->flscreen2);
+  }
+
+  params = getCmdParam(params);
+  checkNoParams(params, msg);
+  return _rc_success;
+}
+
 static int CmdSqmetLscreen(ScreenPtr scr, char sqmet, char *params, char *msg) {
   t_PGMB *PGMB_loc = CMSGetPG();
 
@@ -3624,7 +3648,7 @@ static MySqmetDef sqmetCmds[] = {
   {"ETMODE"                  , "sqmet" , &CmdSqmetNYI               },
   {"FILEid"                  , "sQmEt" , &CmdSqmetFileid            },
   {"FILler"                  , "sqmet" , &CmdSqmetNYI               },
-  {"FLscreen"                , "sqmet" , &CmdSqmetNYI               },
+  {"FLscreen"                , "-Q-Et" , &CmdSqmetFlscreen          },
   {"FMode"                   , "sQmEt" , &CmdSqmetFileid            },
   {"FName"                   , "sQmEt" , &CmdSqmetFileid            },
   {"FType"                   , "sQmEt" , &CmdSqmetFileid            },

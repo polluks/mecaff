@@ -573,7 +573,10 @@ static int _scrio_inner(ScreenPtr screen) {
   }
 
   /* top of file marker visible above curr line ? */
+  pub->ed->view->flscreen1 = -1;
+  pub->ed->view->flscreen2 = -1;
   if (scrLineForTof > 0) {
+    pub->ed->view->flscreen1 = pub->ed->view->flscreen2 = 0;  /* ToDo: Top of Range */
     SBA(scrLineForTof - 1, PGMB_loc->lastCol);
     writeTextAsFileMarker(
        pub,
@@ -592,6 +595,12 @@ static int _scrio_inner(ScreenPtr screen) {
     SBA(currRow, PGMB_loc->lastCol);
     currRow +=  scrLinesPerEdLine;
     char *prefixPrefill = getCurrPrefixMark(pub, uplines[0]);
+    if (uplinesCount > 0) {
+      /* ToDo: check for TOF/EOF */
+      if (pub->ed->view->flscreen1 < 0)
+        pub->ed->view->flscreen1 = getLineNumber(uplines[0]);
+      pub->ed->view->flscreen2   = getLineNumber(uplines[uplinesCount-1]);
+    }
     for (i = 0; i < uplinesCount; i++) {
       if (uplines[i] == pub->prefixMarks[0].forLine) {
         prefixPrefill = pub->prefixMarks[0].prefixPrefill;
@@ -625,16 +634,21 @@ static int _scrio_inner(ScreenPtr screen) {
   /* curr file line */
   SBA(scrLineForCurr - 1, PGMB_loc->lastCol);
   if (currLine) {
+    pub->ed->view->flscreen2 = getLineNumber(currLine);
+    if (pub->ed->view->flscreen1 < 0) {
+      pub->ed->view->flscreen1 = pub->ed->view->flscreen2;
+    }
     writeFileLine(
        pub,
        priv,
        currLine,
-       currLineNo,
+       getLineNumber(currLine),
        scrLinesPerEdLine,
        true,
        getCurrPrefixMark(pub, currLine));
   } else if (pub->showTofBof) {
     /* top of file */
+    pub->ed->view->flscreen1 = pub->ed->view->flscreen2 = 0;
     writeTextAsFileMarker(
        pub,
        priv,
@@ -659,6 +673,10 @@ static int _scrio_inner(ScreenPtr screen) {
     SBA(currRow, PGMB_loc->lastCol);
     currRow +=  scrLinesPerEdLine;
     char *prefixPrefill = getCurrPrefixMark(pub, downlines[0]);
+    if (downlinesCount > 0) {
+      /* ToDo: check for TOF/EOF */
+      pub->ed->view->flscreen2 = getLineNumber(downlines[downlinesCount-1]);
+    }
     for (i = 0; i < downlinesCount; i++) {
       if (downlines[i] == pub->prefixMarks[0].forLine) {
         prefixPrefill = pub->prefixMarks[0].prefixPrefill;
@@ -686,6 +704,7 @@ static int _scrio_inner(ScreenPtr screen) {
   /* bottom of file visible below curr line ? */
   if (scrLineForBof > 0) {
     SBA(scrLineForBof - 1, PGMB_loc->lastCol);
+    pub->ed->view->flscreen2 = getLineCount(pub->ed)+1;
     writeTextAsFileMarker(
        pub,
        priv,

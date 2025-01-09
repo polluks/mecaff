@@ -101,6 +101,8 @@ typedef struct _publicView {
 
   char infoline0[LINES_LEN + 1];
   char infoline1[LINES_LEN + 1];
+  long flscreen1; /* EXTRTACT /FLSCREEN/ line numbers of the first/last lines */
+  long flscreen2; /*                      of the file displayed on the screen */
 } *ViewPtr2;
 
 
