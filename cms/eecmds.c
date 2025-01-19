@@ -3098,12 +3098,22 @@ static int CmdDebug(ScreenPtr scr, char *params, char *msg) {
   sprintf(msg,"CmdDebug 2022-11-11-0321 : &EE_DIRTY = X'%08x'   &EE_PLIST = X'%08x'\n%s",v,p,msg_temp);
 */
 
+/*
   int i;
-  for (i=0;i</*25*/13;i++) {
+  for (i=0;i</ *25* /13;i++) {
     printf("%d global %s\n",i,PGMB_loc->pfCmds[i]) ;
     printf("%d view   %s\n",i,scr->ed->view->pfCmds[i]) ;
   }
+*/
 
+/*
+  int i;
+  for (i=0;i<INFOLINES_MAX;i++) {
+    printf("%d %8x %s\n", i, scr->ed->view->infoLines_p[i], scr->ed->view->infoLines[i]) ;
+  }
+*/
+
+  scr->showTofBof = false;
 
   return false;
 

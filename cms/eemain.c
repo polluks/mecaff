@@ -76,27 +76,78 @@ extern void LoadPoint() { ; }
 
 void clInfols() {
   t_PGMB *PGMB_loc = CMSGetPG();
-  (PGMB_loc->scr)->infoLines[0] = NULL;
-  (PGMB_loc->scr)->infoLines[1] = NULL;
+  ScreenPtr scr = PGMB_loc->scr;
+  EditorPtr ed;
+  if (ed = scr->ed) {
+    ViewPtr view;
+    if (view = ed->view) {
+      int i;
+      for (i=0; i<INFOLINES_MAX; i++) {
+        view->infoLines_p[i]  = NULL;
+        view->infoLines[i][0] = 0;
+      }
+    }
+  }
+/*
+  PGMB_loc->infoline0[0] = 0;
+  PGMB_loc->infoline1[0] = 0;
+  PGMB_loc->infoline2[0] = 0;
+  PGMB_loc->infoline3[0] = 0;
+*/
 }
 
 void addInfol(char *line) {
   t_PGMB *PGMB_loc = CMSGetPG();
   ScreenPtr scr = PGMB_loc->scr;
+  EditorPtr ed;
+  if (!(ed = scr->ed)) return;
+  ViewPtr view;
+  if (!(view = ed->view)) return;
 
-  if (scr->infoLines[0] == NULL) {
+  /* find a free slot */
+  int i;
+  for (i=0; i<INFOLINES_MAX; i++) {
+    if (!(view->infoLines_p[i])) {
+      view->infoLines_p[i] = view->infoLines[i];
+      memset(view->infoLines[i], '\0', sizeof(view->infoLines[i]));
+      strncpy(view->infoLines[i], line, sizeof(view->infoLines[i]) - 1);
+      return;
+    }
+  }
+
+  /* no free slot found - shift out the oldest  */
+  for (i=0; i<(INFOLINES_MAX-1); i++) {
+    strcpy(view->infoLines[i], view->infoLines[i+1]);
+  }
+  memset(view->infoLines[INFOLINES_MAX-1], '\0', sizeof(view->infoLines[INFOLINES_MAX-1]));
+  strncpy(view->infoLines[INFOLINES_MAX-1], line, sizeof(view->infoLines[INFOLINES_MAX-1]) - 1);
+
+
+  /* OLD CODE
+  if (scr->ed->view->infoLines_p[0] == NULL) {
     memset(PGMB_loc->infoline0, '\0', sizeof(PGMB_loc->infoline0));
     strncpy(PGMB_loc->infoline0, line, sizeof(PGMB_loc->infoline0) - 1);
-    scr->infoLines[0] = PGMB_loc->infoline0;
-  } else if (scr->infoLines[1] == NULL) {
+    scr->ed->view->infoLines_p[0] = PGMB_loc->infoline0;
+  } else if (scr->ed->view->infoLines_p[1] == NULL) {
     memset(PGMB_loc->infoline1, '\0', sizeof(PGMB_loc->infoline1));
     strncpy(PGMB_loc->infoline1, line, sizeof(PGMB_loc->infoline1) - 1);
-    scr->infoLines[1] = PGMB_loc->infoline1;
+    scr->ed->view->infoLines_p[1] = PGMB_loc->infoline1;
+  } else if (scr->ed->view->infoLines_p[2] == NULL) {
+    memset(PGMB_loc->infoline2, '\0', sizeof(PGMB_loc->infoline2));
+    strncpy(PGMB_loc->infoline2, line, sizeof(PGMB_loc->infoline2) - 1);
+    scr->ed->view->infoLines_p[2] = PGMB_loc->infoline2;
+  } else if (scr->ed->view->infoLines_p[3] == NULL) {
+    memset(PGMB_loc->infoline3, '\0', sizeof(PGMB_loc->infoline3));
+    strncpy(PGMB_loc->infoline3, line, sizeof(PGMB_loc->infoline3) - 1);
+    scr->ed->view->infoLines_p[3] = PGMB_loc->infoline3;
   } else {
     strcpy(PGMB_loc->infoline0, PGMB_loc->infoline1);
-    memset(PGMB_loc->infoline1, '\0', sizeof(PGMB_loc->infoline1));
-    strncpy(PGMB_loc->infoline1, line, sizeof(PGMB_loc->infoline1) - 1);
+    strcpy(PGMB_loc->infoline1, PGMB_loc->infoline2);
+    strcpy(PGMB_loc->infoline2, PGMB_loc->infoline3);
+    memset(PGMB_loc->infoline3, '\0', sizeof(PGMB_loc->infoline3));
+    strncpy(PGMB_loc->infoline3, line, sizeof(PGMB_loc->infoline3) - 1);
   }
+  */
 }
 
 /*
@@ -237,12 +288,16 @@ void doInputM(ScreenPtr scr) {
   scr->ed->view->prefixMode = 0; /* off */
   scr->cmdLinePrefill = " * * * input mode * * *";
   scr->cmdLineReadOnly = true;
-  char *infoL0 = scr->infoLines[0];
-  char *infoL1 = scr->infoLines[1];
-  scr->infoLines[0] =
+  char *infoL0 = scr->ed->view->infoLines_p[0];
+  char *infoL1 = scr->ed->view->infoLines_p[1];
+  char *infoL2 = scr->ed->view->infoLines_p[2];
+  char *infoL3 = scr->ed->view->infoLines_p[3];
+  scr->ed->view->infoLines_p[0] =
          "01/13=Tab/Backtab   "
          "03/15=Leave Input   ";
-  scr->infoLines[1] = NULL;
+  scr->ed->view->infoLines_p[1] = NULL;
+  scr->ed->view->infoLines_p[2] = NULL;
+  scr->ed->view->infoLines_p[3] = NULL;
 
   /* prepare input mode */
   short inputLinesCount = scr->visibleEdLinesAfterCurrent;
@@ -383,8 +438,10 @@ void doInputM(ScreenPtr scr) {
 
   /* revert to initial screen state */
   scr->ed->view->prefixMode = oldPrefixMode;
-  scr->infoLines[0] = infoL0;
-  scr->infoLines[1] = infoL1;
+  scr->ed->view->infoLines_p[0] = infoL0;
+  scr->ed->view->infoLines_p[1] = infoL1;
+  scr->ed->view->infoLines_p[2] = infoL2;
+  scr->ed->view->infoLines_p[3] = infoL3;
   scr->cmdLinePrefill = NULL;
   scr->cmdLineReadOnly = false;
   scr->cursorPlacement = 0;
@@ -470,14 +527,18 @@ void doPInpM(ScreenPtr scr) {
   char oldPrefixMode = scr->ed->view->prefixMode;
   char fillChar = scr->ed->view->fileToPrefixFiller;
   scr->ed->view->prefixMode = 0; /* off */
-  char *infoL0 = scr->infoLines[0];
-  char *infoL1 = scr->infoLines[1];
-  scr->infoLines[0] =
+  char *infoL0 = scr->ed->view->infoLines_p[0];
+  char *infoL1 = scr->ed->view->infoLines_p[1];
+  char *infoL2 = scr->ed->view->infoLines_p[2];
+  char *infoL3 = scr->ed->view->infoLines_p[3];
+  scr->ed->view->infoLines_p[0] =
          "01/13=Tab/Backtab   "
          "03/15=Leave PInput   "
          "06=SPLTJoin   "
          "10=Move PInput here";
-  scr->infoLines[1] = NULL;
+  scr->ed->view->infoLines_p[1] = NULL;
+  scr->ed->view->infoLines_p[2] = NULL;
+  scr->ed->view->infoLines_p[3] = NULL;
   scr->ed->view->fileToPrefixFiller = ' '; /*(char)0xBF;*/
   scr->cmdLinePrefill = " * * * programmer's input mode * * *";
   scr->cmdLineReadOnly = true;
@@ -605,8 +666,10 @@ void doPInpM(ScreenPtr scr) {
 
   /* revert to initial screen state */
   scr->ed->view->prefixMode = oldPrefixMode;
-  scr->infoLines[0] = infoL0;
-  scr->infoLines[1] = infoL1;
+  scr->ed->view->infoLines_p[0] = infoL0;
+  scr->ed->view->infoLines_p[1] = infoL1;
+  scr->ed->view->infoLines_p[2] = infoL2;
+  scr->ed->view->infoLines_p[3] = infoL3;
   scr->ed->view->fileToPrefixFiller = fillChar;
   scr->cmdLinePrefill = NULL;
   scr->cmdLineReadOnly = false;
@@ -623,13 +686,17 @@ int doConfCh(ScreenPtr scr, char *iTxt, short offset, short len) {
   scr->prefixReadOnly = true;
   scr->cmdLinePrefill = iTxt;
   scr->cmdLineReadOnly = true;
-  char *infoL0 = scr->infoLines[0];
-  char *infoL1 = scr->infoLines[1];
-  scr->infoLines[0] =
+  char *infoL0 = scr->ed->view->infoLines_p[0];
+  char *infoL1 = scr->ed->view->infoLines_p[1];
+  char *infoL2 = scr->ed->view->infoLines_p[2];
+  char *infoL3 = scr->ed->view->infoLines_p[3];
+  scr->ed->view->infoLines_p[0] =
          "03=Abort change     "
          "04=Skip this match     "
          "12=Change this match";
-  scr->infoLines[1] = NULL;
+  scr->ed->view->infoLines_p[1] = NULL;
+  scr->ed->view->infoLines_p[2] = NULL;
+  scr->ed->view->infoLines_p[3] = NULL;
   scr->readOnly = true;
   char *savedMsgText = scr->msgText;
   scr->msgText = "Change text with confirmation...";
@@ -664,8 +731,10 @@ int doConfCh(ScreenPtr scr, char *iTxt, short offset, short len) {
 
   /* revert to initial screen state */
   scr->prefixReadOnly = oldPrefixRO;
-  scr->infoLines[0] = infoL0;
-  scr->infoLines[1] = infoL1;
+  scr->ed->view->infoLines_p[0] = infoL0;
+  scr->ed->view->infoLines_p[1] = infoL1;
+  scr->ed->view->infoLines_p[2] = infoL2;
+  scr->ed->view->infoLines_p[3] = infoL3;
   scr->cmdLinePrefill = NULL;
   scr->cmdLineReadOnly = false;
   scr->cursorPlacement = 0;
@@ -755,7 +824,7 @@ void tmpInfShow(
   scr->attrInfoLines = scr->attrHeadLine;
 
   scr->headLine = headerLine;
-  scr->infoLines[0] = introLine;
+  scr->ed->view->infoLines_p[0] = introLine;
   if (infoLine && *infoLine) {
     scr->footLine = infoLine;
   } else {
@@ -1145,7 +1214,7 @@ int main9(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc) {
     setPF(/*scr*/ NULL, PFSCOPE_GLOBAL, PFMODE_BEFORE, 20, "PGDOWN 66");
 
     scr->infoLinesPos = 2; /* max. 2 on bottom */
-    scr->infoLines[0] = "02=RingNext "
+    scr->ed->view->infoLines_p[0] = "02=RingNext "
                         "03=Quit "
                         "06=SpltJ "
                         "07=PgUp "

@@ -6,12 +6,50 @@ signal on syntax
 false = 0
 true  = 1
 
+hard_limit_screen_width = 40
+
+infoline2a = "Prefx Cmd   Filename Filetype Class User  at Node     Hold Records    Date     Time   SpID Cy Distcode"
+
 address "EE" "EXTRACT /lscreen/"
-screen_width = lscreen.6
-if screen_width < 80 then do
-  address "EE" "MSG" "RDRLIST: Screen width must be 80 or larger"
+/* DEBUG */ /** / lscreen.2 = 39 / **/
+
+screen_width = lscreen.2
+if screen_width < hard_limit_screen_width then do
+  address "EE" "MSG" "RDRLIST: Screen width must be" hard_limit_screen_width "or larger"
   exit -2
 end
+else if screen_width >= 103 /* prefix=5+1+maxinfo=96+1 */ then do
+  prefix = "LEFT"
+  worklrecl = 96
+  infoline2b = infoline2a;
+  address "EE" "number on"
+end
+else if screen_width >= 97 /* prefix=0+0+maxinfo=96+1 */ then do
+  prefix = "OFF"
+  worklrecl = 96
+  infoline2b = substr(infoline2a,7);
+end
+else if screen_width >= 88 /* prefix=0+0+maxinfo=96+1 */ then do
+  prefix = "OFF"
+  worklrecl = 87
+  infoline2b = substr(infoline2a,7,worklrecl);
+end
+else if screen_width >= 85 /* prefix=0+0+maxinfo=96+1 */ then do
+  prefix = "OFF"
+  worklrecl = 84
+  infoline2b = substr(infoline2a,7,worklrecl);
+end
+else if screen_width >= 80 /* prefix=0+0+maxinfo=96+1 */ then do
+  prefix = "OFF"
+  worklrecl = 79
+  infoline2b = substr(infoline2a,7,worklrecl);
+end
+else do
+  prefix = "OFF"
+  worklrecl = screen_width-1
+  infoline2b = substr(infoline2a,7,worklrecl);
+end
+
 
 
 address "COMMAND" "IDENTIFY ( LIFO"
@@ -66,18 +104,23 @@ address "COMMAND" "SENTRIES"
 stacked_new = rc
 address "EE" "X" userid() "RDRLIST  A1"
 address "EE" "LRECL 255"
-address "EE" "WORKL 79"
-address "EE" "PREFIX OFF"
+address "EE" "WORKL" worklrecl
+address "EE" "PREFIX" prefix
 address "EE" "SCALE OFF"
+address "EE" "CURRLINE TOP"
+address "EE" "SET COLOR infolines blue"
+address "EE" "set color idline white"
+address "EE" "set color statarea white"
 address "EE" "EXTRACT /line/"
 line_old = line.1
 
 
 address "EE" "infolines clear"
 address "EE" "infolines top"
+address "EE" "infolines add" infoline2b
+address "EE" "infolines add" "."
 address "EE" "infolines add 13/14=-+TS 15/16=-+SIZE 17/18=+-FILEID 19/20=+-CLASS 21/22=UserNode 23=-SPOOLID"
-address "EE" "infolines add Cmd   Filename Filetype Class User  at Node     Hold Records    Date     Time  "
-address "EE" "cmdline bottom"
+/* address "EE" "cmdline bottom" */
 
 address "EE" "PF 13 VIEW BEFORE" "SORTFILE -61 79"
 address "EE" "PF 14 VIEW BEFORE" "SORTFILE  61 79"
@@ -94,7 +137,7 @@ address "EE" "PF 23 VIEW BEFORE" "SORTFILE -81 84"
 address "EE" "PF 00 VIEW IGNORE" "EXECUTE CURSOR"
 
 
-/**/
+/** /
 address "EE" "prefix left"
 address "EE" "number on"
 address "EE" "workl 96"
@@ -102,8 +145,7 @@ address "EE" "infolines clear"
 address "EE" "infolines top"
 address "EE" "infolines add ===== ....+....1....+....2....+....3....+....4....+....5....+....6....+....7....+....8....+....9....+."
 address "EE" "infolines add Prefx Cmd   Filename Filetype Class User  at Node     Hold Records    Date     Time   SpID Cy Distcode"
-/**/
-
+/ **/
 
 
 

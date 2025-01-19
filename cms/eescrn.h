@@ -112,6 +112,7 @@ typedef struct _eescreen_public {
     short cmdLinePos; /* <=0 : top, > 0 bottom */
     short msgLinePos; /* <=0 : top, > 0 bottom */
     short infoLinesPos; /* 0=off, < 0 top, > 0 bottom */
+    short infoLinesSplit;
     short selectionColumn; /* which line column has selection mark, 0 = none */
     char selectionMark; /* val in 'selectionColumn' for a line to be selected */
 
@@ -179,7 +180,8 @@ typedef struct _eescreen_public {
     PrefixMark prefixMarks[2]; /* no mark if forLine is NULL / empty prefill */
     char *cmdLinePrefill; /* pre-fill for cmdline if != NULL */
     char *msgText; /* up to 3 Textlines for (error)message area */
-    char *infoLines[2]; /* up to 2 "fixed" information lines (PF-keys,...) */
+    /* char *infoLines_p[INFOLINES_MAX]; */ /* up to 4? "fixed" information lines (PF-keys,...) */
+    char *infoLines_p_EELIST[INFOLINES_MAX];  /* up to 4? "fixed" information lines (PF-keys,...) */
     char *headLine; /* max. 79 wide, with 2 Tabs to stretch to screen width */
     char *footLine; /* max. 79 wide, with 2 Tabs to stretch to screen width */
     char fillChar; /* fills Tabs in headLine/footLine, default: blank */

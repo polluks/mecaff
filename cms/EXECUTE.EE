@@ -1,0 +1,242 @@
+/* REXX */
+address "EE"
+trace off
+signal on syntax
+signal on novalue
+
+false = 0
+true  = 1
+
+hard_limit_screen_width = 40
+
+infoline2a = "Prefx Cmd   Filename Filetype Class User  at Node     Hold Records    Date     Time   SpID Cy Distcode"
+
+address "EE" "EXTRACT /fname/ftype/fmode/line/cursor/curline/worklrecl/lscreen/flscreen/"
+/* DEBUG */ /** / lscreen.2 = 39 / **/
+
+screen_width = lscreen.2
+if screen_width < hard_limit_screen_width then do
+  address "EE" "MSG" "RDRLIST: Screen width must be" hard_limit_screen_width "or larger"
+  exit -2
+end
+else if screen_width >= 103 /* prefix=5+1+maxinfo=96+1 */ then do
+  prefix = "LEFT"
+  worklrecl = 96
+  infoline2b = infoline2a;
+  address "EE" "number on"
+end
+else if screen_width >= 97 /* prefix=0+0+maxinfo=96+1 */ then do
+  prefix = "OFF"
+  worklrecl = 96
+  infoline2b = substr(infoline2a,7);
+end
+else if screen_width >= 88 /* prefix=0+0+maxinfo=96+1 */ then do
+  prefix = "OFF"
+  worklrecl = 87
+  infoline2b = substr(infoline2a,7,worklrecl);
+end
+else if screen_width >= 85 /* prefix=0+0+maxinfo=96+1 */ then do
+  prefix = "OFF"
+  worklrecl = 84
+  infoline2b = substr(infoline2a,7,worklrecl);
+end
+else if screen_width >= 80 /* prefix=0+0+maxinfo=96+1 */ then do
+  prefix = "OFF"
+  worklrecl = 79
+  infoline2b = substr(infoline2a,7,worklrecl);
+end
+else do
+  prefix = "OFF"
+  worklrecl = screen_width-1
+  infoline2b = substr(infoline2a,7,worklrecl);
+end
+
+if cursor.7 >= 0 then do
+  "locate :"cursor.7
+  "extract /curline/"
+end
+
+base_start  = 7
+base_length = 90
+shadow_start = 98
+total = 187
+/* 5+1+90+1+90 cmd blank base blank shadow */
+parse var curline.3 =1 cmd =7 base =97 . =98 shadow
+
+if shadow          = ""  then signal exit
+if cmd             = ""  then signal exit
+if substr(cmd,1,1) = "*" then signal exit
+
+shadow = substr(shadow,1,base_length," ")
+/*
+"input" "*2345*" || base || "*" || shadow  || "*"
+*/
+"replace" "*     " || shadow || " " || shadow  || "*"
+
+base_raw   = substr(curline.3,1,worklrecl)
+shadow_raw = substr(curline.3,shadow_start,worklrecl-base_start+1)
+
+
+
+base_stripped   = strip(base_raw,"T"," ")
+shadow_stripped = strip(shadow_raw,"T"," ")
+
+base_reversed   = reverse(base_stripped)
+shadow_reversed = reverse(shadow_stripped)
+
+mismatch = compare(base_reversed,shadow_reversed)
+
+if mismatch > 0 then do
+  base_mismatch   = reverse(substr(base_reversed,mismatch))
+  shadow_mismatch = reverse(substr(shadow_reversed,mismatch))
+
+  /*
+  "input" base_mismatch
+  "input" "**   " shadow_mismatch
+  */
+end
+else do
+  /*
+  "input" "(no input)"
+  */
+end
+
+
+/*
+....+....1....+....2....+....3....+....4....+....5....+....6....+....7....+....8....+....9....+....0....+....1....+....2....+....3....+....4....+....5....+....6....+....7....+....8....+....9
+      AXSLINKS COPY     PUN A LORENZO  SDFVM    NONE      5 2024-12-25 01:24:44 1752  1 RSCS     AXSLINKS COPY     PUN A LORENZO  SDFVM    NONE      5 2024-12-25 01:24:44 1752  1 RSCS....
+*/
+parse var curline.3 =98 spool_fn =106 . =107 spool_ft =115 . =172 spool_id =176 .
+cmd = base_mismatch
+cmd_out = ""
+
+i = 1
+l = length(cmd)
+append_default = false
+backspace      = false
+do forever
+  j =  pos('/',substr(cmd,i))
+  if j > 0 then do
+    cmd_out = cmd_out || substr(cmd,i,j-1)
+    i = i + j   /* skip up to / (including) */
+    do forever
+      if i > l then leave
+      c = substr(cmd,i,1)
+      i = i + 1  /* skip over c */
+      parse upper var c c
+      if c = "N" then do
+         cmd_out = cmd_out || " " || strip(spool_fn)
+      end
+      else if c = "T" then do
+        cmd_out = cmd_out || " " || strip(spool_ft)
+      end
+      else if c = " " then do
+        if substr(cmd,i-2,1) = "/" then cmd_out = cmd_out || " " || strip(spool_id)
+        leave
+      end
+      else if c = "/" then do
+        if substr(cmd,i-2,1) = "/" then cmd_out = cmd_out || "/"
+        leave
+      end
+      else if c = "*" then do
+        cmd_out = cmd_out || " " || shadow_stripped
+        leave
+      end
+      else if c = "?" then do
+        cmd_out = cmd_out || " " || cmd
+        leave
+      end
+      else if c = "O" then do
+        /* do not append default */
+      end
+      else if c = "B" then do
+        /* backspace */
+        if cmd_out <> "" then cmd_out = substr(cmd_out,1,length(cmd_out-1))
+      end
+      else do
+        "msg" "Special command pattern not recognizred: /" || c
+        exit 5
+      end
+    end
+    if i > l then leave
+  end
+  else do
+    cmd_out = cmd_out || substr(cmd,i)
+    if i = 1 then append_default = true
+    leave
+  end
+end
+if append_default = true then cmd_out = cmd_out strip(spool_id)
+"input" cmd_out
+
+
+
+
+
+
+
+exit:
+"locate :"line.1
+exit 0
+
+novalue:
+syntax:
+exit sigl
+
+/*
+ LORENZO  RDRLIST  A0  V 108  Trunc=108 Size=50 Line=1 Col=1 Alt=60
+Cmd   Filename Filetype Class User  at Node     Hold  Records  Date      Time
+      TEST0001 NETDATA  PUN A LORENZO  SDFVM    NONE       65 10/05    06:11:06
+      RXUSERFN ASSEMBLE PUN A LORENZO  SDFVM    NONE      531 10/06    07:34:06
+      HELPXED  XEDIT    PUN A LORENZO  SDFVM    NONE      699 10/10    12:16:30
+      (none)   (none)   CON T LORENZO  SDFVM    NONE      176 10/31    09:24:47
+*13   (none)   (none)   CON T LORENZO  SDFVM    NONE       45 11/04    20:47:24
+*13   EXECUTE  XEDIT    PUN A LORENZO  SDFVM    NONE      206 12/24    05:06:23
+      HELPXED  XEDIT    PUN A LORENZO  SDFVM    NONE      699 12/24    05:06:23
+      RGTLEFT  XEDIT    PUN A LORENZO  SDFVM    NONE       32 12/24    05:06:23
+*13   JOIN     XEDIT    PUN A LORENZO  SDFVM    NONE      217 12/24    05:06:24
+      X$NAME$X XEDIT    PUN A LORENZO  SDFVM    NONE      311 12/24    05:06:24
+      X$SEND$X XEDIT    PUN A LORENZO  SDFVM    NONE      229 12/24    05:06:24
+*13   CMSEDIT  XEDIT    PUN A LORENZO  SDFVM    NONE      495 12/24    05:06:24
+      X$MLST$X XEDIT    PUN A LORENZO  SDFVM    NONE       35 12/24    05:06:24
+*13   SPLTJOIN XEDIT    PUN A LORENZO  SDFVM    NONE       32 12/24    05:06:25
+      PRFSHOW  XEDIT    PUN A LORENZO  SDFVM    NONE       45 12/24    05:06:25
+      PRFSHIFT XEDIT    PUN A LORENZO  SDFVM    NONE       66 12/24    05:06:25
+*13   PREFIXX  XEDIT    PUN A LORENZO  SDFVM    NONE       58 12/24    05:06:25
+      STATUS   XEDIT    PUN A LORENZO  SDFVM    NONE      114 12/24    05:06:25
+      SI       XEDIT    PUN A LORENZO  SDFVM    NONE       78 12/24    05:06:25
+      CANCEL   XEDIT    PUN A LORENZO  SDFVM    NONE       25 12/24    05:06:25
+*emo / /ntm /n/t/m /n /t /m A LORENZO  SDFVM    NONE       60 12/24    05:06:26
+*1055 HELP     XEDIT    PUN A LORENZO  SDFVM    NONE       35 12/24    05:06:26
+*  7934  HELP XEDIT PUN  HELP XEDIT PUN  HELP  XEDIT  PUN
+*  7934  HELP XEDIT PUN
+* XEDIT XEDIT XEDIT
+*  HELP XEDIT PUN
+1= Help      2= Refresh  3= Quit      4= Sort(type) 5= Sort(date) 6= Sort(user)
+7= Backward  8= Forward  9= Receive  10=           11= Peek      12= Cursor
+
+====>
+                                                                                                                X E D I T  1 File
+*/
+
+/*
+ DEMO     EXEC     A1  V 130  Trunc=130 Size=15 Line=14 Col=1 Alt=0
+====>
+    0 * * * Top of File * * *
+    1 /* REXX */
+    2 parse arg a
+    3 l = length(a)
+    4 address "XEDIT" "EXTRACT /line/curline/"
+    5 if rc <> 0 then exit rc
+    6
+    7 address "XEDIT" "INPUT" "*" a
+    8 address "XEDIT" "LOCATE :"line.1
+    9 exit 1000+l
+   10
+   11
+   12 address "COMMAND" "DROPBUF 0"
+   13 say a
+   14 pull
+   15 exit 13
+   16 * * * End of File * * *
+*/

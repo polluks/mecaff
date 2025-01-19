@@ -21,7 +21,7 @@
 #define _EEMAINimported
 
 /* the version information for the tools, displayed in header/footer lines */
-#define VERSION "V1.3.2.0021_250109-1648" /* git branch AGPLv3_WIP */
+#define VERSION "V1.3.2.0021_250118-2204" /* git branch AGPLv3_WIP */
 
 /**************************************************************************************************/
 /* Two functions to help C programs avoid having any non-const static or global                   */
@@ -62,14 +62,14 @@ extern int sc_entry()  ;
 ** -- user interface
 */
 
-/* clear the 2 infolines of the EE screen
+/* clear the INFOLINES_MAX infolines of the EE screen
 */
 extern void clInfols();
 #define clearInfolines() \
   clInfols()
 
 
-/* add a new first info line, shifting "down" the current 1..2 lines
+/* add a new first info line, shifting "down" the current 1..INFOLINES_MAX lines
 */
 extern void addInfol(char *line);
 #define addInfoline(line) \

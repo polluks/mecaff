@@ -1041,7 +1041,7 @@ int doFSList(
   char *lhp0 = &listHeader[2];
   char *lhp1 = listHeader;
 #define setFileListHeader() \
-  { scr->infoLines[0] = (scr->ed->view->prefixMode) ? lhp1 : lhp0; }
+  { scr->infoLines_p_EELIST[0] = (scr->ed->view->prefixMode) ? lhp1 : lhp0; }
 
   setFileListHeader();
 

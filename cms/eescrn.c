@@ -269,6 +269,7 @@ static int _scrio_inner(ScreenPtr screen) {
   if (pub->ed == NULL) {
     return -1;
   }
+  ViewPtr view = pub->ed->view ;
 
   /* analyze message text for 'screen' */
   char *lineStarts[MAX_MSG_LINES];
@@ -276,14 +277,48 @@ static int _scrio_inner(ScreenPtr screen) {
   int msgLineCount = countMsgLines(pub, lineStarts, lineLengths);
 
   /* gather information about infolines */
-  char *infoLines[2] = { NULL, NULL };
-  short infoLineCount = 0;
+  char *infoLines[INFOLINES_MAX] ;
+  { int i; for (i=0; i<INFOLINES_MAX; i++) { /* BUG: view->infoLines_p */ infoLines[i] = NULL; } }
+  short infoLineCount     = 0;
+  short infoLineCountTop  = 0;
+  short infoLineCountFoot = 0;
+
+  { char *p;
+    int i;
+    for (i=0; i<INFOLINES_MAX; i++) {
+      if (p = view->infoLines_p[i])
+      {
+        infoLines[infoLineCount++] = p;
+        char c0 = p[0];
+        char c1 = p[1];
+        if (/* DEBUG true || */ c0) {
+          if (/* DEBUG true || */ (c0 != '.') || (c1 != '\0')) {
+            if (i < INFOLINES_SPLIT)   { infoLineCountTop++;  }
+                                  else { infoLineCountFoot++; }
+          }
+        }
+      }
+    }
+  }
+
+/* OLD CODE
   if (pub->infoLines[0]) {
     infoLines[infoLineCount++] = pub->infoLines[0];
+    infoLineCountTop++;
   }
   if (pub->infoLines[1]) {
     infoLines[infoLineCount++] = pub->infoLines[1];
+    infoLineCountTop++;
   }
+  if (pub->infoLines[2]) {
+    infoLines[infoLineCount++] = pub->infoLines[2];
+    infoLineCountFoot++;
+  }
+  if (pub->infoLines[3]) {
+    infoLines[infoLineCount++] = pub->infoLines[3];
+    infoLineCountFoot++;
+  }
+/*
 
   /* compute screen characteristics */
   pub->ed->view->prefixLen = maxShort(1,minShort(5,pub->ed->view->prefixLen));
@@ -304,12 +339,12 @@ static int _scrio_inner(ScreenPtr screen) {
     = getWorkLrecl(pub->ed) + lineOverhead;
   short nominalTop
     = 1 /* headline */
-    + ((pub->infoLinesPos < 0) ? infoLineCount : 0)
+    + ((pub->infoLinesPos < 0) ? infoLineCountTop : 0+infoLineCountTop)
     + ((pub->cmdLinePos < 1) ? 1 : 0)
     + ((pub->msgLinePos < 1) ? 1 : 0);
   short nominalFoot
     = 1 /* footline */
-    + ((pub->infoLinesPos > 0) ? infoLineCount : 0)
+    + ((pub->infoLinesPos > 0) ? infoLineCountFoot : 0+infoLineCountFoot)
     + ((pub->cmdLinePos > 0) ? 1 : 0)
     + ((pub->msgLinePos > 0) ? 1 : 0);
   short reservedTop
@@ -465,6 +500,7 @@ static int _scrio_inner(ScreenPtr screen) {
   Printf2(" -- doing getLineFrame(ed, %d, ..., %d, ...)\n",
     edLinesAboveCurr, edLinesBelowCurr);
 
+  edLinesBelowCurr++; /* 2025-01-18 dirty hack for debugging */
   getLineFrame(pub->ed,
     edLinesAboveCurr, uplines, &uplinesCount,
     &currLine, &currLineNo,
@@ -552,12 +588,12 @@ static int _scrio_inner(ScreenPtr screen) {
       doIC();
     }
     SBA(currRow++, PGMB_loc->lastCol);
-    startField2(pub->attrEMPTY, pub->HiLitEMPTY, true, false);
+    /* BUG? startField2(pub->attrEMPTY, pub->HiLitEMPTY, true, false); */
   }
 
   /* infolines on top ? */
-  if (pub->infoLinesPos < 0) {
-    for (i = 0; i < infoLineCount; i++) {
+  if (true && infoLineCountTop > 0) /* was 'pub->infoLinesPos < 0' */ {
+    for (i = 0; i < 0+infoLineCountTop; i++) {
       startField2(pub->attrInfoLines, pub->HiLitInfoLines, true, false);
       appendStringWithLength(
         infoLines[i], maxInt(strlen(infoLines[i]), PGMB_loc->lastCol), (char)0x00);
@@ -644,6 +680,7 @@ static int _scrio_inner(ScreenPtr screen) {
   }
 
   /* curr file line */
+  int skipCurlineTOF = 0; /* assume that curline is displayed */
   SBA(scrLineForCurr - 1, PGMB_loc->lastCol);
   if (currLine) {
     pub->ed->view->flscreen2 = getLineNumber(currLine);
@@ -669,19 +706,23 @@ static int _scrio_inner(ScreenPtr screen) {
        scrLinesPerEdLine,
        true,
        true);
-  } /* else: if not showBofTof, the editor should be
-             moved to line 1 instead of above first line !! */
+  } else {
+    /* if not showTofBof, the editor should be moved to line 1 instead of above first line !! */
+    skipCurlineTOF = 1; /* we know that curline is not displayed */
+  }
+
 
   /* scale below curr line ? */
   if (pub->scaleLinePos == 2 && scrLineForScale > 0)  {
-    SBA(scrLineForScale - 1, PGMB_loc->lastCol);
+    SBA(scrLineForScale - 1 - skipCurlineTOF, PGMB_loc->lastCol);
     writeScale(pub);
   }
 
   /* file lines below curr line */
-  if (scrLineForFirstBelowCurr > 0 && downlinesCount > 0) {
+  if /*ToDo*/ (scrLineForFirstBelowCurr > 0 && downlinesCount > 0) {
     /***** int downCurrLineNo = currLineNo + 1; *****/
-    currRow = scrLineForFirstBelowCurr - 1;
+    downlinesCount = downlinesCount + skipCurlineTOF;  /* 2025-01-18 new: skipCurlineTOF */
+    currRow = scrLineForFirstBelowCurr - 1 - skipCurlineTOF;
     SBA(currRow, PGMB_loc->lastCol);
     currRow +=  scrLinesPerEdLine;
     char *prefixPrefill = getCurrPrefixMark(pub, downlines[0]);
@@ -740,6 +781,16 @@ static int _scrio_inner(ScreenPtr screen) {
     }
   }
 
+  /* infolines on bottom ? */
+  if (true && infoLineCountFoot > 0) /* was 'pub->infoLinesPos > 0' */ {
+    for (i = 0+INFOLINES_SPLIT; i < INFOLINES_SPLIT+infoLineCountFoot; i++) {
+      startField2(pub->attrInfoLines, pub->HiLitInfoLines, true, false);
+      appendStringWithLength(
+        infoLines[i], maxInt(strlen(infoLines[i]), PGMB_loc->lastCol), (char)0x00);
+      SBA(currRow++, PGMB_loc->lastCol);
+    }
+  }
+
   /* commandline at bottom ? */
   if (pub->cmdLinePos > 0) {
     startField2(pub->attrArrow, pub->HiLitArrow, true, false);
@@ -761,16 +812,6 @@ static int _scrio_inner(ScreenPtr screen) {
       doIC();
     }
     SBA(currRow++, PGMB_loc->lastCol);
-  }
-
-  /* infolines on bottom ? */
-  if (pub->infoLinesPos > 0) {
-    for (i = 0; i < infoLineCount; i++) {
-      startField2(pub->attrInfoLines, pub->HiLitInfoLines, true, false);
-      appendStringWithLength(
-        infoLines[i], maxInt(strlen(infoLines[i]), PGMB_loc->lastCol), (char)0x00);
-      SBA(currRow++, PGMB_loc->lastCol);
-    }
   }
 
   /* final footline */

@@ -22,8 +22,14 @@ typedef struct t_PGMB {
   ScreenPtr scr                ;
   char headline[LINES_LEN + 1] ;
   char footline[LINES_LEN + 1] ;
+/*
   char infoline0[LINES_LEN + 1];
   char infoline1[LINES_LEN + 1];
+  char infoline2[LINES_LEN + 1];
+  char infoline3[LINES_LEN + 1];
+*/
+ /** / char infolines[INFOLINES_MAX][LINES_LEN + 1] ; / **/    /* do not use on global level */
+
   char identify[LINES_LEN + 1] ;
   char *progName               ;
 

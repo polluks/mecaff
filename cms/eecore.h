@@ -99,8 +99,17 @@ typedef struct _publicView {
   int pfMode[25];
   char pfCmds[25][CMDLINELENGTH+1];    /* additional PF key definitions on VIEW level */
 
+
+  /*
   char infoline0[LINES_LEN + 1];
   char infoline1[LINES_LEN + 1];
+  char infoline2[LINES_LEN + 1];
+  char infoline3[LINES_LEN + 1];
+  */
+  char infoLines[INFOLINES_MAX][LINES_LEN + 1];
+  char *infoLines_p[INFOLINES_MAX];
+
+
   long flscreen1; /* EXTRTACT /FLSCREEN/ line numbers of the first/last lines */
   long flscreen2; /*                      of the file displayed on the screen */
 } *ViewPtr2;

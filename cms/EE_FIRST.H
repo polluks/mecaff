@@ -43,3 +43,5 @@
 #define _rc_NYI       -5 /* not yet implemented */
 #define _rc_ABORT      7777 /* ABORT subcommand */
 
+#define INFOLINES_MAX   4
+#define INFOLINES_SPLIT 2
