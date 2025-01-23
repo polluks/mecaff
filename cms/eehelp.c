@@ -251,7 +251,7 @@ int _hlpish(ScreenPtr scr, char *topic, char *helptype) {
 /*    scr->prefixMode = 0; */ /* off */
     scr->currLinePos = 0; /* first avail line */
     scr->scaleLinePos = 0; /* off */
-    scr->showTofBof = false;
+    scr->yyy_showTofBof = false;
 
     char cmdtext[80];
     int rc = 0;

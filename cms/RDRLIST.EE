@@ -108,6 +108,7 @@ address "EE" "WORKL" worklrecl
 address "EE" "PREFIX" prefix
 address "EE" "SCALE OFF"
 address "EE" "CURRLINE TOP"
+address "EE" "TOFEOF OFF"
 address "EE" "SET COLOR infolines blue"
 address "EE" "set color idline white"
 address "EE" "set color statarea white"

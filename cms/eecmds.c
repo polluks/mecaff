@@ -1147,6 +1147,20 @@ static int CmdPrefix(ScreenPtr scr, char *params, char *msg) {
   return false;
 }
 
+static int CmdTofeof(ScreenPtr scr, char *params, char *msg) {
+  if (isAbbrev(params, "ON")) {
+    scr->ed->view->showTofBof = true;
+  } else if (isAbbrev(params, "OFf")) {
+    scr->ed->view->showTofBof = false;
+  } else {
+    sprintf(msg, "invalid parameter for TOFEOF: '%s'", params);
+    return false;
+  }
+  params = getCmdParam(params);
+  checkNoParams(params, msg);
+  return false;
+}
+
 static int CmdNumbers(ScreenPtr scr, char *params, char *msg) {
   if (isAbbrev(params, "ON")) {
     scr->ed->view->prefixNumbered = true;
@@ -3113,7 +3127,7 @@ static int CmdDebug(ScreenPtr scr, char *params, char *msg) {
   }
 */
 
-  scr->showTofBof = false;
+  scr->ed->view->showTofBof = false;
 
   return false;
 
@@ -4401,7 +4415,7 @@ static MyCmdDef eeCmds[] = {
   {"TEXT"                    , &CmdImpSet                           },
   {"Thedit"                  , &CmdEditFile                         },
   {"TOF"                     , &CmdImpSet                           },
-  {"TOFEOF"                  , &CmdImpSet                           },
+  {"TOFEOF"                  , &CmdTofeof                           },
   {"TOL"                     , &CmdImpSet                           },
   {"TOp"                     , &CmdTop                              },
   {"TRAnsfer"                , &CmdTransfer                         },

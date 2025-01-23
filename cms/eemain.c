@@ -819,7 +819,7 @@ void tmpInfShow(
   /* scr->ed->view->prefixMode = 0; */  /* off */
   scr->currLinePos = 0; /* first avail line */
   scr->scaleLinePos = 0; /* off */
-  scr->showTofBof = false;
+  scr->ed->view->showTofBof = false;
   scr->infoLinesPos = -1; /* top */
   scr->attrInfoLines = scr->attrHeadLine;
 

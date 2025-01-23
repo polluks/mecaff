@@ -715,8 +715,9 @@ EditorPtr mkEd(EditorPtr prevEd, int lrecl, char recfm) {
 
   ed->view->prefixMode = 1;          /* 0 = off, 1 = left, >1 right */
   ed->view->prefixNumbered = false;
-  ed->view->prefixChar = '=';          /* standard prefix filler, default: = */
+  ed->view->prefixChar = '=';        /* standard prefix filler, default: = */
   ed->view->prefixLen = 5;           /* 1..5, will be forced to this range in _scrio() !! */
+  ed->view->showTofBof = true;       /* show "Top of file" / "Bottom of file" ? */
 
   ed->isBinary = false;
   ed->isHidden = false;

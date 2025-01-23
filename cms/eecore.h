@@ -112,6 +112,7 @@ typedef struct _publicView {
 
   long flscreen1; /* EXTRTACT /FLSCREEN/ line numbers of the first/last lines */
   long flscreen2; /*                      of the file displayed on the screen */
+  bool showTofBof; /* show "Top of file" / "Bottom of file" ? */
 } *ViewPtr2;
 
 

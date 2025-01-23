@@ -205,7 +205,7 @@ ScreenPtr _scrmk(char *msgBuffer) {
   pub->prefixChar = '=';
 */
   pub->fillChar = ' ';
-  pub->showTofBof = true;
+  pub->yyy_showTofBof = true;
   if (!PGMB_loc->canColors) {
     pub->attrMsg = DA_MonoIntens;
     pub->attrCurLine = DA_MonoIntens;
@@ -519,12 +519,12 @@ static int _scrio_inner(ScreenPtr screen) {
   if (uplinesCount < edLinesAboveCurr) {
     scrLineForFirstAboveCurr
       += scrLinesPerEdLine * (edLinesAboveCurr - uplinesCount);
-    if (pub->showTofBof && currLine != NULL) {
+    if (pub->ed->view->showTofBof && currLine != NULL) {
       scrLineForTof = scrLineForFirstAboveCurr - scrLinesPerEdLine;
     }
   }
 
-  if (downlinesCount < edLinesBelowCurr && pub->showTofBof) {
+  if (downlinesCount < edLinesBelowCurr && pub->ed->view->showTofBof) {
     scrLineForBof
       = scrLineForFirstBelowCurr + (scrLinesPerEdLine * downlinesCount);
   }
@@ -695,7 +695,7 @@ static int _scrio_inner(ScreenPtr screen) {
        scrLinesPerEdLine,
        true,
        getCurrPrefixMark(pub, currLine));
-  } else if (pub->showTofBof) {
+  } else if (pub->ed->view->showTofBof) {
     /* top of file */
     pub->ed->view->flscreen1 = pub->ed->view->flscreen2 = 0;
     writeTextAsFileMarker(

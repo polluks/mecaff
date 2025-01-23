@@ -102,7 +102,7 @@ typedef struct _eescreen_public {
     short yyy_prefixLen; /* 1..5, will be forced to this range in _scrio() !! */
     char yyy_fileToPrefixFiller; /* fill char after file line if prefixMode > 1 */
     bool wrapOverflow; /* automatic true if readOnly==false */
-    bool showTofBof; /* show "Top of file" / "Bottom of file" ? */
+    bool yyy_showTofBof; /* show "Top of file" / "Bottom of file" ? */
     bool readOnly; /* is the file area readonly? */
     bool lineEndBlankFill; /* fill space after line end with blanks or nulls? */
     bool prefixReadOnly; /* is the prefix area readonly if visibble? */
