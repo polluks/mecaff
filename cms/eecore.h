@@ -110,9 +110,10 @@ typedef struct _publicView {
 
   long flscreen1; /* EXTRTACT /FLSCREEN/ line numbers of the first/last lines */
   long flscreen2; /*                      of the file displayed on the screen */
-  bool showTofBof; /* show "Top of file" / "Bottom of file" ? */
-  short currLinePos; /* <= 0: first avail. line for content else middle */
-  short cmdLinePos;  /* <=0 : top, > 0 bottom */
+  bool showTofBof;    /* show "Top of file" / "Bottom of file" ? */
+  short currLinePos;  /* <= 0: first avail. line for content else middle */
+  short cmdLinePos;   /* <=0 : top, > 0 bottom */
+  short scaleLinePos; /* 0=off, <0 top, 1=before curr, >1 below curr */
 
   /****************** PF key definitions at end of 'view' structure ! ******************/
   int pfMode[25];

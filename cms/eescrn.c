@@ -371,14 +371,14 @@ static int _scrio_inner(ScreenPtr screen) {
   short scrLineForBof = -1;
   if (pub->ed->view->currLinePos < 1) {
     /* curr-line on top below reserved, except if scale is above */
-    if (pub->scaleLinePos < 0 || pub->scaleLinePos == 1) {
+    if (pub->ed->view->scaleLinePos < 0 || pub->ed->view->scaleLinePos == 1) {
       scrLineForScale = reservedTop;
       scrLineForCurr = scrLineForScale + scrLinesPerEdLine;
       scrLineForFirstBelowCurr = scrLineForCurr + scrLinesPerEdLine;
     } else {
       scrLineForCurr = reservedTop;
       scrLineForFirstBelowCurr = scrLineForCurr + scrLinesPerEdLine;
-      if (pub->scaleLinePos > 1) {
+      if (pub->ed->view->scaleLinePos > 1) {
         scrLineForScale = scrLineForCurr + scrLinesPerEdLine;
         scrLineForFirstBelowCurr = scrLineForScale + scrLinesPerEdLine;
       }
@@ -393,12 +393,12 @@ static int _scrio_inner(ScreenPtr screen) {
       scrLineForFirstAboveCurr -= scrLinesPerEdLine;
       edLinesAboveCurr++;
     }
-    if (pub->scaleLinePos < 0) {
+    if (pub->ed->view->scaleLinePos < 0) {
       /* scale on top */
       scrLineForScale = scrLineForFirstAboveCurr;
       scrLineForFirstAboveCurr += scrLinesPerEdLine;
       edLinesAboveCurr--;
-    } else if (pub->scaleLinePos == 1) {
+    } else if (pub->ed->view->scaleLinePos == 1) {
       /* scale above curr-line */
       scrLineForScale = scrLineForCurr - scrLinesPerEdLine;
       if (scrLineForScale < reservedTop) {
@@ -406,7 +406,7 @@ static int _scrio_inner(ScreenPtr screen) {
       } else {
         edLinesAboveCurr--;
       }
-    } else if (pub->scaleLinePos > 1) {
+    } else if (pub->ed->view->scaleLinePos > 1) {
       /* scale below curr-line */
       scrLineForScale = scrLineForCurr + scrLinesPerEdLine;
       if (scrLineForScale >= scrFirstFootLine) {
@@ -614,7 +614,7 @@ static int _scrio_inner(ScreenPtr screen) {
 
   /* ------------   file & [scale] incl. filling priv parts ---------- */
   /* scale on top ? */
-  if (pub->scaleLinePos < 0 && scrLineForScale > 0)  {
+  if (pub->ed->view->scaleLinePos < 0 && scrLineForScale > 0)  {
     SBA(scrLineForScale - 1, PGMB_loc->lastCol);
     writeScale(pub);
     startField2(pub->attrEMPTY, pub->HiLitEMPTY, true, false);
@@ -674,7 +674,7 @@ static int _scrio_inner(ScreenPtr screen) {
   }
 
   /* scale above curr line ? */
-  if (pub->scaleLinePos == 1 && scrLineForScale > 0)  {
+  if (pub->ed->view->scaleLinePos == 1 && scrLineForScale > 0)  {
     SBA(scrLineForScale - 1, PGMB_loc->lastCol);
     writeScale(pub);
   }
@@ -713,7 +713,7 @@ static int _scrio_inner(ScreenPtr screen) {
 
 
   /* scale below curr line ? */
-  if (pub->scaleLinePos == 2 && scrLineForScale > 0)  {
+  if (pub->ed->view->scaleLinePos == 2 && scrLineForScale > 0)  {
     SBA(scrLineForScale - 1 - skipCurlineTOF, PGMB_loc->lastCol);
     writeScale(pub);
   }

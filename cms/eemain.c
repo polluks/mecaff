@@ -702,8 +702,8 @@ int doConfCh(ScreenPtr scr, char *iTxt, short offset, short len) {
   scr->msgText = "Change text with confirmation...";
   short oldCurrLinePos = scr->ed->view->currLinePos;
   scr->ed->view->currLinePos = 1;
-  short oldScaleLinePos = scr->scaleLinePos;
-  scr->scaleLinePos = 1;
+  short oldScaleLinePos = scr->ed->view->scaleLinePos;
+  scr->ed->view->scaleLinePos = 1;
 
   /* get the user's response */
   bool done = false;
@@ -742,7 +742,7 @@ int doConfCh(ScreenPtr scr, char *iTxt, short offset, short len) {
   scr->readOnly = false;
   scr->msgText = savedMsgText;
   scr->ed->view->currLinePos = oldCurrLinePos;
-  scr->scaleLinePos = oldScaleLinePos;
+  scr->ed->view->scaleLinePos = oldScaleLinePos;
 
   /* done, return the answer */
   return result;
@@ -818,13 +818,13 @@ void tmpInfShow(
   scr->msgLinePos = 1; /* at bottom */
   /* scr->ed->view->prefixMode = 0; */  /* off */
   scr->yyy_currLinePos = 0; /* first avail line */
-  scr->scaleLinePos = 0; /* off */
-  scr->ed->view->showTofBof = false;
+  scr->yyy_scaleLinePos = 0; /* off */
+  scr->yyy_showTofBof = false;                 /* 2025-02-03 BUG ??? Is "ed" valid ? */
   scr->infoLinesPos = -1; /* top */
   scr->attrInfoLines = scr->attrHeadLine;
 
   scr->headLine = headerLine;
-  scr->ed->view->infoLines_p[0] = introLine;
+  scr->ed->view->infoLines_p[0] = introLine;   /* 2025-02-03 BUG ??? Is "ed" valid ? */
   if (infoLine && *infoLine) {
     scr->footLine = infoLine;
   } else {
@@ -1187,7 +1187,7 @@ int main9(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc) {
 /*    scr->prefixMode = 1; */ /* left */
 /*    scr->prefixNumbered = false; */
     scr->yyy_currLinePos = 1; /* middle */
-    scr->scaleLinePos = 1; /* before currline */
+    scr->yyy_scaleLinePos = 1; /* before currline */
 
     messages[0] = '\0';
     scr->ed = NULL;

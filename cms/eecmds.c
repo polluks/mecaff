@@ -1191,13 +1191,13 @@ static int CmdCurrline(ScreenPtr scr, char *params, char *msg) {
 
 static int CmdScale(ScreenPtr scr, char *params, char *msg) {
   if (isAbbrev(params, "OFf")) {
-    scr->scaleLinePos = 0;
+    scr->ed->view->scaleLinePos = 0;
   } else if (isAbbrev(params, "TOp")) {
-    scr->scaleLinePos = -1;
+    scr->ed->view->scaleLinePos = -1;
   } else if (isAbbrev(params, "ABOve")) {
-    scr->scaleLinePos = 1;
+    scr->ed->view->scaleLinePos = 1;
   } else if (isAbbrev(params, "BELow")) {
-    scr->scaleLinePos = 2;
+    scr->ed->view->scaleLinePos = 2;
   } else {
     sprintf(msg, "invalid parameter for SCALE: '%s'", params);
     return false;

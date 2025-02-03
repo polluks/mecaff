@@ -204,7 +204,7 @@ static ScreenPtr initScreen(ScreenPtr tmpl, char *msg) {
   scr->msgLinePos = 1; /* at bottom */
   /* scr->prefixMode = 0; */ /* off */
   scr->yyy_currLinePos = 0; /* first avail line */
-  scr->scaleLinePos = 0; /* off */
+  scr->yyy_scaleLinePos = 0; /* off */
   scr->yyy_showTofBof = false;
   scr->infoLinesPos = -1; /* top */
   scr->attrInfoLines = scr->attrHeadLine;

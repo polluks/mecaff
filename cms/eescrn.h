@@ -108,7 +108,7 @@ typedef struct _eescreen_public {
     bool prefixReadOnly; /* is the prefix area readonly if visibble? */
     bool cmdLineReadOnly; /* is cmdline write-protected ? */
     short yyy_currLinePos; /* <= 0: first avail. line for content else middle */
-    short scaleLinePos; /* 0=off, <0 top, 1=before curr, >1 below curr */
+    short yyy_scaleLinePos; /* 0=off, <0 top, 1=before curr, >1 below curr */
     short yyy_cmdLinePos; /* <=0 : top, > 0 bottom */
     short msgLinePos; /* <=0 : top, > 0 bottom */
     short infoLinesPos; /* 0=off, < 0 top, > 0 bottom */
