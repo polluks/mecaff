@@ -369,7 +369,7 @@ static int _scrio_inner(ScreenPtr screen) {
   short scrLineForFirstBelowCurr = -1;
   short scrLineForTof = -1;
   short scrLineForBof = -1;
-  if (pub->currLinePos < 1) {
+  if (pub->ed->view->currLinePos < 1) {
     /* curr-line on top below reserved, except if scale is above */
     if (pub->scaleLinePos < 0 || pub->scaleLinePos == 1) {
       scrLineForScale = reservedTop;

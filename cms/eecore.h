@@ -96,8 +96,6 @@ typedef struct _publicView {
   char fileToPrefixFiller; /* fill char after file line if prefixMode > 1 */
   short prefixLen; /* 1..5, will be forced to this range in _scrio() !! */
 
-  int pfMode[25];
-  char pfCmds[25][CMDLINELENGTH+1];    /* additional PF key definitions on VIEW level */
 
 
   /*
@@ -113,6 +111,13 @@ typedef struct _publicView {
   long flscreen1; /* EXTRTACT /FLSCREEN/ line numbers of the first/last lines */
   long flscreen2; /*                      of the file displayed on the screen */
   bool showTofBof; /* show "Top of file" / "Bottom of file" ? */
+  short currLinePos; /* <= 0: first avail. line for content else middle */
+
+  /****************** PF key definitions at end of 'view' structure ! ******************/
+  int pfMode[25];
+  char pfCmds[25][CMDLINELENGTH+1];     /* additional PF key definitions on VIEW level */
+  /****************** PF key definitions at end of 'view' structure ! ******************/
+
 } *ViewPtr2;
 
 

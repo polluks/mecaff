@@ -1177,9 +1177,9 @@ static int CmdNumbers(ScreenPtr scr, char *params, char *msg) {
 
 static int CmdCurrline(ScreenPtr scr, char *params, char *msg) {
   if (isAbbrev(params, "TOp")) {
-    scr->currLinePos = 0;
+    scr->ed->view->currLinePos = 0;
   } else if (isAbbrev(params, "MIddle")) {
-    scr->currLinePos = 1;
+    scr->ed->view->currLinePos = 1;
   } else {
     sprintf(msg, "invalid parameter for CURRLINE: '%s'", params);
     return false;

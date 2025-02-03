@@ -700,8 +700,8 @@ int doConfCh(ScreenPtr scr, char *iTxt, short offset, short len) {
   scr->readOnly = true;
   char *savedMsgText = scr->msgText;
   scr->msgText = "Change text with confirmation...";
-  short oldCurrLinePos = scr->currLinePos;
-  scr->currLinePos = 1;
+  short oldCurrLinePos = scr->ed->view->currLinePos;
+  scr->ed->view->currLinePos = 1;
   short oldScaleLinePos = scr->scaleLinePos;
   scr->scaleLinePos = 1;
 
@@ -741,7 +741,7 @@ int doConfCh(ScreenPtr scr, char *iTxt, short offset, short len) {
   scr->cursorOffset = 0;
   scr->readOnly = false;
   scr->msgText = savedMsgText;
-  scr->currLinePos = oldCurrLinePos;
+  scr->ed->view->currLinePos = oldCurrLinePos;
   scr->scaleLinePos = oldScaleLinePos;
 
   /* done, return the answer */
@@ -817,7 +817,7 @@ void tmpInfShow(
   scr->cmdLinePos = 1; /* at bottom */
   scr->msgLinePos = 1; /* at bottom */
   /* scr->ed->view->prefixMode = 0; */  /* off */
-  scr->currLinePos = 0; /* first avail line */
+  scr->yyy_currLinePos = 0; /* first avail line */
   scr->scaleLinePos = 0; /* off */
   scr->ed->view->showTofBof = false;
   scr->infoLinesPos = -1; /* top */
@@ -1186,7 +1186,7 @@ int main9(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc) {
     scr->msgLinePos = 0; /* at top */
 /*    scr->prefixMode = 1; */ /* left */
 /*    scr->prefixNumbered = false; */
-    scr->currLinePos = 1; /* middle */
+    scr->yyy_currLinePos = 1; /* middle */
     scr->scaleLinePos = 1; /* before currline */
 
     messages[0] = '\0';

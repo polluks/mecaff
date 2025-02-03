@@ -107,7 +107,7 @@ typedef struct _eescreen_public {
     bool lineEndBlankFill; /* fill space after line end with blanks or nulls? */
     bool prefixReadOnly; /* is the prefix area readonly if visibble? */
     bool cmdLineReadOnly; /* is cmdline write-protected ? */
-    short currLinePos; /* <= 0: first avail. line for content else middle */
+    short yyy_currLinePos; /* <= 0: first avail. line for content else middle */
     short scaleLinePos; /* 0=off, <0 top, 1=before curr, >1 below curr */
     short cmdLinePos; /* <=0 : top, > 0 bottom */
     short msgLinePos; /* <=0 : top, > 0 bottom */
