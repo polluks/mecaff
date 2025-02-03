@@ -112,6 +112,7 @@ typedef struct _publicView {
   long flscreen2; /*                      of the file displayed on the screen */
   bool showTofBof; /* show "Top of file" / "Bottom of file" ? */
   short currLinePos; /* <= 0: first avail. line for content else middle */
+  short cmdLinePos;  /* <=0 : top, > 0 bottom */
 
   /****************** PF key definitions at end of 'view' structure ! ******************/
   int pfMode[25];

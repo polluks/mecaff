@@ -1094,9 +1094,9 @@ static int CmdReset(ScreenPtr scr, char *params, char *msg) {
 
 static int CmdCmdline(ScreenPtr scr, char *params, char *msg) {
   if (isAbbrev(params, "TOP")) {
-    scr->cmdLinePos = -1;
+    scr->ed->view->cmdLinePos = -1;
   } else if (isAbbrev(params, "BOTtom")) {
-    scr->cmdLinePos = 1;
+    scr->ed->view->cmdLinePos = 1;
   } else {
     sprintf(msg, "invalid parameter for CMDLINE: '%s'", params);
     return false;

@@ -246,7 +246,7 @@ int _hlpish(ScreenPtr scr, char *topic, char *helptype) {
 
     scr->attrCurLine = scr->attrFilearea;
     scr->readOnly = true;
-    scr->cmdLinePos = 0; /* at top */
+    scr->yyy_cmdLinePos = 0; /* at top */
     scr->msgLinePos = 1; /* at bottom */
 /*    scr->prefixMode = 0; */ /* off */
     scr->yyy_currLinePos = 0; /* first avail line */

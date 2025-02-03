@@ -199,7 +199,7 @@ ScreenPtr _scrmk(char *msgBuffer) {
   /* all screen data is zeroed out, so set only non-zero default values */
   ScreenPublPtr pub = SCREENPUBL(screen);
   ScreenPrivPtr priv = SCREENPRIV(screen);
-  pub->cmdLinePos = 1;
+  pub->yyy_cmdLinePos = 1;
 /*
   pub->prefixLen = 5;
   pub->prefixChar = '=';
@@ -340,12 +340,12 @@ static int _scrio_inner(ScreenPtr screen) {
   short nominalTop
     = 1 /* headline */
     + ((pub->infoLinesPos < 0) ? infoLineCountTop : 0+infoLineCountTop)
-    + ((pub->cmdLinePos < 1) ? 1 : 0)
+    + ((pub->ed->view->cmdLinePos < 1) ? 1 : 0)
     + ((pub->msgLinePos < 1) ? 1 : 0);
   short nominalFoot
     = 1 /* footline */
     + ((pub->infoLinesPos > 0) ? infoLineCountFoot : 0+infoLineCountFoot)
-    + ((pub->cmdLinePos > 0) ? 1 : 0)
+    + ((pub->ed->view->cmdLinePos > 0) ? 1 : 0)
     + ((pub->msgLinePos > 0) ? 1 : 0);
   short reservedTop
     = nominalTop
@@ -567,7 +567,7 @@ static int _scrio_inner(ScreenPtr screen) {
   startField2(pub->attrEMPTY, pub->HiLitEMPTY, true, false);
 */
   /* commandline on top ? */
-  if (pub->cmdLinePos <= 0) {
+  if (pub->ed->view->cmdLinePos <= 0) {
     startField2(pub->attrArrow, pub->HiLitArrow, true, false);
     appendString(PGMB_loc->cmdArrow);
     startField2(pub->attrCmd + cmdLineModifier, pub->HiLitCmd, pub->cmdLineReadOnly, false);
@@ -792,7 +792,7 @@ static int _scrio_inner(ScreenPtr screen) {
   }
 
   /* commandline at bottom ? */
-  if (pub->cmdLinePos > 0) {
+  if (pub->ed->view->cmdLinePos > 0) {
     startField2(pub->attrArrow, pub->HiLitArrow, true, false);
     appendString(PGMB_loc->cmdArrow);
     startField2(pub->attrCmd + cmdLineModifier, pub->HiLitCmd, pub->cmdLineReadOnly, false);

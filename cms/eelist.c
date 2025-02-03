@@ -200,7 +200,7 @@ static ScreenPtr initScreen(ScreenPtr tmpl, char *msg) {
   scr->attrCurLine = scr->attrFilearea;
   scr->readOnly = true;
   scr->wrapOverflow = false;
-  scr->cmdLinePos = 1; /* at bottom */
+  scr->yyy_cmdLinePos = 1; /* at bottom */
   scr->msgLinePos = 1; /* at bottom */
   /* scr->prefixMode = 0; */ /* off */
   scr->yyy_currLinePos = 0; /* first avail line */
