@@ -115,6 +115,55 @@ typedef struct _publicView {
   short cmdLinePos;   /* <=0 : top, > 0 bottom */
   short scaleLinePos; /* 0=off, <0 top, 1=before curr, >1 below curr */
 
+
+    /* display attributes for screen elements, must be a DisplayAttr value */
+    unsigned char  attrArrow          ;
+    unsigned char HiLitArrow          ;
+    unsigned char  attrBlock          ;
+    unsigned char HiLitBlock          ;
+    unsigned char  attrCBlock         ;
+    unsigned char HiLitCBlock         ;
+    unsigned char  attrCHighLight     ;
+    unsigned char HiLitCHighLight     ;
+    unsigned char  attrCmd            ;
+    unsigned char HiLitCmd            ;
+    unsigned char  attrCPrefix        ;
+    unsigned char HiLitCPrefix        ;
+    unsigned char  attrCTofeof        ;
+    unsigned char HiLitCTofeof        ;
+    unsigned char  attrCurLine        ;
+    unsigned char HiLitCurLine        ;
+    unsigned char  attrEMPTY          ;
+    unsigned char HiLitEMPTY          ;
+    unsigned char  attrFilearea       ;
+    unsigned char HiLitFilearea       ;
+    unsigned char  attrFileToPrefix   ;
+    unsigned char HiLitFileToPrefix   ;
+    unsigned char  attrFootLine       ;
+    unsigned char HiLitFootLine       ;
+    unsigned char  attrHeadLine       ;
+    unsigned char HiLitHeadLine       ;
+    unsigned char  attrHighLight      ;
+    unsigned char HiLitHighLight      ;
+    unsigned char  attrInfoLines      ;
+    unsigned char HiLitInfoLines      ;
+    unsigned char  attrMsg            ;
+    unsigned char HiLitMsg            ;
+    unsigned char  attrPending        ;
+    unsigned char HiLitPending        ;
+    unsigned char  attrPrefix         ;
+    unsigned char HiLitPrefix         ;
+    unsigned char  attrScaleLine      ;
+    unsigned char HiLitScaleLine      ;
+    unsigned char  attrSelectedLine   ;
+    unsigned char HiLitSelectedLine   ;
+    unsigned char  attrShadow         ;
+    unsigned char HiLitShadow         ;
+    unsigned char  attrTabline        ;
+    unsigned char HiLitTabline        ;
+    unsigned char  attrTofeof         ;
+    unsigned char HiLitTofeof         ;
+
   /****************** PF key definitions at end of 'view' structure ! ******************/
   int pfMode[25];
   char pfCmds[25][CMDLINELENGTH+1];     /* additional PF key definitions on VIEW level */

@@ -1950,131 +1950,131 @@ static int CmdSqmetColor(ScreenPtr scr, char sqmet, char *params, char *msg) {
 
 
   if ( (isAbbrev(whatName, "ALL")) || ((whatName[0] == '*') && (whatName[1] == ' ')) ) {
-    if (set_attr  == 1) {  scr->attrArrow = attr         ; }
-    if (set_HiLit == 1) { scr->HiLitArrow = HiLit        ; }
-    if (set_attr  == 1) {  scr->attrBlock = attr         ; }
-    if (set_HiLit == 1) { scr->HiLitBlock = HiLit        ; }
-    if (set_attr  == 1) {  scr->attrCBlock = attr        ; }
-    if (set_HiLit == 1) { scr->HiLitCBlock = HiLit       ; }
-    if (set_attr  == 1) {  scr->attrCHighLight = attr    ; }
-    if (set_HiLit == 1) { scr->HiLitCHighLight = HiLit   ; }
-    if (set_attr  == 1) {  scr->attrCmd = attr           ; }
-    if (set_HiLit == 1) { scr->HiLitCmd = HiLit          ; }
-    if (set_attr  == 1) {  scr->attrCPrefix = attr       ; }
-    if (set_HiLit == 1) { scr->HiLitCPrefix = HiLit      ; }
-    if (set_attr  == 1) {  scr->attrCTofeof = attr       ; }
-    if (set_HiLit == 1) { scr->HiLitCTofeof = HiLit      ; }
-    if (set_attr  == 1) {  scr->attrCurLine = attr       ; }
-    if (set_HiLit == 1) { scr->HiLitCurLine = HiLit      ; }
-    if (set_attr  == 1) {  scr->attrEMPTY = attr         ; }
-    if (set_HiLit == 1) { scr->HiLitEMPTY = HiLit        ; }
-    if (set_attr  == 1) {  scr->attrFilearea = attr      ; }
-    if (set_HiLit == 1) { scr->HiLitFilearea = HiLit     ; }
-    if (set_attr  == 1) {  scr->attrFileToPrefix = attr  ; }
-    if (set_HiLit == 1) { scr->HiLitFileToPrefix = HiLit ; }
-    if (set_attr  == 1) {  scr->attrFootLine = attr      ; }
-    if (set_HiLit == 1) { scr->HiLitFootLine = HiLit     ; }
-    if (set_attr  == 1) {  scr->attrHeadLine = attr      ; }
-    if (set_HiLit == 1) { scr->HiLitHeadLine = HiLit     ; }
-    if (set_attr  == 1) {  scr->attrHighLight = attr     ; }
-    if (set_HiLit == 1) { scr->HiLitHighLight = HiLit    ; }
-    if (set_attr  == 1) {  scr->attrInfoLines = attr     ; }
-    if (set_HiLit == 1) { scr->HiLitInfoLines = HiLit    ; }
-    if (set_attr  == 1) {  scr->attrMsg = attr           ; }
-    if (set_HiLit == 1) { scr->HiLitMsg = HiLit          ; }
-    if (set_attr  == 1) {  scr->attrPending = attr       ; }
-    if (set_HiLit == 1) { scr->HiLitPending = HiLit      ; }
-    if (set_attr  == 1) {  scr->attrPrefix = attr        ; }
-    if (set_HiLit == 1) { scr->HiLitPrefix = HiLit       ; }
-    if (set_attr  == 1) {  scr->attrScaleLine = attr     ; }
-    if (set_HiLit == 1) { scr->HiLitScaleLine = HiLit    ; }
-    if (set_attr  == 1) {  scr->attrSelectedLine = attr  ; }
-    if (set_HiLit == 1) { scr->HiLitSelectedLine = HiLit ; }
-    if (set_attr  == 1) {  scr->attrShadow = attr        ; }
-    if (set_HiLit == 1) { scr->HiLitShadow = HiLit       ; }
-    if (set_attr  == 1) {  scr->attrTabline = attr       ; }
-    if (set_HiLit == 1) { scr->HiLitTabline = HiLit      ; }
-    if (set_attr  == 1) {  scr->attrTofeof = attr        ; }
-    if (set_HiLit == 1) { scr->HiLitTofeof = HiLit       ; }
+    if (set_attr  == 1) {  scr->ed->view->attrArrow = attr         ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitArrow = HiLit        ; }
+    if (set_attr  == 1) {  scr->ed->view->attrBlock = attr         ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitBlock = HiLit        ; }
+    if (set_attr  == 1) {  scr->ed->view->attrCBlock = attr        ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitCBlock = HiLit       ; }
+    if (set_attr  == 1) {  scr->ed->view->attrCHighLight = attr    ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitCHighLight = HiLit   ; }
+    if (set_attr  == 1) {  scr->ed->view->attrCmd = attr           ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitCmd = HiLit          ; }
+    if (set_attr  == 1) {  scr->ed->view->attrCPrefix = attr       ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitCPrefix = HiLit      ; }
+    if (set_attr  == 1) {  scr->ed->view->attrCTofeof = attr       ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitCTofeof = HiLit      ; }
+    if (set_attr  == 1) {  scr->ed->view->attrCurLine = attr       ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitCurLine = HiLit      ; }
+    if (set_attr  == 1) {  scr->ed->view->attrEMPTY = attr         ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitEMPTY = HiLit        ; }
+    if (set_attr  == 1) {  scr->ed->view->attrFilearea = attr      ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitFilearea = HiLit     ; }
+    if (set_attr  == 1) {  scr->ed->view->attrFileToPrefix = attr  ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitFileToPrefix = HiLit ; }
+    if (set_attr  == 1) {  scr->ed->view->attrFootLine = attr      ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitFootLine = HiLit     ; }
+    if (set_attr  == 1) {  scr->ed->view->attrHeadLine = attr      ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitHeadLine = HiLit     ; }
+    if (set_attr  == 1) {  scr->ed->view->attrHighLight = attr     ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitHighLight = HiLit    ; }
+    if (set_attr  == 1) {  scr->ed->view->attrInfoLines = attr     ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitInfoLines = HiLit    ; }
+    if (set_attr  == 1) {  scr->ed->view->attrMsg = attr           ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitMsg = HiLit          ; }
+    if (set_attr  == 1) {  scr->ed->view->attrPending = attr       ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitPending = HiLit      ; }
+    if (set_attr  == 1) {  scr->ed->view->attrPrefix = attr        ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitPrefix = HiLit       ; }
+    if (set_attr  == 1) {  scr->ed->view->attrScaleLine = attr     ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitScaleLine = HiLit    ; }
+    if (set_attr  == 1) {  scr->ed->view->attrSelectedLine = attr  ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitSelectedLine = HiLit ; }
+    if (set_attr  == 1) {  scr->ed->view->attrShadow = attr        ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitShadow = HiLit       ; }
+    if (set_attr  == 1) {  scr->ed->view->attrTabline = attr       ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitTabline = HiLit      ; }
+    if (set_attr  == 1) {  scr->ed->view->attrTofeof = attr        ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitTofeof = HiLit       ; }
   } else if (isAbbrev(whatName, "Filearea")) {
-    if (set_attr  == 1) {  scr->attrFilearea = attr      ; }
-    if (set_HiLit == 1) { scr->HiLitFilearea = HiLit     ; }
+    if (set_attr  == 1) {  scr->ed->view->attrFilearea = attr      ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitFilearea = HiLit     ; }
   } else if ((isAbbrev(whatName, "CUrline")) || (isAbbrev(whatName, "CUrrline"))) {
-    if (set_attr  == 1) {  scr->attrCurLine = attr       ; }
-    if (set_HiLit == 1) { scr->HiLitCurLine = HiLit      ; }
-    if (set_attr  == 1) {  scr->attrCBlock = attr        ; }
-    if (set_HiLit == 1) { scr->HiLitCBlock = HiLit       ; }
-    if (set_attr  == 1) {  scr->attrCTofeof = attr       ; }
-    if (set_HiLit == 1) { scr->HiLitCTofeof = HiLit      ; }
-    if (set_attr  == 1) {  scr->attrCHighLight = attr    ; }
-    if (set_HiLit == 1) { scr->HiLitCHighLight = HiLit   ; }
-    if (set_attr  == 1) {  scr->attrCPrefix = attr       ; }
-    if (set_HiLit == 1) { scr->HiLitCPrefix = HiLit      ; }
+    if (set_attr  == 1) {  scr->ed->view->attrCurLine = attr       ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitCurLine = HiLit      ; }
+    if (set_attr  == 1) {  scr->ed->view->attrCBlock = attr        ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitCBlock = HiLit       ; }
+    if (set_attr  == 1) {  scr->ed->view->attrCTofeof = attr       ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitCTofeof = HiLit      ; }
+    if (set_attr  == 1) {  scr->ed->view->attrCHighLight = attr    ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitCHighLight = HiLit   ; }
+    if (set_attr  == 1) {  scr->ed->view->attrCPrefix = attr       ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitCPrefix = HiLit      ; }
   } else if (isAbbrev(whatName, "PRefix")) {
-    if (set_attr  == 1) {  scr->attrPrefix = attr        ; }
-    if (set_HiLit == 1) { scr->HiLitPrefix = HiLit       ; }
+    if (set_attr  == 1) {  scr->ed->view->attrPrefix = attr        ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitPrefix = HiLit       ; }
   } else if (isAbbrev(whatName, "GAPfill")) {
-    if (set_attr  == 1) {  scr->attrFileToPrefix = attr  ; }
-    if (set_HiLit == 1) { scr->HiLitFileToPrefix = HiLit ; }
+    if (set_attr  == 1) {  scr->ed->view->attrFileToPrefix = attr  ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitFileToPrefix = HiLit ; }
   } else if (isAbbrev(whatName, "Cmdline")) {
-    if (set_attr  == 1) {  scr->attrCmd = attr           ; }
-    if (set_HiLit == 1) { scr->HiLitCmd = HiLit          ; }
+    if (set_attr  == 1) {  scr->ed->view->attrCmd = attr           ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitCmd = HiLit          ; }
   } else if ((isAbbrev(whatName, "Arrow")) || (isAbbrev(whatName, "CMDARRow"))) {
-    if (set_attr  == 1) {  scr->attrArrow = attr         ; }
-    if (set_HiLit == 1) { scr->HiLitArrow = HiLit        ; }
+    if (set_attr  == 1) {  scr->ed->view->attrArrow = attr         ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitArrow = HiLit        ; }
   } else if (isAbbrev(whatName, "Msglines")) {
-    if (set_attr  == 1) {  scr->attrMsg = attr           ; }
-    if (set_HiLit == 1) { scr->HiLitMsg = HiLit          ; }
+    if (set_attr  == 1) {  scr->ed->view->attrMsg = attr           ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitMsg = HiLit          ; }
   } else if (isAbbrev(whatName, "INFOlines")) {
-    if (set_attr  == 1) {  scr->attrInfoLines = attr     ; }
-    if (set_HiLit == 1) { scr->HiLitInfoLines = HiLit    ; }
+    if (set_attr  == 1) {  scr->ed->view->attrInfoLines = attr     ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitInfoLines = HiLit    ; }
   } else if ((isAbbrev(whatName, "Idline")) || (isAbbrev(whatName, "HEADline"))) {
-    if (set_attr  == 1) {  scr->attrHeadLine = attr      ; }
-    if (set_HiLit == 1) { scr->HiLitHeadLine = HiLit     ; }
+    if (set_attr  == 1) {  scr->ed->view->attrHeadLine = attr      ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitHeadLine = HiLit     ; }
   } else if ((isAbbrev(whatName, "STatarea")) || (isAbbrev(whatName, "FOOTline"))) {
-    if (set_attr  == 1) {  scr->attrFootLine = attr      ; }
-    if (set_HiLit == 1) { scr->HiLitFootLine = HiLit     ; }
+    if (set_attr  == 1) {  scr->ed->view->attrFootLine = attr      ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitFootLine = HiLit     ; }
   } else if (isAbbrev(whatName, "Scaleline")) {
-    if (set_attr  == 1) {  scr->attrScaleLine = attr     ; }
-    if (set_HiLit == 1) { scr->HiLitScaleLine = HiLit    ; }
+    if (set_attr  == 1) {  scr->ed->view->attrScaleLine = attr     ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitScaleLine = HiLit    ; }
   } else if (isAbbrev(whatName, "HIGHlight")) {
-    if (set_attr  == 1) {  scr->attrHighLight = attr     ; }
-    if (set_HiLit == 1) { scr->HiLitHighLight = HiLit    ; }
+    if (set_attr  == 1) {  scr->ed->view->attrHighLight = attr     ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitHighLight = HiLit    ; }
   } else if (isAbbrev(whatName, "SHadow")) {
-    if (set_attr  == 1) {  scr->attrShadow = attr        ; }
-    if (set_HiLit == 1) { scr->HiLitShadow = HiLit       ; }
+    if (set_attr  == 1) {  scr->ed->view->attrShadow = attr        ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitShadow = HiLit       ; }
   } else if (isAbbrev(whatName, "SELECTEDLINE")) {
-    if (set_attr  == 1) {  scr->attrSelectedLine = attr  ; }
-    if (set_HiLit == 1) { scr->HiLitSelectedLine = HiLit ; }
+    if (set_attr  == 1) {  scr->ed->view->attrSelectedLine = attr  ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitSelectedLine = HiLit ; }
   } else if (isAbbrev(whatName, "Pending")) {
-    if (set_attr  == 1) {  scr->attrPending = attr       ; }
-    if (set_HiLit == 1) { scr->HiLitPending = HiLit      ; }
+    if (set_attr  == 1) {  scr->ed->view->attrPending = attr       ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitPending = HiLit      ; }
   } else if (isAbbrev(whatName, "Tabline")) {
-    if (set_attr  == 1) {  scr->attrTabline = attr       ; }
-    if (set_HiLit == 1) { scr->HiLitTabline = HiLit      ; }
+    if (set_attr  == 1) {  scr->ed->view->attrTabline = attr       ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitTabline = HiLit      ; }
   } else if (isAbbrev(whatName, "TOfeof")) {
-    if (set_attr  == 1) {  scr->attrTofeof = attr        ; }
-    if (set_HiLit == 1) { scr->HiLitTofeof = HiLit       ; }
+    if (set_attr  == 1) {  scr->ed->view->attrTofeof = attr        ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitTofeof = HiLit       ; }
   } else if (isAbbrev(whatName, "Block")) {
-    if (set_attr  == 1) {  scr->attrBlock = attr         ; }
-    if (set_HiLit == 1) { scr->HiLitBlock = HiLit        ; }
-    if (set_attr  == 1) {  scr->attrCBlock = attr        ; }
-    if (set_HiLit == 1) { scr->HiLitCBlock = HiLit       ; }
+    if (set_attr  == 1) {  scr->ed->view->attrBlock = attr         ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitBlock = HiLit        ; }
+    if (set_attr  == 1) {  scr->ed->view->attrCBlock = attr        ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitCBlock = HiLit       ; }
   } else if (isAbbrev(whatName, "CBlock")) {
-    if (set_attr  == 1) {  scr->attrCBlock = attr        ; }
-    if (set_HiLit == 1) { scr->HiLitCBlock = HiLit       ; }
+    if (set_attr  == 1) {  scr->ed->view->attrCBlock = attr        ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitCBlock = HiLit       ; }
   } else if (isAbbrev(whatName, "CTOfeof")) {
-    if (set_attr  == 1) {  scr->attrCTofeof = attr       ; }
-    if (set_HiLit == 1) { scr->HiLitCTofeof = HiLit      ; }
+    if (set_attr  == 1) {  scr->ed->view->attrCTofeof = attr       ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitCTofeof = HiLit      ; }
   } else if (isAbbrev(whatName, "CHIGHlight")) {
-    if (set_attr  == 1) {  scr->attrCHighLight = attr    ; }
-    if (set_HiLit == 1) { scr->HiLitCHighLight = HiLit   ; }
+    if (set_attr  == 1) {  scr->ed->view->attrCHighLight = attr    ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitCHighLight = HiLit   ; }
   } else if (isAbbrev(whatName, "CPRefix")) {
-    if (set_attr  == 1) {  scr->attrCPrefix = attr       ; }
-    if (set_HiLit == 1) { scr->HiLitCPrefix = HiLit      ; }
+    if (set_attr  == 1) {  scr->ed->view->attrCPrefix = attr       ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitCPrefix = HiLit      ; }
   } else if (isAbbrev(whatName, "EMPTY")) {
-    if (set_attr  == 1) {  scr->attrEMPTY = attr         ; }
-    if (set_HiLit == 1) { scr->HiLitEMPTY = HiLit        ; }
+    if (set_attr  == 1) {  scr->ed->view->attrEMPTY = attr         ; }
+    if (set_HiLit == 1) { scr->ed->view->HiLitEMPTY = HiLit        ; }
   } else {
     sprintf(msg, "Invalid screen object for SET %s",
                    (our_name_is_BE ? "COLOUR" : "COLOR"));

@@ -189,15 +189,15 @@ static ScreenPtr initScreen(ScreenPtr tmpl, char *msg) {
   ScreenPtr scr = allocateScreen(msg);
   if (scr == NULL) { return NULL; }
 
-  scr->attrFilearea = tmpl->attrFilearea;
-  scr->attrCmd = tmpl->attrCmd;
-  scr->attrArrow = tmpl->attrArrow;
-  scr->attrMsg = tmpl->attrMsg;
-  scr->attrHeadLine = tmpl->attrHeadLine;
-  scr->attrFootLine = tmpl->attrFootLine;
-  scr->attrSelectedLine = tmpl->attrCurLine;
+  scr->yyy_attrFilearea = tmpl->yyy_attrFilearea;
+  scr->yyy_attrCmd = tmpl->yyy_attrCmd;
+  scr->yyy_attrArrow = tmpl->yyy_attrArrow;
+  scr->yyy_attrMsg = tmpl->yyy_attrMsg;
+  scr->yyy_attrHeadLine = tmpl->yyy_attrHeadLine;
+  scr->yyy_attrFootLine = tmpl->yyy_attrFootLine;
+  scr->yyy_attrSelectedLine = tmpl->yyy_attrCurLine;
 
-  scr->attrCurLine = scr->attrFilearea;
+  scr->yyy_attrCurLine = scr->yyy_attrFilearea;
   scr->readOnly = true;
   scr->wrapOverflow = false;
   scr->yyy_cmdLinePos = 1; /* at bottom */
@@ -207,7 +207,7 @@ static ScreenPtr initScreen(ScreenPtr tmpl, char *msg) {
   scr->yyy_scaleLinePos = 0; /* off */
   scr->yyy_showTofBof = false;
   scr->infoLinesPos = -1; /* top */
-  scr->attrInfoLines = scr->attrHeadLine;
+  scr->yyy_attrInfoLines = scr->yyy_attrHeadLine;
 
   return scr;
 }
@@ -1012,7 +1012,7 @@ int doFSList(
   ScreenPtr scr = PGMB_loc->fslistScreen;
   scr->selectionColumn = (xlistMode > 0) ? 71 : 0;
   scr->selectionMark = '*';
-  scr->attrPrefix = DA_WhiteIntens;
+  scr->yyy_attrPrefix = DA_WhiteIntens;
 
   *msg = '\0';
 

@@ -244,7 +244,7 @@ int _hlpish(ScreenPtr scr, char *topic, char *helptype) {
 
     scr->footLine = fshelp_footline;
 
-    scr->attrCurLine = scr->attrFilearea;
+    scr->yyy_attrCurLine = scr->yyy_attrFilearea;
     scr->readOnly = true;
     scr->yyy_cmdLinePos = 0; /* at top */
     scr->msgLinePos = 1; /* at bottom */

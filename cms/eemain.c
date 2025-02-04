@@ -804,14 +804,14 @@ void tmpInfShow(
   ScreenPtr scr = allocateScreen(msg);
   if (scr == NULL) { return; }
 
-  scr->attrFilearea = tmpl->attrFilearea;
-  scr->attrCmd = tmpl->attrCmd;
-  scr->attrArrow = tmpl->attrArrow;
-  scr->attrMsg = tmpl->attrMsg;
-  scr->attrHeadLine = tmpl->attrHeadLine;
-  scr->attrFootLine = tmpl->attrFootLine;
+  scr->yyy_attrFilearea = tmpl->yyy_attrFilearea;
+  scr->yyy_attrCmd = tmpl->yyy_attrCmd;
+  scr->yyy_attrArrow = tmpl->yyy_attrArrow;
+  scr->yyy_attrMsg = tmpl->yyy_attrMsg;
+  scr->yyy_attrHeadLine = tmpl->yyy_attrHeadLine;
+  scr->yyy_attrFootLine = tmpl->yyy_attrFootLine;
 
-  scr->attrCurLine = scr->attrFilearea;
+  scr->yyy_attrCurLine = scr->yyy_attrFilearea;
   scr->readOnly = true;
   scr->wrapOverflow = false;
   scr->yyy_cmdLinePos = 1; /* at bottom */
@@ -821,7 +821,7 @@ void tmpInfShow(
   scr->yyy_scaleLinePos = 0; /* off */
   scr->yyy_showTofBof = false;                 /* 2025-02-03 BUG ??? Is "ed" valid ? */
   scr->infoLinesPos = -1; /* top */
-  scr->attrInfoLines = scr->attrHeadLine;
+  scr->yyy_attrInfoLines = scr->yyy_attrHeadLine;
 
   scr->headLine = headerLine;
   scr->ed->view->infoLines_p[0] = introLine;   /* 2025-02-03 BUG ??? Is "ed" valid ? */
@@ -1222,7 +1222,7 @@ int main9(int argc, char *argv[], char *argstrng, t_PGMB *PGMB_loc) {
                         "10=PI "
                         "11=ClrCmd "
                         "12=Recall";
-    scr->attrInfoLines = DA_Pink;
+    scr->ed->view->attrInfoLines = DA_Pink;
 
 /*    scr->fileToPrefixFiller = (char)0x00; */
     scr->msgText = messages;
